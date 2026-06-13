@@ -8,6 +8,7 @@ type Profile = {
   last_name: string
   role: 'super_admin' | 'admin' | 'resident' | 'guard'
   status: 'pending' | 'approved' | 'rejected' | 'inactive'
+  user_id: string
 }
 
 export default function HomePage() {
@@ -23,11 +24,16 @@ export default function HomePage() {
         return
       }
 
-      const { data } = await supabase
+      console.log('AUTH USER ID:', sessionData.session.user.id)
+
+      const { data, error } = await supabase
         .from('profiles')
-        .select('first_name,last_name,role,status')
+        .select('first_name,last_name,role,status,user_id')
         .eq('user_id', sessionData.session.user.id)
         .single()
+
+      console.log('PROFILE DATA:', data)
+      console.log('PROFILE ERROR:', error)
 
       setProfile(data)
       setLoading(false)
