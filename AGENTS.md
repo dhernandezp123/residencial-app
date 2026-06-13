@@ -14,6 +14,15 @@ Este documento define las reglas técnicas y arquitectónicas para cualquier IA 
 4. No crear soluciones temporales que generen deuda técnica.
 5. Mantener consistencia con el stack seleccionado.
 
+
+### PRINCIPIO ARQUITECTÓNICO #1
+
+Este sistema debe diseñarse desde el inicio como una plataforma
+multi-residencial (multi-tenant).
+
+Aunque inicialmente opere para un solo residencial,
+ninguna decisión técnica debe asumir que existirá
+un único residencial.
 ---
 
 # Stack Oficial
