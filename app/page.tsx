@@ -101,7 +101,9 @@ export default function Home() {
               </div>
               <div className="grid grid-cols-[120px_1fr] gap-3">
                 <dt className="text-sm font-medium text-[#6c756e]">Roles</dt>
-                <dd className="text-sm font-semibold">admin, resident, guard</dd>
+                <dd className="text-sm font-semibold">
+                  super_admin, admin, resident, guard
+                </dd>
               </div>
             </dl>
           </aside>
