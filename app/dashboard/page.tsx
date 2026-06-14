@@ -122,7 +122,11 @@ function AdminDashboard() {
   return (
     <div className="grid gap-3">
       <DashboardButton title="Casas" subtitle="Registrar lotes y casas" />
-      <DashboardButton title="Residentes pendientes" subtitle="Aprobar vecinos" />
+      <DashboardButton
+        title="Residentes pendientes"
+        subtitle="Aprobar vecinos"
+        href="/dashboard/residents"
+      />
       <DashboardButton title="Guardias" subtitle="Crear usuarios de seguridad" />
     </div>
   )

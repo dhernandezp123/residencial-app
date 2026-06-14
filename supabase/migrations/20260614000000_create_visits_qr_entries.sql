@@ -85,7 +85,7 @@ create table if not exists public.qr_tokens (
   id uuid primary key default gen_random_uuid(),
   visit_id uuid not null references public.visits(id) on delete cascade,
   residential_id uuid not null references public.residentials(id) on delete cascade,
-  token text not null unique default encode(gen_random_bytes(32), 'hex'),
+  token text not null unique default replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', ''),
   expires_at timestamptz not null,
   status public.qr_token_status not null default 'active',
   used_at timestamptz,
