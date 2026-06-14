@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
@@ -106,7 +107,11 @@ export default function HomePage() {
 function SuperAdminDashboard() {
   return (
     <div className="grid gap-3">
-      <DashboardButton title="Residenciales" subtitle="Crear y administrar residenciales" />
+      <DashboardButton
+        title="Residenciales"
+        subtitle="Crear y administrar residenciales"
+        href="/dashboard/residencials"
+      />
       <DashboardButton title="Administradores" subtitle="Asignar admins por residencial" />
       <DashboardButton title="Estado SaaS" subtitle="Ver residenciales activos e inactivos" />
     </div>
@@ -144,14 +149,33 @@ function GuardDashboard() {
 function DashboardButton({
   title,
   subtitle,
+  href,
 }: {
   title: string
   subtitle: string
+  href?: string
 }) {
-  return (
-    <button className="rounded-2xl bg-white p-5 text-left shadow-sm active:scale-[0.99]">
+  const content = (
+    <>
       <p className="font-semibold text-slate-900">{title}</p>
       <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
+    </>
+  )
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="rounded-2xl bg-white p-5 text-left shadow-sm active:scale-[0.99]"
+      >
+        {content}
+      </Link>
+    )
+  }
+
+  return (
+    <button className="rounded-2xl bg-white p-5 text-left shadow-sm active:scale-[0.99]">
+      {content}
     </button>
   )
 }
