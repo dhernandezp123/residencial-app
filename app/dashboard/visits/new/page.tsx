@@ -1,7 +1,9 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useEffect, useState } from 'react'
+import QRCode from 'qrcode'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 
@@ -18,7 +20,6 @@ type VisitType = 'family' | 'delivery' | 'service' | 'provider' | 'other'
 type VisitFormData = {
   visitor_name: string
   visitor_identity: string
-  vehicle_plate: string
   visit_type: VisitType
   valid_until: string
   notes: string
@@ -27,14 +28,13 @@ type VisitFormData = {
 type CreatedVisit = {
   visitor_name: string
   valid_until: string
-  token: string
   shareUrl: string
+  qrDataUrl: string
 }
 
 const initialFormData: VisitFormData = {
   visitor_name: '',
   visitor_identity: '',
-  vehicle_plate: '',
   visit_type: 'family',
   valid_until: '',
   notes: '',
@@ -114,7 +114,7 @@ export default function NewVisitPage() {
         created_by: profile.id,
         visitor_name: formData.visitor_name.trim(),
         visitor_identity: formData.visitor_identity.trim() || null,
-        vehicle_plate: formData.vehicle_plate.trim().toUpperCase() || null,
+        vehicle_plate: null,
         visit_type: formData.visit_type,
         valid_from: new Date().toISOString(),
         valid_until: validUntil,
@@ -142,23 +142,41 @@ export default function NewVisitPage() {
       .select('token')
       .single()
 
-    setSaving(false)
-
     if (tokenError || !tokenData) {
       console.error('Error creating QR token:', tokenError)
       toast.error(tokenError?.message || 'No se pudo generar el token QR')
+      setSaving(false)
       return
     }
 
     const shareUrl = `${window.location.origin}/gate/scan?token=${tokenData.token}`
+    let qrDataUrl = ''
+
+    try {
+      qrDataUrl = await QRCode.toDataURL(tokenData.token, {
+        width: 320,
+        margin: 2,
+        errorCorrectionLevel: 'M',
+        color: {
+          dark: '#020617',
+          light: '#ffffff',
+        },
+      })
+    } catch (error) {
+      console.error('Error generating QR image:', error)
+      toast.error('No se pudo generar la imagen QR')
+      setSaving(false)
+      return
+    }
 
     setCreatedVisit({
       visitor_name: visitData.visitor_name,
       valid_until: visitData.valid_until,
-      token: tokenData.token,
       shareUrl,
+      qrDataUrl,
     })
     setFormData(initialFormData)
+    setSaving(false)
     toast.success('Visita creada correctamente')
   }
 
@@ -226,6 +244,17 @@ export default function NewVisitPage() {
   }
 
   if (createdVisit) {
+    const expiresAt = new Date(createdVisit.valid_until)
+    const expiresDate = new Intl.DateTimeFormat('es-HN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    }).format(expiresAt)
+    const expiresTime = new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(expiresAt)
+
     return (
       <main className="min-h-screen bg-slate-100 px-5 py-6">
         <div className="mx-auto max-w-sm space-y-5">
@@ -237,35 +266,39 @@ export default function NewVisitPage() {
           </Link>
 
           <section className="rounded-3xl bg-green-600 p-6 text-white shadow-lg">
-            <p className="text-sm text-green-100">Visita creada</p>
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-sm text-green-100">
+                Acceso generado correctamente
+              </p>
+              <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white">
+                🟢 Activo
+              </span>
+            </div>
             <h1 className="mt-1 text-2xl font-bold">
               {createdVisit.visitor_name}
             </h1>
-            <p className="mt-3 text-sm leading-6 text-green-50">
-              Válido hasta:{' '}
-              <span className="font-semibold">
-                {new Date(createdVisit.valid_until).toLocaleString()}
-              </span>
-            </p>
+            <div className="mt-5 rounded-2xl bg-white/10 p-4">
+              <p className="text-sm text-green-50">Válido hasta:</p>
+              <p className="mt-1 text-lg font-bold">{expiresDate}</p>
+              <p className="text-lg font-bold">{expiresTime}</p>
+            </div>
           </section>
 
           <section className="space-y-3 rounded-3xl bg-white p-6 shadow-sm">
             <div>
               <p className="text-sm font-semibold text-slate-500">
-                Token generado
+                Código QR para ingreso
               </p>
-              <p className="mt-2 break-all rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-800">
-                {createdVisit.token}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm font-semibold text-slate-500">
-                Link de acceso
-              </p>
-              <p className="mt-2 break-all rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
-                {createdVisit.shareUrl}
-              </p>
+              <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+                <Image
+                  src={createdVisit.qrDataUrl}
+                  alt="Código QR para ingreso"
+                  width={256}
+                  height={256}
+                  unoptimized
+                  className="mx-auto aspect-square w-full max-w-64"
+                />
+              </div>
             </div>
 
             <button
@@ -275,6 +308,14 @@ export default function NewVisitPage() {
             >
               Compartir por WhatsApp
             </button>
+
+            <a
+              href={createdVisit.qrDataUrl}
+              download={`visita-${createdVisit.visitor_name}.png`}
+              className="block min-h-12 w-full rounded-2xl border border-slate-200 px-4 py-3 text-center font-semibold text-slate-800 active:scale-[0.99]"
+            >
+              Descargar QR
+            </a>
 
             <button
               type="button"
@@ -328,7 +369,7 @@ export default function NewVisitPage() {
 
           <label className="block space-y-1">
             <span className="text-sm font-semibold text-slate-700">
-              Identidad del visitante
+              Identidad del visitante (opcional)
             </span>
             <input
               value={formData.visitor_identity}
@@ -337,20 +378,6 @@ export default function NewVisitPage() {
               }
               placeholder="Opcional"
               className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
-            />
-          </label>
-
-          <label className="block space-y-1">
-            <span className="text-sm font-semibold text-slate-700">
-              Placa del vehículo
-            </span>
-            <input
-              value={formData.vehicle_plate}
-              onChange={(e) =>
-                setFormData({ ...formData, vehicle_plate: e.target.value })
-              }
-              placeholder="Ej: PAB1234"
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm uppercase outline-none"
             />
           </label>
 
@@ -402,6 +429,11 @@ export default function NewVisitPage() {
               className="min-h-24 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
             />
           </label>
+
+          <p className="rounded-2xl bg-slate-50 p-4 text-xs leading-5 text-slate-500">
+            El guardia podrá tomar fotografía del vehículo, placa e identidad al
+            momento del ingreso.
+          </p>
 
           <button
             type="submit"
