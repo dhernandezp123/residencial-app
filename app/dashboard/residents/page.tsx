@@ -9,6 +9,7 @@ type ResidentStatus = 'pending' | 'approved' | 'rejected'
 
 type ResidentProfile = {
   id: string
+  house_id: string | null
   first_name: string
   last_name: string
   phone: string | null
@@ -58,7 +59,7 @@ export default function ResidentsPage() {
     const { data, error } = await supabase
       .from('profiles')
       .select(
-        'id,first_name,last_name,phone,status,residentials(name),houses(block,house_number,pays_security,resident_limit)'
+        'id,house_id,first_name,last_name,phone,status,residentials(name),houses(block,house_number,pays_security,resident_limit)'
       )
       .eq('role', 'resident')
       .in('status', ['pending', 'approved', 'rejected'])
@@ -88,15 +89,45 @@ export default function ResidentsPage() {
   }, [])
 
   const handleUpdateStatus = async (
-    residentId: string,
+    resident: ResidentProfile,
     status: ResidentStatus
   ) => {
-    setSavingResidentId(residentId)
+    setSavingResidentId(resident.id)
+
+    if (status === 'approved') {
+      if (!resident.house_id || !resident.houses) {
+        toast.error('No se pudo validar la casa del residente')
+        setSavingResidentId(null)
+        return
+      }
+
+      const { count, error: countError } = await supabase
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('house_id', resident.house_id)
+        .eq('role', 'resident')
+        .eq('status', 'approved')
+
+      if (countError) {
+        console.error('Error counting approved residents:', countError)
+        toast.error('No se pudo validar el cupo de la casa')
+        setSavingResidentId(null)
+        return
+      }
+
+      const residentLimit = resident.houses.resident_limit || 3
+
+      if ((count || 0) >= residentLimit) {
+        toast.error('Esta casa ya alcanzó el máximo de usuarios app permitidos')
+        setSavingResidentId(null)
+        return
+      }
+    }
 
     const { error } = await supabase
       .from('profiles')
       .update({ status })
-      .eq('id', residentId)
+      .eq('id', resident.id)
       .eq('role', 'resident')
 
     setSavingResidentId(null)
@@ -169,8 +200,8 @@ export default function ResidentsPage() {
                 key={resident.id}
                 resident={resident}
                 saving={savingResidentId === resident.id}
-                onApprove={() => handleUpdateStatus(resident.id, 'approved')}
-                onReject={() => handleUpdateStatus(resident.id, 'rejected')}
+                onApprove={() => handleUpdateStatus(resident, 'approved')}
+                onReject={() => handleUpdateStatus(resident, 'rejected')}
               />
             ))}
           </section>
