@@ -179,3 +179,16 @@ Toda migración debe quedar documentada.
 # Objetivo Final
 
 Construir una plataforma SaaS de control de acceso residencial basada en QR, preparada para operar múltiples residenciales con altos estándares de seguridad, trazabilidad y auditoría.
+
+## Mobile UX Rules
+
+- Toda pantalla debe diseñarse primero para celular.
+- Nunca usar placeholders como único label.
+- Inputs deben tener labels visibles.
+- Botones principales mínimo h-12.
+- Cards con padding generoso.
+- Evitar tablas en móvil; usar cards.
+- Explicar campos ambiguos con helper text.
+- Confirmaciones con Sonner, nunca alert().
+- Estados loading/saving visibles.
+- Flujos críticos deben ser entendibles sin explicación externa.

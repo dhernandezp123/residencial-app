@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
@@ -259,9 +260,12 @@ export default function ResidentialsPage() {
                   </p>
                 </div>
 
-                <button className="mt-5 w-full rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-800 active:scale-[0.99]">
+                <Link
+                  href={`/dashboard/residentials/${residential.id}`}
+                  className="mt-5 block w-full rounded-xl border border-slate-200 py-3 text-center text-sm font-semibold text-slate-800 active:scale-[0.99]"
+                >
                   Ver detalle
-                </button>
+                </Link>
               </article>
             ))}
           </section>
