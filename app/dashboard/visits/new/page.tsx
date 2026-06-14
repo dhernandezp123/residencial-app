@@ -1,0 +1,417 @@
+'use client'
+
+import Link from 'next/link'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import { supabase } from '@/lib/supabase'
+
+type Profile = {
+  id: string
+  residential_id: string | null
+  house_id: string | null
+  role: 'super_admin' | 'admin' | 'resident' | 'guard'
+  status: 'pending' | 'approved' | 'rejected' | 'inactive'
+}
+
+type VisitType = 'family' | 'delivery' | 'service' | 'provider' | 'other'
+
+type VisitFormData = {
+  visitor_name: string
+  visitor_identity: string
+  vehicle_plate: string
+  visit_type: VisitType
+  valid_until: string
+  notes: string
+}
+
+type CreatedVisit = {
+  visitor_name: string
+  valid_until: string
+  token: string
+  shareUrl: string
+}
+
+const initialFormData: VisitFormData = {
+  visitor_name: '',
+  visitor_identity: '',
+  vehicle_plate: '',
+  visit_type: 'family',
+  valid_until: '',
+  notes: '',
+}
+
+const visitTypeOptions: { value: VisitType; label: string }[] = [
+  { value: 'family', label: 'Familiar' },
+  { value: 'delivery', label: 'Delivery' },
+  { value: 'service', label: 'Servicio' },
+  { value: 'provider', label: 'Proveedor' },
+  { value: 'other', label: 'Otro' },
+]
+
+export default function NewVisitPage() {
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [formData, setFormData] = useState<VisitFormData>(initialFormData)
+  const [createdVisit, setCreatedVisit] = useState<CreatedVisit | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  const loadProfile = async () => {
+    setLoading(true)
+
+    const { data: sessionData } = await supabase.auth.getSession()
+
+    if (!sessionData.session) {
+      toast.error('Inicia sesión para crear visitas')
+      setLoading(false)
+      return
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id,residential_id,house_id,role,status')
+      .eq('user_id', sessionData.session.user.id)
+      .single()
+
+    if (error) {
+      console.error('Error loading profile:', error)
+      toast.error('No se pudo cargar tu perfil')
+      setProfile(null)
+      setLoading(false)
+      return
+    }
+
+    setProfile(data)
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(loadProfile)
+  }, [])
+
+  const canCreateVisit =
+    profile?.status === 'approved' &&
+    profile.role === 'resident' &&
+    Boolean(profile.residential_id) &&
+    Boolean(profile.house_id)
+
+  const handleCreateVisit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!profile || !canCreateVisit || !profile.residential_id || !profile.house_id) {
+      toast.error('Tu perfil no está habilitado para crear visitas')
+      return
+    }
+
+    setSaving(true)
+
+    const validUntil = new Date(formData.valid_until).toISOString()
+
+    const { data: visitData, error: visitError } = await supabase
+      .from('visits')
+      .insert({
+        residential_id: profile.residential_id,
+        house_id: profile.house_id,
+        created_by: profile.id,
+        visitor_name: formData.visitor_name.trim(),
+        visitor_identity: formData.visitor_identity.trim() || null,
+        vehicle_plate: formData.vehicle_plate.trim().toUpperCase() || null,
+        visit_type: formData.visit_type,
+        valid_from: new Date().toISOString(),
+        valid_until: validUntil,
+        status: 'active',
+        notes: formData.notes.trim() || null,
+      })
+      .select('id,visitor_name,valid_until')
+      .single()
+
+    if (visitError || !visitData) {
+      console.error('Error creating visit:', visitError)
+      toast.error(visitError?.message || 'No se pudo crear la visita')
+      setSaving(false)
+      return
+    }
+
+    const { data: tokenData, error: tokenError } = await supabase
+      .from('qr_tokens')
+      .insert({
+        visit_id: visitData.id,
+        residential_id: profile.residential_id,
+        expires_at: validUntil,
+        status: 'active',
+      })
+      .select('token')
+      .single()
+
+    setSaving(false)
+
+    if (tokenError || !tokenData) {
+      console.error('Error creating QR token:', tokenError)
+      toast.error(tokenError?.message || 'No se pudo generar el token QR')
+      return
+    }
+
+    const shareUrl = `${window.location.origin}/gate/scan?token=${tokenData.token}`
+
+    setCreatedVisit({
+      visitor_name: visitData.visitor_name,
+      valid_until: visitData.valid_until,
+      token: tokenData.token,
+      shareUrl,
+    })
+    setFormData(initialFormData)
+    toast.success('Visita creada correctamente')
+  }
+
+  const handleShare = async () => {
+    if (!createdVisit) {
+      return
+    }
+
+    const shareText = `Visita para ${createdVisit.visitor_name}: ${createdVisit.shareUrl}`
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Acceso residencial',
+          text: shareText,
+          url: createdVisit.shareUrl,
+        })
+      } else {
+        await navigator.clipboard.writeText(shareText)
+        toast.success('Link copiado para compartir por WhatsApp')
+      }
+    } catch (error) {
+      console.error('Error sharing visit:', error)
+      toast.error('No se pudo compartir la visita')
+    }
+  }
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-slate-100 px-5 py-6">
+        <div className="mx-auto max-w-sm space-y-5">
+          <div className="h-5 w-32 rounded-full bg-slate-200" />
+          <section className="rounded-3xl bg-white p-6 shadow-sm">
+            <div className="h-5 w-40 rounded-full bg-slate-200" />
+            <div className="mt-4 h-12 rounded-2xl bg-slate-200" />
+            <div className="mt-3 h-12 rounded-2xl bg-slate-200" />
+            <div className="mt-3 h-12 rounded-2xl bg-slate-200" />
+          </section>
+        </div>
+      </main>
+    )
+  }
+
+  if (!canCreateVisit) {
+    return (
+      <main className="min-h-screen bg-slate-100 px-5 py-6">
+        <div className="mx-auto max-w-sm rounded-3xl bg-white p-6 shadow-sm">
+          <p className="text-sm font-semibold text-slate-500">Nueva visita</p>
+          <h1 className="mt-2 text-2xl font-bold text-slate-950">
+            Acceso no disponible
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            Tu perfil debe estar aprobado como residente y tener una casa
+            asignada para generar visitas.
+          </p>
+          <Link
+            href="/dashboard"
+            className="mt-6 block min-h-12 rounded-2xl bg-slate-950 px-4 py-3 text-center font-semibold text-white active:scale-[0.99]"
+          >
+            Volver al dashboard
+          </Link>
+        </div>
+      </main>
+    )
+  }
+
+  if (createdVisit) {
+    return (
+      <main className="min-h-screen bg-slate-100 px-5 py-6">
+        <div className="mx-auto max-w-sm space-y-5">
+          <Link
+            href="/dashboard"
+            className="block text-sm font-semibold text-slate-600"
+          >
+            ← Volver al dashboard
+          </Link>
+
+          <section className="rounded-3xl bg-green-600 p-6 text-white shadow-lg">
+            <p className="text-sm text-green-100">Visita creada</p>
+            <h1 className="mt-1 text-2xl font-bold">
+              {createdVisit.visitor_name}
+            </h1>
+            <p className="mt-3 text-sm leading-6 text-green-50">
+              Válido hasta:{' '}
+              <span className="font-semibold">
+                {new Date(createdVisit.valid_until).toLocaleString()}
+              </span>
+            </p>
+          </section>
+
+          <section className="space-y-3 rounded-3xl bg-white p-6 shadow-sm">
+            <div>
+              <p className="text-sm font-semibold text-slate-500">
+                Token generado
+              </p>
+              <p className="mt-2 break-all rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-800">
+                {createdVisit.token}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold text-slate-500">
+                Link de acceso
+              </p>
+              <p className="mt-2 break-all rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
+                {createdVisit.shareUrl}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleShare}
+              className="min-h-12 w-full rounded-2xl bg-slate-950 px-4 py-3 font-semibold text-white active:scale-[0.99]"
+            >
+              Compartir por WhatsApp
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCreatedVisit(null)}
+              className="min-h-12 w-full rounded-2xl border border-slate-200 px-4 py-3 font-semibold text-slate-800 active:scale-[0.99]"
+            >
+              Crear otra visita
+            </button>
+          </section>
+        </div>
+      </main>
+    )
+  }
+
+  return (
+    <main className="min-h-screen bg-slate-100 px-5 py-6">
+      <div className="mx-auto max-w-sm space-y-5">
+        <Link
+          href="/dashboard"
+          className="block text-sm font-semibold text-slate-600"
+        >
+          ← Volver al dashboard
+        </Link>
+
+        <header className="rounded-3xl bg-slate-950 p-6 text-white shadow-lg">
+          <p className="text-sm text-slate-300">Residente</p>
+          <h1 className="mt-1 text-2xl font-bold">Nueva visita</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-300">
+            Genera un token de acceso para tu visitante.
+          </p>
+        </header>
+
+        <form
+          onSubmit={handleCreateVisit}
+          className="space-y-4 rounded-3xl bg-white p-6 shadow-sm"
+        >
+          <label className="block space-y-1">
+            <span className="text-sm font-semibold text-slate-700">
+              Nombre del visitante
+            </span>
+            <input
+              value={formData.visitor_name}
+              onChange={(e) =>
+                setFormData({ ...formData, visitor_name: e.target.value })
+              }
+              placeholder="Ej: Juan Pérez"
+              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+              required
+            />
+          </label>
+
+          <label className="block space-y-1">
+            <span className="text-sm font-semibold text-slate-700">
+              Identidad del visitante
+            </span>
+            <input
+              value={formData.visitor_identity}
+              onChange={(e) =>
+                setFormData({ ...formData, visitor_identity: e.target.value })
+              }
+              placeholder="Opcional"
+              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+            />
+          </label>
+
+          <label className="block space-y-1">
+            <span className="text-sm font-semibold text-slate-700">
+              Placa del vehículo
+            </span>
+            <input
+              value={formData.vehicle_plate}
+              onChange={(e) =>
+                setFormData({ ...formData, vehicle_plate: e.target.value })
+              }
+              placeholder="Ej: PAB1234"
+              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm uppercase outline-none"
+            />
+          </label>
+
+          <label className="block space-y-1">
+            <span className="text-sm font-semibold text-slate-700">
+              Tipo de visita
+            </span>
+            <select
+              value={formData.visit_type}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  visit_type: e.target.value as VisitType,
+                })
+              }
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
+            >
+              {visitTypeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block space-y-1">
+            <span className="text-sm font-semibold text-slate-700">
+              Válido hasta
+            </span>
+            <input
+              value={formData.valid_until}
+              onChange={(e) =>
+                setFormData({ ...formData, valid_until: e.target.value })
+              }
+              type="datetime-local"
+              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+              required
+            />
+          </label>
+
+          <label className="block space-y-1">
+            <span className="text-sm font-semibold text-slate-700">Notas</span>
+            <textarea
+              value={formData.notes}
+              onChange={(e) =>
+                setFormData({ ...formData, notes: e.target.value })
+              }
+              placeholder="Opcional"
+              className="min-h-24 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+            />
+          </label>
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="min-h-12 w-full rounded-2xl bg-slate-950 px-4 py-3 font-semibold text-white disabled:opacity-60 active:scale-[0.99]"
+          >
+            {saving ? 'Generando...' : 'Generar token QR'}
+          </button>
+        </form>
+      </div>
+    </main>
+  )
+}

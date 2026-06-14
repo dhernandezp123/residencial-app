@@ -65,12 +65,14 @@ export default function RegisterPage() {
   )
   const hasCompleteHouseInput =
     normalizedBlock.length > 0 && normalizedHouseNumber.length > 0
+  const hasValidResidential = Boolean(residentialId) && Boolean(residential)
   const houseLabel = hasCompleteHouseInput
     ? `${normalizedBlock}-${normalizedHouseNumber}`
     : ''
   const canSubmit =
-    Boolean(residentialId) &&
-    Boolean(residential) &&
+    hasValidResidential &&
+    normalizedBlock.length > 0 &&
+    normalizedHouseNumber.length > 0 &&
     Boolean(matchedHouse) &&
     Boolean(matchedHouse?.pays_security)
 
@@ -136,7 +138,13 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!canSubmit || !matchedHouse) {
+    if (
+      !hasValidResidential ||
+      normalizedBlock.length === 0 ||
+      normalizedHouseNumber.length === 0 ||
+      !matchedHouse ||
+      !matchedHouse.pays_security
+    ) {
       return
     }
 
@@ -400,7 +408,7 @@ function HouseValidationCard({
   if (!hasCompleteHouseInput) {
     return (
       <section className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-600">
-        Ingresa tu lote y número de casa.
+        Ingresa tu lote y número de casa para continuar.
       </section>
     )
   }

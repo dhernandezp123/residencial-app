@@ -9,36 +9,30 @@ type ResidentStatus = 'pending' | 'approved' | 'rejected'
 
 type ResidentProfile = {
   id: string
+  residential_id: string | null
   house_id: string | null
   first_name: string
   last_name: string
   phone: string | null
   status: ResidentStatus
-  residentials: {
-    name: string
-  } | null
-  houses: {
-    block: string
-    house_number: string
-    pays_security: boolean
-    resident_limit: number | null
-  } | null
+  role: 'resident'
+  residential: ResidentialSummary | null
+  house: HouseSummary | null
 }
 
-type ResidentProfileRow = Omit<ResidentProfile, 'residentials' | 'houses'> & {
-  residentials:
-    | {
-        name: string
-      }[]
-    | null
-  houses:
-    | {
-        block: string
-        house_number: string
-        pays_security: boolean
-        resident_limit: number | null
-      }[]
-    | null
+type ResidentProfileRow = Omit<ResidentProfile, 'residential' | 'house'>
+
+type ResidentialSummary = {
+  id: string
+  name: string
+}
+
+type HouseSummary = {
+  id: string
+  block: string
+  house_number: string
+  pays_security: boolean
+  resident_limit: number | null
 }
 
 const filters: { label: string; value: ResidentStatus }[] = [
@@ -59,7 +53,7 @@ export default function ResidentsPage() {
     const { data, error } = await supabase
       .from('profiles')
       .select(
-        'id,house_id,first_name,last_name,phone,status,residentials(name),houses(block,house_number,pays_security,resident_limit)'
+        'id,first_name,last_name,phone,status,role,residential_id,house_id'
       )
       .eq('role', 'resident')
       .in('status', ['pending', 'approved', 'rejected'])
@@ -74,13 +68,74 @@ export default function ResidentsPage() {
     }
 
     const rows = (data || []) as ResidentProfileRow[]
-    const normalizedResidents = rows.map((resident) => ({
+    const residentialIds = Array.from(
+      new Set(
+        rows
+          .map((resident) => resident.residential_id)
+          .filter((residentialId): residentialId is string =>
+            Boolean(residentialId)
+          )
+      )
+    )
+    const houseIds = Array.from(
+      new Set(
+        rows
+          .map((resident) => resident.house_id)
+          .filter((houseId): houseId is string => Boolean(houseId))
+      )
+    )
+
+    const { data: residentialsData, error: residentialsError } =
+      residentialIds.length > 0
+        ? await supabase
+            .from('residentials')
+            .select('id,name')
+            .in('id', residentialIds)
+        : { data: [], error: null }
+
+    if (residentialsError) {
+      console.error('Error loading resident residentials:', residentialsError)
+      toast.error('No se pudieron cargar los residenciales')
+      setResidents([])
+      setLoading(false)
+      return
+    }
+
+    const { data: housesData, error: housesError } =
+      houseIds.length > 0
+        ? await supabase
+            .from('houses')
+            .select('id,block,house_number,pays_security,resident_limit')
+            .in('id', houseIds)
+        : { data: [], error: null }
+
+    if (housesError) {
+      console.error('Error loading resident houses:', housesError)
+      toast.error('No se pudieron cargar las casas')
+      setResidents([])
+      setLoading(false)
+      return
+    }
+
+    const residentialById = new Map(
+      ((residentialsData || []) as ResidentialSummary[]).map((residential) => [
+        residential.id,
+        residential,
+      ])
+    )
+    const houseById = new Map(
+      ((housesData || []) as HouseSummary[]).map((house) => [house.id, house])
+    )
+
+    const enrichedResidents: ResidentProfile[] = rows.map((resident) => ({
       ...resident,
-      residentials: resident.residentials?.[0] || null,
-      houses: resident.houses?.[0] || null,
+      residential: resident.residential_id
+        ? residentialById.get(resident.residential_id) || null
+        : null,
+      house: resident.house_id ? houseById.get(resident.house_id) || null : null,
     }))
 
-    setResidents(normalizedResidents)
+    setResidents(enrichedResidents)
     setLoading(false)
   }
 
@@ -95,7 +150,13 @@ export default function ResidentsPage() {
     setSavingResidentId(resident.id)
 
     if (status === 'approved') {
-      if (!resident.house_id || !resident.houses) {
+      if (!resident.house_id) {
+        toast.error('Este residente no tiene una casa asignada')
+        setSavingResidentId(null)
+        return
+      }
+
+      if (!resident.house) {
         toast.error('No se pudo validar la casa del residente')
         setSavingResidentId(null)
         return
@@ -115,7 +176,7 @@ export default function ResidentsPage() {
         return
       }
 
-      const residentLimit = resident.houses.resident_limit || 3
+      const residentLimit = resident.house.resident_limit || 3
 
       if ((count || 0) >= residentLimit) {
         toast.error('Esta casa ya alcanzó el máximo de usuarios app permitidos')
@@ -223,8 +284,8 @@ function ResidentCard({
   onReject: () => void
 }) {
   const fullName = `${resident.first_name} ${resident.last_name}`.trim()
-  const houseLabel = resident.houses
-    ? `${resident.houses.block}-${resident.houses.house_number}`
+  const houseLabel = resident.house
+    ? `${resident.house.block}-${resident.house.house_number}`
     : 'Sin casa'
 
   return (
@@ -255,7 +316,7 @@ function ResidentCard({
       <div className="mt-4 space-y-2 text-sm text-slate-600">
         <p>
           <span className="font-semibold text-slate-800">Residencial:</span>{' '}
-          {resident.residentials?.name || 'Sin residencial'}
+          {resident.residential?.name || 'Sin residencial'}
         </p>
         <p>
           <span className="font-semibold text-slate-800">Casa:</span>{' '}
@@ -263,13 +324,13 @@ function ResidentCard({
         </p>
         <p>
           <span className="font-semibold text-slate-800">Paga seguridad:</span>{' '}
-          {resident.houses?.pays_security ? 'Sí' : 'No'}
+          {resident.house?.pays_security ? 'Sí' : 'No'}
         </p>
         <p>
           <span className="font-semibold text-slate-800">
             Usuarios app permitidos:
           </span>{' '}
-          {resident.houses?.resident_limit || 3}
+          {resident.house?.resident_limit || 3}
         </p>
       </div>
 
