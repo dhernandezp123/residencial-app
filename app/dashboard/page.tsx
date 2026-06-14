@@ -135,8 +135,21 @@ function AdminDashboard() {
 function ResidentDashboard() {
   return (
     <div className="grid gap-3">
-      <DashboardButton title="Nueva visita" subtitle="Generar código QR" />
-      <DashboardButton title="Mis visitas" subtitle="Ver visitas activas e historial" />
+      <DashboardButton
+        title="Nueva visita"
+        subtitle="Generar QR para visitante"
+        href="/dashboard/visits/new"
+      />
+      <DashboardButton
+        title="Mis visitas"
+        subtitle="Ver visitas activas e historial"
+        href="/dashboard/visits"
+      />
+      <DashboardButton
+        title="Mi casa"
+        subtitle="Ver datos de mi vivienda"
+        href="/dashboard/my-house"
+      />
     </div>
   )
 }
