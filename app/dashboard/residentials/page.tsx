@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 
 type Residential = {
@@ -72,7 +73,7 @@ export default function ResidentialsPage() {
 
     if (error) {
       console.error('Error creating residential:', error)
-      alert('No se pudo crear el residencial.')
+      toast.error('No se pudo crear el residencial')
       return
     }
 
@@ -88,6 +89,7 @@ export default function ResidentialsPage() {
     })
 
     setShowForm(false)
+    toast.success('Residencial creada correctamente')
     loadResidentials()
   }
 
