@@ -110,7 +110,7 @@ function SuperAdminDashboard() {
       <DashboardButton
         title="Residenciales"
         subtitle="Crear y administrar residenciales"
-        href="/dashboard/residencials"
+        href="/dashboard/residentials"
       />
       <DashboardButton title="Administradores" subtitle="Asignar admins por residencial" />
       <DashboardButton title="Estado SaaS" subtitle="Ver residenciales activos e inactivos" />

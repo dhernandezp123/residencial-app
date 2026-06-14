@@ -25,6 +25,14 @@ type House = {
   notes: string | null
 }
 
+type AdminProfile = {
+  id: string
+  first_name: string
+  last_name: string
+  phone: string | null
+  status: string | null
+}
+
 export default function ResidentialDetailPage({
   params,
 }: {
@@ -34,9 +42,12 @@ export default function ResidentialDetailPage({
 
   const [residential, setResidential] = useState<Residential | null>(null)
   const [houses, setHouses] = useState<House[]>([])
+  const [admins, setAdmins] = useState<AdminProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [showAdminForm, setShowAdminForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [savingAdmin, setSavingAdmin] = useState(false)
 
   const [formData, setFormData] = useState({
     block: '',
@@ -44,6 +55,14 @@ export default function ResidentialDetailPage({
     pays_security: true,
     resident_limit: '3',
     notes: '',
+  })
+
+  const [adminFormData, setAdminFormData] = useState({
+    first_name: '',
+    last_name: '',
+    phone: '',
+    email: '',
+    password: '',
   })
 
   const loadData = async () => {
@@ -74,8 +93,21 @@ export default function ResidentialDetailPage({
       toast.error('No se pudieron cargar las casas')
     }
 
+    const { data: adminsData, error: adminsError } = await supabase
+      .from('profiles')
+      .select('id,first_name,last_name,phone,status')
+      .eq('residential_id', id)
+      .eq('role', 'admin')
+      .order('created_at', { ascending: false })
+
+    if (adminsError) {
+      console.error('Error loading residential admins:', adminsError)
+      toast.error(adminsError.message)
+    }
+
     setResidential(residentialData)
     setHouses(housesData || [])
+    setAdmins(adminsData || [])
     setLoading(false)
   }
 
@@ -118,6 +150,29 @@ export default function ResidentialDetailPage({
 
     setShowForm(false)
     loadData()
+  }
+
+  const handleCreateAdmin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSavingAdmin(true)
+    toast.info('Pendiente implementar Edge Function create-admin')
+    setSavingAdmin(false)
+  }
+
+  const handleCopyRegisterLink = async () => {
+    if (!residential) {
+      return
+    }
+
+    const registerUrl = `${window.location.origin}/register?residential_id=${residential.id}`
+
+    try {
+      await navigator.clipboard.writeText(registerUrl)
+      toast.success('Link de registro copiado')
+    } catch (error) {
+      console.error('Error copying register link:', error)
+      toast.error('No se pudo copiar el link')
+    }
   }
 
   if (loading) {
@@ -163,6 +218,169 @@ export default function ResidentialDetailPage({
             Casas registradas: <span className="font-semibold text-white">{houses.length}</span>
           </p>
         </header>
+
+        <button
+          type="button"
+          onClick={handleCopyRegisterLink}
+          className="min-h-12 w-full rounded-2xl bg-white px-4 py-3 font-semibold text-slate-900 shadow-sm active:scale-[0.99]"
+        >
+          Copiar link de registro
+        </button>
+
+        <section className="space-y-3 rounded-3xl bg-white p-5 shadow-sm">
+          <div>
+            <p className="text-sm font-semibold text-slate-500">
+              Operación
+            </p>
+            <h2 className="mt-1 text-xl font-bold text-slate-950">
+              Administradores del residencial
+            </h2>
+          </div>
+
+          {admins.length === 0 ? (
+            <div className="rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-500">
+              No hay administradores asignados.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {admins.map((admin) => (
+                <article
+                  key={admin.id}
+                  className="rounded-2xl border border-slate-100 p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-bold text-slate-900">
+                        {admin.first_name} {admin.last_name}
+                      </h3>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {admin.phone || 'Sin teléfono'}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+                      {admin.status || 'approved'}
+                    </span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setShowAdminForm(!showAdminForm)}
+            className="min-h-12 w-full rounded-2xl bg-slate-950 px-4 py-3 font-semibold text-white active:scale-[0.99]"
+          >
+            {showAdminForm ? 'Cancelar' : '+ Agregar administrador'}
+          </button>
+
+          {showAdminForm && (
+            <form onSubmit={handleCreateAdmin} className="space-y-3">
+              <label className="block space-y-1">
+                <span className="text-sm font-semibold text-slate-700">
+                  Nombre
+                </span>
+                <input
+                  value={adminFormData.first_name}
+                  onChange={(e) =>
+                    setAdminFormData({
+                      ...adminFormData,
+                      first_name: e.target.value,
+                    })
+                  }
+                  placeholder="Ej: Carlos"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none"
+                  required
+                />
+              </label>
+
+              <label className="block space-y-1">
+                <span className="text-sm font-semibold text-slate-700">
+                  Apellido
+                </span>
+                <input
+                  value={adminFormData.last_name}
+                  onChange={(e) =>
+                    setAdminFormData({
+                      ...adminFormData,
+                      last_name: e.target.value,
+                    })
+                  }
+                  placeholder="Ej: Mejía"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none"
+                  required
+                />
+              </label>
+
+              <label className="block space-y-1">
+                <span className="text-sm font-semibold text-slate-700">
+                  Teléfono
+                </span>
+                <input
+                  value={adminFormData.phone}
+                  onChange={(e) =>
+                    setAdminFormData({
+                      ...adminFormData,
+                      phone: e.target.value,
+                    })
+                  }
+                  placeholder="Ej: 9999-9999"
+                  type="tel"
+                  inputMode="tel"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none"
+                  required
+                />
+              </label>
+
+              <label className="block space-y-1">
+                <span className="text-sm font-semibold text-slate-700">
+                  Correo
+                </span>
+                <input
+                  value={adminFormData.email}
+                  onChange={(e) =>
+                    setAdminFormData({
+                      ...adminFormData,
+                      email: e.target.value,
+                    })
+                  }
+                  placeholder="admin@correo.com"
+                  type="email"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none"
+                  required
+                />
+              </label>
+
+              <label className="block space-y-1">
+                <span className="text-sm font-semibold text-slate-700">
+                  Contraseña temporal
+                </span>
+                <input
+                  value={adminFormData.password}
+                  onChange={(e) =>
+                    setAdminFormData({
+                      ...adminFormData,
+                      password: e.target.value,
+                    })
+                  }
+                  placeholder="Mínimo 6 caracteres"
+                  type="password"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none"
+                  required
+                  minLength={6}
+                />
+              </label>
+
+              <button
+                type="submit"
+                disabled={savingAdmin}
+                className="min-h-12 w-full rounded-xl bg-slate-950 px-4 py-3 font-semibold text-white disabled:opacity-60 active:scale-[0.99]"
+              >
+                {savingAdmin ? 'Guardando...' : 'Guardar administrador'}
+              </button>
+            </form>
+          )}
+        </section>
 
         <button
           onClick={() => setShowForm(!showForm)}
