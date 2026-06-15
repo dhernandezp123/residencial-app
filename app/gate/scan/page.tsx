@@ -63,6 +63,7 @@ type RegisteredEntry = {
 type OpenEntry = {
   id: string
   entry_time: string
+  exit_time: string | null
 }
 
 type ScanResult =
@@ -117,6 +118,7 @@ function GateScanContent() {
   const [registeredEntry, setRegisteredEntry] = useState<RegisteredEntry | null>(
     null
   )
+  const [openEntry, setOpenEntry] = useState<OpenEntry | null>(null)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [startingCamera, setStartingCamera] = useState(false)
   const scannerRef = useRef<Html5Qrcode | null>(null)
@@ -256,6 +258,7 @@ function GateScanContent() {
   const validateToken = async () => {
     setResult({ status: 'loading' })
     setRegisteredEntry(null)
+    setOpenEntry(null)
 
     if (!token) {
       setErrorResult('QR no encontrado')
@@ -345,7 +348,7 @@ function GateScanContent() {
 
     const { data: openEntryData, error: openEntryError } = await supabase
       .from('visitor_entries')
-      .select('id,entry_time')
+      .select('id,entry_time,exit_time')
       .eq('visit_id', visit.id)
       .is('exit_time', null)
       .eq('entry_status', 'allowed')
@@ -358,6 +361,9 @@ function GateScanContent() {
       toast.error(openEntryError.message)
     }
 
+    const currentOpenEntry = (openEntryData as OpenEntry | null) || null
+    setOpenEntry(currentOpenEntry)
+
     setResult({
       status: 'success',
       qrToken,
@@ -365,12 +371,12 @@ function GateScanContent() {
       house,
       residential: residentialData as Residential,
       announcedBy: (announcedByData as AnnouncedBy | null) || null,
-      openEntry: (openEntryData as OpenEntry | null) || null,
+      openEntry: currentOpenEntry,
     })
     vibrate(80)
   }
 
-  const handleRegisterEntry = async () => {
+  const handleRegisterAccess = async () => {
     if (result.status !== 'success') {
       return
     }
@@ -419,11 +425,11 @@ function GateScanContent() {
 
     const registeredAt = new Date().toISOString()
 
-    if (result.openEntry) {
+    if (openEntry) {
       const { error: exitError } = await supabase
         .from('visitor_entries')
         .update({ exit_time: registeredAt })
-        .eq('id', result.openEntry.id)
+        .eq('id', openEntry.id)
 
       if (exitError) {
         console.error('Error registering visitor exit:', exitError)
@@ -637,6 +643,15 @@ function GateScanContent() {
     hour: 'numeric',
     minute: '2-digit',
   }).format(validUntil)
+  const openEntryTimeLabel = openEntry
+    ? new Intl.DateTimeFormat('es-HN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      }).format(new Date(openEntry.entry_time))
+    : null
 
   return (
     <main className="min-h-screen bg-green-950 px-5 py-6 text-white">
@@ -646,7 +661,7 @@ function GateScanContent() {
             Validación garita
           </p>
           <h1 className="mt-4 text-5xl font-black leading-tight text-green-950">
-            ACCESO AUTORIZADO
+            {openEntry ? 'VISITANTE DENTRO' : 'ACCESO AUTORIZADO'}
           </h1>
         </section>
 
@@ -670,6 +685,9 @@ function GateScanContent() {
             }
           />
           <Detail label="Válido hasta" value={validUntilLabel} />
+          {openEntryTimeLabel && (
+            <Detail label="Hora de entrada" value={openEntryTimeLabel} />
+          )}
         </section>
 
         <section className="rounded-2xl bg-white p-6 text-slate-950 shadow-xl">
@@ -696,15 +714,15 @@ function GateScanContent() {
 
         <button
           type="button"
-          onClick={handleRegisterEntry}
+          onClick={handleRegisterAccess}
           disabled={savingEntry}
           className="min-h-14 w-full rounded-2xl bg-white px-4 py-4 text-lg font-black text-green-800 shadow-xl disabled:opacity-60 active:scale-[0.99]"
         >
           {savingEntry
             ? 'Registrando...'
-            : result.openEntry
+            : openEntry
               ? 'Registrar salida'
-              : 'Registrar entrada'}
+              : 'Registrar ingreso'}
         </button>
       </div>
     </main>
