@@ -22,6 +22,7 @@ type Visit = {
   created_by: string
   visitor_name: string
   visit_type: 'family' | 'delivery' | 'service' | 'provider' | 'other'
+  access_mode: 'single_use' | 'multi_use'
   valid_until: string
   status: 'active' | 'used' | 'expired' | 'cancelled'
 }
@@ -53,8 +54,14 @@ type GuardProfile = {
 }
 
 type RegisteredEntry = {
+  action: 'entry' | 'exit'
   visitor_name: string
   house_label: string
+  registered_time: string
+}
+
+type OpenEntry = {
+  id: string
   entry_time: string
 }
 
@@ -73,6 +80,7 @@ type ScanResult =
       house: House
       residential: Residential
       announcedBy: AnnouncedBy | null
+      openEntry: OpenEntry | null
     }
 
 const visitTypeLabels: Record<Visit['visit_type'], string> = {
@@ -281,7 +289,7 @@ function GateScanContent() {
     const { data: visitData, error: visitError } = await supabase
       .from('visits')
       .select(
-        'id,residential_id,house_id,created_by,visitor_name,visit_type,valid_until,status'
+        'id,residential_id,house_id,created_by,visitor_name,visit_type,access_mode,valid_until,status'
       )
       .eq('id', qrToken.visit_id)
       .single()
@@ -335,6 +343,21 @@ function GateScanContent() {
       console.error('Error loading announced by profile:', announcedByError)
     }
 
+    const { data: openEntryData, error: openEntryError } = await supabase
+      .from('visitor_entries')
+      .select('id,entry_time')
+      .eq('visit_id', visit.id)
+      .is('exit_time', null)
+      .eq('entry_status', 'allowed')
+      .order('entry_time', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (openEntryError) {
+      console.error('Error loading open visitor entry:', openEntryError)
+      toast.error(openEntryError.message)
+    }
+
     setResult({
       status: 'success',
       qrToken,
@@ -342,6 +365,7 @@ function GateScanContent() {
       house,
       residential: residentialData as Residential,
       announcedBy: (announcedByData as AnnouncedBy | null) || null,
+      openEntry: (openEntryData as OpenEntry | null) || null,
     })
     vibrate(80)
   }
@@ -393,6 +417,33 @@ function GateScanContent() {
       return
     }
 
+    const registeredAt = new Date().toISOString()
+
+    if (result.openEntry) {
+      const { error: exitError } = await supabase
+        .from('visitor_entries')
+        .update({ exit_time: registeredAt })
+        .eq('id', result.openEntry.id)
+
+      if (exitError) {
+        console.error('Error registering visitor exit:', exitError)
+        toast.error(exitError.message)
+        setSavingEntry(false)
+        return
+      }
+
+      setRegisteredEntry({
+        action: 'exit',
+        visitor_name: result.visit.visitor_name,
+        house_label: `${result.house.block}-${result.house.house_number}`,
+        registered_time: registeredAt,
+      })
+      setSavingEntry(false)
+      toast.success('Salida registrada correctamente')
+      vibrate(80)
+      return
+    }
+
     const { error: entryError } = await supabase.from('visitor_entries').insert({
       residential_id: result.visit.residential_id,
       visit_id: result.visit.id,
@@ -410,39 +461,40 @@ function GateScanContent() {
       return
     }
 
-    const usedAt = new Date().toISOString()
+    if (result.visit.access_mode === 'single_use') {
+      const { error: qrTokenUpdateError } = await supabase
+        .from('qr_tokens')
+        .update({
+          status: 'used',
+          used_at: registeredAt,
+        })
+        .eq('id', result.qrToken.id)
 
-    const { error: qrTokenUpdateError } = await supabase
-      .from('qr_tokens')
-      .update({
-        status: 'used',
-        used_at: usedAt,
-      })
-      .eq('id', result.qrToken.id)
+      if (qrTokenUpdateError) {
+        console.error('Error updating QR token:', qrTokenUpdateError)
+        toast.error(qrTokenUpdateError.message)
+        setSavingEntry(false)
+        return
+      }
 
-    if (qrTokenUpdateError) {
-      console.error('Error updating QR token:', qrTokenUpdateError)
-      toast.error(qrTokenUpdateError.message)
-      setSavingEntry(false)
-      return
-    }
+      const { error: visitUpdateError } = await supabase
+        .from('visits')
+        .update({ status: 'used' })
+        .eq('id', result.visit.id)
 
-    const { error: visitUpdateError } = await supabase
-      .from('visits')
-      .update({ status: 'used' })
-      .eq('id', result.visit.id)
-
-    if (visitUpdateError) {
-      console.error('Error updating visit:', visitUpdateError)
-      toast.error(visitUpdateError.message)
-      setSavingEntry(false)
-      return
+      if (visitUpdateError) {
+        console.error('Error updating visit:', visitUpdateError)
+        toast.error(visitUpdateError.message)
+        setSavingEntry(false)
+        return
+      }
     }
 
     setRegisteredEntry({
+      action: 'entry',
       visitor_name: result.visit.visitor_name,
       house_label: `${result.house.block}-${result.house.house_number}`,
-      entry_time: usedAt,
+      registered_time: registeredAt,
     })
     setSavingEntry(false)
     toast.success('Ingreso registrado correctamente')
@@ -548,13 +600,13 @@ function GateScanContent() {
   }
 
   if (registeredEntry) {
-    const entryTimeLabel = new Intl.DateTimeFormat('es-HN', {
+    const registeredTimeLabel = new Intl.DateTimeFormat('es-HN', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
-    }).format(new Date(registeredEntry.entry_time))
+    }).format(new Date(registeredEntry.registered_time))
 
     return (
       <main className="flex min-h-screen items-center justify-center bg-green-950 px-5 py-6 text-white">
@@ -563,12 +615,14 @@ function GateScanContent() {
             Control de acceso
           </p>
           <h1 className="mt-4 text-5xl font-black leading-tight">
-            INGRESO REGISTRADO
+            {registeredEntry.action === 'entry'
+              ? 'INGRESO REGISTRADO'
+              : 'SALIDA REGISTRADA'}
           </h1>
           <div className="mt-6 space-y-3 rounded-2xl bg-white p-5 text-left">
             <Detail label="Visitante" value={registeredEntry.visitor_name} />
             <Detail label="Casa" value={registeredEntry.house_label} />
-            <Detail label="Hora" value={entryTimeLabel} />
+            <Detail label="Hora" value={registeredTimeLabel} />
           </div>
         </section>
       </main>
@@ -607,6 +661,14 @@ function GateScanContent() {
             label="Tipo de visita"
             value={visitTypeLabels[result.visit.visit_type]}
           />
+          <Detail
+            label="Tipo de acceso"
+            value={
+              result.visit.access_mode === 'multi_use'
+                ? 'Múltiples ingresos'
+                : 'Un solo ingreso'
+            }
+          />
           <Detail label="Válido hasta" value={validUntilLabel} />
         </section>
 
@@ -638,7 +700,11 @@ function GateScanContent() {
           disabled={savingEntry}
           className="min-h-14 w-full rounded-2xl bg-white px-4 py-4 text-lg font-black text-green-800 shadow-xl disabled:opacity-60 active:scale-[0.99]"
         >
-          {savingEntry ? 'Registrando...' : 'Registrar ingreso'}
+          {savingEntry
+            ? 'Registrando...'
+            : result.openEntry
+              ? 'Registrar salida'
+              : 'Registrar entrada'}
         </button>
       </div>
     </main>

@@ -16,11 +16,13 @@ type Profile = {
 }
 
 type VisitType = 'family' | 'delivery' | 'service' | 'provider' | 'other'
+type AccessMode = 'single_use' | 'multi_use'
 
 type VisitFormData = {
   visitor_name: string
   visitor_identity: string
   visit_type: VisitType
+  access_mode: AccessMode
   valid_until: string
   notes: string
 }
@@ -36,6 +38,7 @@ const initialFormData: VisitFormData = {
   visitor_name: '',
   visitor_identity: '',
   visit_type: 'family',
+  access_mode: 'single_use',
   valid_until: '',
   notes: '',
 }
@@ -46,6 +49,11 @@ const visitTypeOptions: { value: VisitType; label: string }[] = [
   { value: 'service', label: 'Servicio' },
   { value: 'provider', label: 'Proveedor' },
   { value: 'other', label: 'Otro' },
+]
+
+const accessModeOptions: { value: AccessMode; label: string }[] = [
+  { value: 'single_use', label: 'Un solo ingreso' },
+  { value: 'multi_use', label: 'Múltiples ingresos hasta vencimiento' },
 ]
 
 export default function NewVisitPage() {
@@ -149,6 +157,7 @@ export default function NewVisitPage() {
         visitor_identity: formData.visitor_identity.trim() || null,
         vehicle_plate: null,
         visit_type: formData.visit_type,
+        access_mode: formData.access_mode,
         valid_from: new Date().toISOString(),
         valid_until: validUntil,
         status: 'active',
@@ -442,6 +451,32 @@ export default function NewVisitPage() {
                 </option>
               ))}
             </select>
+          </label>
+
+          <label className="block space-y-1">
+            <span className="text-sm font-semibold text-slate-700">
+              Tipo de acceso
+            </span>
+            <select
+              value={formData.access_mode}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  access_mode: e.target.value as AccessMode,
+                })
+              }
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
+            >
+              {accessModeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs leading-5 text-slate-500">
+              Un solo ingreso se invalida al registrar entrada. Múltiples
+              ingresos permite entrada/salida hasta la fecha de vencimiento.
+            </p>
           </label>
 
           <label className="block space-y-1">
