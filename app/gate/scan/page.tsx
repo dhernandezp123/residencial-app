@@ -59,6 +59,7 @@ type RegisteredEntry = {
   visitor_name: string
   house_label: string
   registered_time: string
+  entry_time: string | null
 }
 
 type OpenEntry = {
@@ -130,8 +131,7 @@ function GateScanContent() {
       navigator.vibrate(pattern)
     }
   }
-
-  const playBeep = () => {
+  const playBeep = (durationMs: number = 500, frequency: number = 880) => {
     try {
       const AudioContextClass =
         window.AudioContext ||
@@ -151,25 +151,62 @@ function GateScanContent() {
       const gainNode = audioContext.createGain()
 
       oscillator.type = 'sine'
-      oscillator.frequency.setValueAtTime(880, audioContext.currentTime)
+      oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime)
       gainNode.gain.setValueAtTime(0.18, audioContext.currentTime)
       gainNode.gain.exponentialRampToValueAtTime(
         0.01,
-        audioContext.currentTime + 0.12,
+        audioContext.currentTime + durationMs / 1000,
       )
 
       oscillator.connect(gainNode)
       gainNode.connect(audioContext.destination)
       oscillator.start()
-      oscillator.stop(audioContext.currentTime + 0.12)
+
+      const stopHandle = () => {
+        try {
+          oscillator.stop()
+        } catch {}
+        try {
+          audioContext.close()
+        } catch {}
+      }
+
+      setTimeout(stopHandle, durationMs)
     } catch (error) {
       console.error('Error playing QR beep:', error)
     }
   }
 
+  type SignalType =
+    | 'scan_success'
+    | 'scan_error'
+    | 'entry_success'
+    | 'exit_success'
+
+  function signal(type: SignalType) {
+    switch (type) {
+      case 'scan_success':
+        playBeep(500, 880)
+        vibrate([200, 100, 200])
+        break
+      case 'scan_error':
+        playBeep(800, 220)
+        vibrate([100, 100, 100, 100, 100])
+        break
+      case 'entry_success':
+        playBeep(500, 880)
+        vibrate([200, 100, 200])
+        break
+      case 'exit_success':
+        playBeep(1000, 880)
+        vibrate([500])
+        break
+    }
+  }
+
   const setErrorResult = (title: string) => {
     setResult({ status: 'error', title })
-    vibrate([180, 80, 180])
+    signal('scan_error')
   }
 
   const extractTokenFromQr = (decodedText: string) => {
@@ -231,14 +268,13 @@ function GateScanContent() {
           const scannedToken = extractTokenFromQr(decodedText)
 
           if (!scannedToken) {
-            vibrate([180, 80, 180])
+            signal('scan_error')
             toast.error('QR no válido')
             return
           }
 
           scannedRef.current = true
-          vibrate(80)
-          playBeep()
+          signal('scan_success')
           void stopScanner().then(() => {
             router.push(`/gate/scan?token=${encodeURIComponent(scannedToken)}`)
           })
@@ -377,7 +413,7 @@ function GateScanContent() {
       announcedBy: (announcedByData as AnnouncedBy | null) || null,
       openEntry: currentOpenEntry,
     })
-    vibrate(80)
+    signal('scan_success')
   }
 
   const handleRegisterAccess = async () => {
@@ -447,10 +483,11 @@ function GateScanContent() {
         visitor_name: result.visit.visitor_name,
         house_label: `${result.house.block}-${result.house.house_number}`,
         registered_time: registeredAt,
+        entry_time: openEntry.entry_time,
       })
       setSavingEntry(false)
       toast.success('Salida registrada correctamente')
-      vibrate(80)
+      signal('exit_success')
       return
     }
 
@@ -512,10 +549,11 @@ function GateScanContent() {
       visitor_name: result.visit.visitor_name,
       house_label: `${result.house.block}-${result.house.house_number}`,
       registered_time: registeredAt,
+      entry_time: null,
     })
     setSavingEntry(false)
     toast.success('Ingreso registrado correctamente')
-    vibrate(80)
+    signal('entry_success')
   }
 
   useEffect(() => {
@@ -630,26 +668,52 @@ function GateScanContent() {
       hour: 'numeric',
       minute: '2-digit',
     }).format(new Date(registeredEntry.registered_time))
+    const entryTimeLabel = registeredEntry.entry_time
+      ? new Intl.DateTimeFormat('es-HN', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        }).format(new Date(registeredEntry.entry_time))
+      : null
+    const isExit = registeredEntry.action === 'exit'
 
     return (
-      <main className="flex min-h-screen items-center justify-center bg-green-950 px-5 py-6 text-white">
-        <section className="w-full max-w-sm rounded-2xl bg-green-500 p-6 text-center text-green-950 shadow-2xl">
+      <main
+        className={`flex min-h-screen items-center justify-center px-5 py-6 text-white ${
+          isExit ? 'bg-orange-950' : 'bg-green-950'
+        }`}
+      >
+        <section
+          className={`w-full max-w-sm rounded-2xl p-6 text-center shadow-2xl ${
+            isExit
+              ? 'bg-orange-500 text-orange-950'
+              : 'bg-green-500 text-green-950'
+          }`}
+        >
           <p className="text-sm font-semibold uppercase tracking-wide">
             Control de acceso
           </p>
           <h1 className="mt-4 text-5xl font-black leading-tight">
-            {registeredEntry.action === 'entry'
-              ? 'INGRESO REGISTRADO'
-              : 'SALIDA REGISTRADA'}
+            {isExit ? 'SALIDA REGISTRADA' : 'INGRESO REGISTRADO'}
           </h1>
           <div className="mt-6 space-y-3 rounded-2xl bg-white p-5 text-left">
             <Detail label="Visitante" value={registeredEntry.visitor_name} />
             <Detail label="Casa" value={registeredEntry.house_label} />
-            <Detail label="Hora" value={registeredTimeLabel} />
+            {isExit && entryTimeLabel && (
+              <Detail label="Hora de entrada" value={entryTimeLabel} />
+            )}
+            <Detail
+              label={isExit ? 'Hora de salida' : 'Hora de entrada'}
+              value={registeredTimeLabel}
+            />
           </div>
           <Link
             href="/dashboard"
-            className="mt-5 block min-h-14 w-full rounded-2xl bg-green-950 px-4 py-4 text-center text-lg font-black text-white active:scale-[0.99]"
+            className={`mt-5 block min-h-14 w-full rounded-2xl px-4 py-4 text-center text-lg font-black text-white active:scale-[0.99] ${
+              isExit ? 'bg-orange-950' : 'bg-green-950'
+            }`}
           >
             Volver al dashboard
           </Link>

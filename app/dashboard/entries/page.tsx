@@ -329,6 +329,7 @@ export default function EntriesPage() {
                 ? `${entry.house.block}-${entry.house.house_number}`
                 : 'Casa no disponible'
               const isInside = !entry.exit_time && entry.entry_status === 'allowed'
+              const exitLabel = exitDate || 'Pendiente'
 
               return (
                 <article
@@ -348,10 +349,10 @@ export default function EntriesPage() {
                       className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
                         isInside
                           ? 'bg-green-100 text-green-800'
-                          : 'bg-slate-100 text-slate-700'
+                          : 'bg-orange-100 text-orange-800'
                       }`}
                     >
-                      {isInside ? 'Dentro' : 'SaliÃ³'}
+                      {isInside ? 'Dentro' : 'Salió'}
                     </span>
                   </div>
 
@@ -361,8 +362,8 @@ export default function EntriesPage() {
                       label="Residencial"
                       value={entry.residential?.name || 'No disponible'}
                     />
-                    <InfoBlock label="Entrada" value={entryDate} />
-                    {exitDate && <InfoBlock label="Salida" value={exitDate} />}
+                    <InfoBlock label="Hora de entrada" value={entryDate} />
+                    <InfoBlock label="Hora de salida" value={exitLabel} />
                     <InfoBlock
                       label="Guardia"
                       value={
