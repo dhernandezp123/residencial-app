@@ -222,7 +222,7 @@ export default function ResidentsPage() {
           ← Volver al dashboard
         </Link>
 
-        <header className="rounded-3xl bg-slate-950 p-6 text-white shadow-lg">
+        <header className="rounded-2xl bg-slate-950 p-6 text-white shadow-lg">
           <p className="text-sm text-slate-300">Administración</p>
           <h1 className="mt-1 text-2xl font-bold">Residentes</h1>
           <p className="mt-2 text-sm leading-6 text-slate-300">

@@ -80,7 +80,7 @@ export default function HouseDetailPage({ params }: HousePageProps) {
         <div className="mx-auto max-w-sm space-y-5">
           <div className="h-5 w-28 rounded-full bg-slate-200" />
 
-          <section className="rounded-3xl bg-white p-6 shadow-sm">
+          <section className="rounded-2xl bg-white p-6 shadow-sm">
             <div className="h-4 w-24 rounded-full bg-slate-200" />
             <div className="mt-3 h-8 w-36 rounded-full bg-slate-200" />
             <div className="mt-4 h-4 w-48 rounded-full bg-slate-200" />
@@ -132,7 +132,7 @@ export default function HouseDetailPage({ params }: HousePageProps) {
           ← Volver al residencial
         </Link>
 
-        <header className="rounded-3xl bg-slate-950 p-6 text-white shadow-lg">
+        <header className="rounded-2xl bg-slate-950 p-6 text-white shadow-lg">
           <p className="text-sm text-slate-300">Casa</p>
           <h1 className="mt-1 text-3xl font-bold">
             {house.block}-{house.house_number}

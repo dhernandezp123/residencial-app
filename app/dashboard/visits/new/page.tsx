@@ -52,6 +52,7 @@ export default function NewVisitPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [formData, setFormData] = useState<VisitFormData>(initialFormData)
   const [createdVisit, setCreatedVisit] = useState<CreatedVisit | null>(null)
+  const [accessLabel, setAccessLabel] = useState('tu residencial/casa')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -81,6 +82,38 @@ export default function NewVisitPage() {
     }
 
     setProfile(data)
+
+    if (data.house_id) {
+      const { data: houseData, error: houseError } = await supabase
+        .from('houses')
+        .select('residential_id,block,house_number')
+        .eq('id', data.house_id)
+        .single()
+
+      if (houseError || !houseData) {
+        console.error('Error loading house for share label:', houseError)
+      } else {
+        const { data: residentialData, error: residentialError } =
+          await supabase
+            .from('residentials')
+            .select('name')
+            .eq('id', houseData.residential_id)
+            .single()
+
+        if (residentialError || !residentialData) {
+          console.error(
+            'Error loading residential for share label:',
+            residentialError,
+          )
+          setAccessLabel(`Casa ${houseData.block}-${houseData.house_number}`)
+        } else {
+          setAccessLabel(
+            `${residentialData.name} / Casa ${houseData.block}-${houseData.house_number}`,
+          )
+        }
+      }
+    }
+
     setLoading(false)
   }
 
@@ -185,23 +218,42 @@ export default function NewVisitPage() {
       return
     }
 
-    const shareText = `Visita para ${createdVisit.visitor_name}: ${createdVisit.shareUrl}`
+    const shareMessage = `Te comparto tu acceso a ${accessLabel}. Presenta este QR en garita: ${createdVisit.shareUrl}`
 
     try {
       if (navigator.share) {
         await navigator.share({
           title: 'Acceso residencial',
-          text: shareText,
+          text: shareMessage,
           url: createdVisit.shareUrl,
         })
       } else {
-        await navigator.clipboard.writeText(shareText)
-        toast.success('Link copiado para compartir por WhatsApp')
+        await navigator.clipboard.writeText(createdVisit.shareUrl)
+        toast.success('Link copiado para compartir')
       }
     } catch (error) {
       console.error('Error sharing visit:', error)
-      toast.error('No se pudo compartir la visita')
+      try {
+        await navigator.clipboard.writeText(createdVisit.shareUrl)
+        toast.success('Link copiado para compartir')
+      } catch (clipboardError) {
+        console.error('Error copying visit link:', clipboardError)
+        toast.error('No se pudo compartir la visita')
+      }
     }
+  }
+
+  const handleOpenWhatsApp = () => {
+    if (!createdVisit) {
+      return
+    }
+
+    const shareMessage = `Te comparto tu acceso a ${accessLabel}. Presenta este QR en garita: ${createdVisit.shareUrl}`
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(shareMessage)}`,
+      '_blank',
+      'noopener,noreferrer',
+    )
   }
 
   if (loading) {
@@ -209,7 +261,7 @@ export default function NewVisitPage() {
       <main className="min-h-screen bg-slate-100 px-5 py-6">
         <div className="mx-auto max-w-sm space-y-5">
           <div className="h-5 w-32 rounded-full bg-slate-200" />
-          <section className="rounded-3xl bg-white p-6 shadow-sm">
+          <section className="rounded-2xl bg-white p-6 shadow-sm">
             <div className="h-5 w-40 rounded-full bg-slate-200" />
             <div className="mt-4 h-12 rounded-2xl bg-slate-200" />
             <div className="mt-3 h-12 rounded-2xl bg-slate-200" />
@@ -223,7 +275,7 @@ export default function NewVisitPage() {
   if (!canCreateVisit) {
     return (
       <main className="min-h-screen bg-slate-100 px-5 py-6">
-        <div className="mx-auto max-w-sm rounded-3xl bg-white p-6 shadow-sm">
+        <div className="mx-auto max-w-sm rounded-2xl bg-white p-6 shadow-sm">
           <p className="text-sm font-semibold text-slate-500">Nueva visita</p>
           <h1 className="mt-2 text-2xl font-bold text-slate-950">
             Acceso no disponible
@@ -265,7 +317,7 @@ export default function NewVisitPage() {
             ← Volver al dashboard
           </Link>
 
-          <section className="rounded-3xl bg-green-600 p-6 text-white shadow-lg">
+          <section className="rounded-2xl bg-green-600 p-6 text-white shadow-lg">
             <div className="flex items-start justify-between gap-3">
               <p className="text-sm text-green-100">
                 Acceso generado correctamente
@@ -284,7 +336,7 @@ export default function NewVisitPage() {
             </div>
           </section>
 
-          <section className="space-y-3 rounded-3xl bg-white p-6 shadow-sm">
+          <section className="space-y-3 rounded-2xl bg-white p-6 shadow-sm">
             <VisitQrCard
               qrDataUrl={createdVisit.qrDataUrl}
               visitorName={createdVisit.visitor_name}
@@ -296,6 +348,14 @@ export default function NewVisitPage() {
               className="min-h-12 w-full rounded-2xl bg-slate-950 px-4 py-3 font-semibold text-white active:scale-[0.99]"
             >
               Compartir por WhatsApp
+            </button>
+
+            <button
+              type="button"
+              onClick={handleOpenWhatsApp}
+              className="min-h-12 w-full rounded-2xl border border-green-200 px-4 py-3 font-semibold text-green-700 active:scale-[0.99]"
+            >
+              Abrir WhatsApp
             </button>
 
             <button
@@ -321,7 +381,7 @@ export default function NewVisitPage() {
           ← Volver al dashboard
         </Link>
 
-        <header className="rounded-3xl bg-slate-950 p-6 text-white shadow-lg">
+        <header className="rounded-2xl bg-slate-950 p-6 text-white shadow-lg">
           <p className="text-sm text-slate-300">Residente</p>
           <h1 className="mt-1 text-2xl font-bold">Nueva visita</h1>
           <p className="mt-2 text-sm leading-6 text-slate-300">
@@ -331,7 +391,7 @@ export default function NewVisitPage() {
 
         <form
           onSubmit={handleCreateVisit}
-          className="space-y-4 rounded-3xl bg-white p-6 shadow-sm"
+          className="space-y-4 rounded-2xl bg-white p-6 shadow-sm"
         >
           <label className="block space-y-1">
             <span className="text-sm font-semibold text-slate-700">

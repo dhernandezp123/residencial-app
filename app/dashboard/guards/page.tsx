@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 
@@ -53,6 +54,7 @@ export default function GuardsPage() {
   const [residentials, setResidentials] = useState<ResidentialSummary[]>([])
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState<GuardFormData>(initialFormData)
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -214,7 +216,7 @@ export default function GuardsPage() {
       <main className="min-h-screen bg-slate-100 px-5 py-6">
         <div className="mx-auto max-w-sm space-y-5">
           <div className="h-5 w-28 rounded-full bg-slate-200" />
-          <section className="rounded-3xl bg-white p-6 shadow-sm">
+          <section className="rounded-2xl bg-white p-6 shadow-sm">
             <div className="h-5 w-32 rounded-full bg-slate-200" />
             <div className="mt-3 h-4 w-48 rounded-full bg-slate-200" />
           </section>
@@ -234,7 +236,7 @@ export default function GuardsPage() {
   if (!canManageGuards) {
     return (
       <main className="min-h-screen bg-slate-100 px-5 py-6">
-        <div className="mx-auto max-w-sm rounded-3xl bg-white p-6 shadow-sm">
+        <div className="mx-auto max-w-sm rounded-2xl bg-white p-6 shadow-sm">
           <p className="text-sm font-semibold text-slate-500">Guardias</p>
           <h1 className="mt-2 text-2xl font-bold text-slate-950">
             Acceso no disponible
@@ -264,7 +266,7 @@ export default function GuardsPage() {
           ← Volver al dashboard
         </Link>
 
-        <header className="rounded-3xl bg-slate-950 p-6 text-white shadow-lg">
+        <header className="rounded-2xl bg-slate-950 p-6 text-white shadow-lg">
           <p className="text-sm text-slate-300">Administración</p>
           <h1 className="mt-1 text-2xl font-bold">Guardias</h1>
           <p className="mt-2 text-sm leading-6 text-slate-300">
@@ -283,7 +285,7 @@ export default function GuardsPage() {
         {showForm && (
           <form
             onSubmit={handleCreateGuard}
-            className="space-y-4 rounded-3xl bg-white p-6 shadow-sm"
+            className="space-y-4 rounded-2xl bg-white p-6 shadow-sm"
           >
             {profile?.role === 'super_admin' && (
               <label className="block space-y-1">
@@ -378,17 +380,36 @@ export default function GuardsPage() {
               <span className="text-sm font-semibold text-slate-700">
                 Contraseña temporal
               </span>
-              <input
-                value={formData.password}
-                onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
-                }
-                placeholder="Mínimo 6 caracteres"
-                type="password"
-                minLength={6}
-                className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
-                required
-              />
+              <div className="relative">
+                <input
+                  value={formData.password}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
+                  placeholder="Mínimo 6 caracteres"
+                  type={showPassword ? 'text' : 'password'}
+                  minLength={6}
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 pr-12 text-sm outline-none"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault()
+                    setShowPassword(!showPassword)
+                  }}
+                  aria-label={
+                    showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'
+                  }
+                  className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" aria-hidden="true" />
+                  ) : (
+                    <Eye className="h-5 w-5" aria-hidden="true" />
+                  )}
+                </button>
+              </div>
             </label>
 
             <button

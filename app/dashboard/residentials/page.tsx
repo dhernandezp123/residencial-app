@@ -101,7 +101,7 @@ export default function ResidentialsPage() {
   return (
     <main className="min-h-screen bg-slate-100 px-5 py-6">
       <div className="mx-auto max-w-sm space-y-5">
-        <header className="rounded-3xl bg-slate-950 p-6 text-white shadow-lg">
+        <header className="rounded-2xl bg-slate-950 p-6 text-white shadow-lg">
           <p className="text-sm text-slate-300">Super Admin</p>
           <h1 className="mt-1 text-2xl font-bold">Residenciales</h1>
           <p className="mt-2 text-sm text-slate-300">
@@ -121,72 +121,111 @@ export default function ResidentialsPage() {
             onSubmit={handleCreateResidential}
             className="space-y-3 rounded-2xl bg-white p-5 shadow-sm"
           >
-            <input
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Nombre del residencial"
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none"
-              required
-            />
+            <label className="block space-y-1">
+              <span className="text-sm font-semibold text-slate-700">
+                Nombre del residencial
+              </span>
+              <input
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                placeholder="Ej: Rancho San Manuel"
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-base outline-none"
+                required
+              />
+            </label>
 
-            <input
-              value={formData.address}
-              onChange={(e) =>
-                setFormData({ ...formData, address: e.target.value })
-              }
-              placeholder="Dirección"
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none"
-            />
+            <label className="block space-y-1">
+              <span className="text-sm font-semibold text-slate-700">
+                Dirección
+              </span>
+              <input
+                value={formData.address}
+                onChange={(e) =>
+                  setFormData({ ...formData, address: e.target.value })
+                }
+                placeholder="Dirección del residencial"
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-base outline-none"
+              />
+            </label>
 
-            <input
-              value={formData.city}
-              onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-              placeholder="Ciudad"
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none"
-            />
+            <label className="block space-y-1">
+              <span className="text-sm font-semibold text-slate-700">
+                Ciudad
+              </span>
+              <input
+                value={formData.city}
+                onChange={(e) =>
+                  setFormData({ ...formData, city: e.target.value })
+                }
+                placeholder="Ciudad"
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-base outline-none"
+              />
+            </label>
 
-            <input
-              value={formData.contact_name}
-              onChange={(e) =>
-                setFormData({ ...formData, contact_name: e.target.value })
-              }
-              placeholder="Nombre de contacto"
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none"
-            />
+            <label className="block space-y-1">
+              <span className="text-sm font-semibold text-slate-700">
+                Nombre de contacto
+              </span>
+              <input
+                value={formData.contact_name}
+                onChange={(e) =>
+                  setFormData({ ...formData, contact_name: e.target.value })
+                }
+                placeholder="Persona encargada"
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-base outline-none"
+              />
+            </label>
 
-            <input
-              value={formData.contact_phone}
-              onChange={(e) =>
-                setFormData({ ...formData, contact_phone: e.target.value })
-              }
-              placeholder="Teléfono de contacto"
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none"
-            />
+            <label className="block space-y-1">
+              <span className="text-sm font-semibold text-slate-700">
+                Teléfono de contacto
+              </span>
+              <input
+                value={formData.contact_phone}
+                onChange={(e) =>
+                  setFormData({ ...formData, contact_phone: e.target.value })
+                }
+                placeholder="Ej: 9999-9999"
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-base outline-none"
+              />
+            </label>
 
-            <input
-              value={formData.contact_email}
-              onChange={(e) =>
-                setFormData({ ...formData, contact_email: e.target.value })
-              }
-              placeholder="Correo de contacto"
-              type="email"
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none"
-            />
+            <label className="block space-y-1">
+              <span className="text-sm font-semibold text-slate-700">
+                Correo de contacto
+              </span>
+              <input
+                value={formData.contact_email}
+                onChange={(e) =>
+                  setFormData({ ...formData, contact_email: e.target.value })
+                }
+                placeholder="contacto@correo.com"
+                type="email"
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-base outline-none"
+              />
+            </label>
 
-            <input
-              value={formData.max_houses}
-              onChange={(e) =>
-                setFormData({ ...formData, max_houses: e.target.value })
-              }
-              placeholder="Cantidad máxima de casas"
-              type="number"
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none"
-            />
+            <label className="block space-y-1">
+              <span className="text-sm font-semibold text-slate-700">
+                Cantidad máxima de casas
+              </span>
+              <input
+                value={formData.max_houses}
+                onChange={(e) =>
+                  setFormData({ ...formData, max_houses: e.target.value })
+                }
+                placeholder="Ej: 120"
+                type="number"
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-base outline-none"
+              />
+            </label>
 
             <button
               type="submit"
               disabled={saving}
-              className="w-full rounded-xl bg-slate-950 py-3 font-semibold text-white disabled:opacity-60"
+              className="min-h-12 w-full rounded-xl bg-slate-950 px-4 py-3 font-semibold text-white disabled:opacity-60"
             >
               {saving ? 'Guardando...' : 'Guardar residencial'}
             </button>

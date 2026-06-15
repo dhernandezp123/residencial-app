@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 const modules = [
   {
     title: "Residenciales",
@@ -36,10 +38,20 @@ export default function Home() {
               Control de acceso residencial
             </h1>
           </div>
-          <div className="hidden rounded-md border border-[#c8c7bd] bg-white px-4 py-2 text-sm font-medium text-[#49554c] sm:block">
-            Base SaaS multi-residencial
-          </div>
+          <Link
+            href="/login"
+            className="hidden rounded-xl bg-[#020826] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#14204a] sm:inline-flex"
+          >
+            Iniciar sesión
+          </Link>
         </header>
+
+        <Link
+          href="/login"
+          className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-xl bg-[#020826] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#14204a] sm:hidden"
+        >
+          Iniciar sesión
+        </Link>
 
         <div className="grid flex-1 gap-8 py-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
           <div className="max-w-3xl">
@@ -50,23 +62,23 @@ export default function Home() {
               Gestiona visitas, garita y auditoria desde una base preparada para crecer.
             </h2>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[#59635b]">
-              El sistema inicia con estructura multi-residencial, roles claros y
-              datos listos para protegerse con RLS en Supabase.
+              Controla visitantes, accesos y seguridad de tu residencial desde
+              una sola aplicación.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <a
-                className="inline-flex h-12 items-center justify-center rounded-md bg-[#24382c] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#314d3c]"
-                href="#modulos"
+              <Link
+                className="inline-flex h-12 items-center justify-center rounded-xl bg-[#020826] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#14204a]"
+                href="/register"
               >
-                Ver modulos
-              </a>
-              <a
-                className="inline-flex h-12 items-center justify-center rounded-md border border-[#b9b8ad] bg-white px-5 text-sm font-semibold text-[#24382c] transition-colors hover:bg-[#eeede6]"
-                href="#arquitectura"
+                Solicitar acceso
+              </Link>
+              <Link
+                className="inline-flex h-12 items-center justify-center rounded-xl border border-[#b9b8ad] bg-white px-5 text-sm font-semibold text-[#020826] transition-colors hover:bg-[#eeede6]"
+                href="/login"
               >
-                Ver arquitectura
-              </a>
+                Ya tengo cuenta
+              </Link>
             </div>
           </div>
 

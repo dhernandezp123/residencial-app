@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { Html5Qrcode } from 'html5-qrcode'
 import { toast } from 'sonner'
@@ -84,6 +84,23 @@ const visitTypeLabels: Record<Visit['visit_type'], string> = {
 }
 
 export default function GateScanPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-slate-950 px-5 py-6 text-white">
+          <section className="w-full max-w-sm rounded-2xl bg-white/10 p-6 text-center">
+            <p className="text-sm font-semibold text-slate-300">Garita</p>
+            <h1 className="mt-2 text-3xl font-black">Cargando escáner...</h1>
+          </section>
+        </main>
+      }
+    >
+      <GateScanContent />
+    </Suspense>
+  )
+}
+
+function GateScanContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get('token')?.trim() || ''
@@ -100,6 +117,42 @@ export default function GateScanPage() {
   const vibrate = (pattern: number | number[]) => {
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       navigator.vibrate(pattern)
+    }
+  }
+
+  const playBeep = () => {
+    try {
+      const AudioContextClass =
+        window.AudioContext ||
+        (
+          window as Window &
+            typeof globalThis & {
+              webkitAudioContext?: typeof AudioContext
+            }
+        ).webkitAudioContext
+
+      if (!AudioContextClass) {
+        return
+      }
+
+      const audioContext = new AudioContextClass()
+      const oscillator = audioContext.createOscillator()
+      const gainNode = audioContext.createGain()
+
+      oscillator.type = 'sine'
+      oscillator.frequency.setValueAtTime(880, audioContext.currentTime)
+      gainNode.gain.setValueAtTime(0.18, audioContext.currentTime)
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.01,
+        audioContext.currentTime + 0.12,
+      )
+
+      oscillator.connect(gainNode)
+      gainNode.connect(audioContext.destination)
+      oscillator.start()
+      oscillator.stop(audioContext.currentTime + 0.12)
+    } catch (error) {
+      console.error('Error playing QR beep:', error)
     }
   }
 
@@ -174,6 +227,7 @@ export default function GateScanPage() {
 
           scannedRef.current = true
           vibrate(80)
+          playBeep()
           void stopScanner().then(() => {
             router.push(`/gate/scan?token=${encodeURIComponent(scannedToken)}`)
           })
@@ -182,7 +236,9 @@ export default function GateScanPage() {
       )
     } catch (error) {
       console.error('Error opening QR scanner:', error)
-      toast.error('No se pudo abrir la cámara')
+      toast.error(
+        'El navegador requiere HTTPS para usar la cámara. Abre la app desde una URL segura.',
+      )
       setCameraOpen(false)
     } finally {
       setStartingCamera(false)
@@ -410,7 +466,7 @@ export default function GateScanPage() {
     return (
       <main className="min-h-screen bg-slate-950 px-5 py-6 text-white">
         <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-sm flex-col justify-between gap-5">
-          <section className="rounded-3xl bg-white/10 p-6 text-center shadow-2xl">
+          <section className="rounded-2xl bg-white/10 p-6 text-center shadow-2xl">
             <p className="text-sm font-semibold uppercase tracking-wide text-slate-300">
               Garita
             </p>
@@ -422,7 +478,7 @@ export default function GateScanPage() {
             </p>
           </section>
 
-          <section className="min-h-[58vh] overflow-hidden rounded-3xl bg-black shadow-2xl">
+          <section className="min-h-[58vh] overflow-hidden rounded-2xl bg-black shadow-2xl">
             <div
               id="gate-qr-reader"
               className="flex min-h-[58vh] items-center justify-center text-center text-sm font-semibold text-slate-400"
@@ -435,7 +491,7 @@ export default function GateScanPage() {
             type="button"
             onClick={handleOpenCamera}
             disabled={startingCamera || cameraOpen}
-            className="min-h-16 w-full rounded-2xl bg-white px-4 py-4 text-xl font-black text-slate-950 shadow-xl disabled:opacity-60 active:scale-[0.99]"
+            className="min-h-20 w-full rounded-2xl bg-white px-4 py-5 text-2xl font-black text-slate-950 shadow-xl disabled:opacity-60 active:scale-[0.99]"
           >
             {startingCamera
               ? 'Abriendo cámara...'
@@ -448,7 +504,7 @@ export default function GateScanPage() {
             <button
               type="button"
               onClick={() => void stopScanner()}
-              className="min-h-14 w-full rounded-2xl border border-white/30 px-4 py-4 text-lg font-black text-white active:scale-[0.99]"
+              className="min-h-16 w-full rounded-2xl bg-red-600 px-4 py-4 text-xl font-black text-white shadow-xl active:scale-[0.99]"
             >
               Cerrar cámara
             </button>
@@ -461,7 +517,7 @@ export default function GateScanPage() {
   if (result.status === 'loading') {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-950 px-5 py-6 text-white">
-        <section className="w-full max-w-sm rounded-3xl bg-white/10 p-6 text-center">
+        <section className="w-full max-w-sm rounded-2xl bg-white/10 p-6 text-center">
           <p className="text-sm font-semibold text-slate-300">Garita</p>
           <h1 className="mt-2 text-3xl font-black">Validando QR...</h1>
         </section>
@@ -472,7 +528,7 @@ export default function GateScanPage() {
   if (result.status === 'error') {
     return (
       <main className="flex min-h-screen items-center justify-center bg-red-950 px-5 py-6 text-white">
-        <section className="w-full max-w-sm rounded-3xl bg-red-600 p-6 text-center shadow-2xl">
+        <section className="w-full max-w-sm rounded-2xl bg-red-600 p-6 text-center shadow-2xl">
           <p className="text-sm font-semibold uppercase tracking-wide text-red-100">
             Acceso denegado
           </p>
@@ -502,7 +558,7 @@ export default function GateScanPage() {
 
     return (
       <main className="flex min-h-screen items-center justify-center bg-green-950 px-5 py-6 text-white">
-        <section className="w-full max-w-sm rounded-3xl bg-green-500 p-6 text-center text-green-950 shadow-2xl">
+        <section className="w-full max-w-sm rounded-2xl bg-green-500 p-6 text-center text-green-950 shadow-2xl">
           <p className="text-sm font-semibold uppercase tracking-wide">
             Control de acceso
           </p>
@@ -531,7 +587,7 @@ export default function GateScanPage() {
   return (
     <main className="min-h-screen bg-green-950 px-5 py-6 text-white">
       <div className="mx-auto max-w-sm space-y-5">
-        <section className="rounded-3xl bg-green-500 p-6 text-center shadow-2xl">
+        <section className="rounded-2xl bg-green-500 p-6 text-center shadow-2xl">
           <p className="text-sm font-semibold uppercase tracking-wide text-green-950">
             Validación garita
           </p>
@@ -540,7 +596,7 @@ export default function GateScanPage() {
           </h1>
         </section>
 
-        <section className="space-y-4 rounded-3xl bg-white p-6 text-slate-950 shadow-xl">
+        <section className="space-y-4 rounded-2xl bg-white p-6 text-slate-950 shadow-xl">
           <Detail label="Visitante" value={result.visit.visitor_name} />
           <Detail
             label="Casa"
@@ -554,7 +610,7 @@ export default function GateScanPage() {
           <Detail label="Válido hasta" value={validUntilLabel} />
         </section>
 
-        <section className="rounded-3xl bg-white p-6 text-slate-950 shadow-xl">
+        <section className="rounded-2xl bg-white p-6 text-slate-950 shadow-xl">
           <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
             ANUNCIADO POR
           </p>

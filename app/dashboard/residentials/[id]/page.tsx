@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 
@@ -46,6 +47,7 @@ export default function ResidentialDetailPage({
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [showAdminForm, setShowAdminForm] = useState(false)
+  const [showAdminPassword, setShowAdminPassword] = useState(false)
   const [saving, setSaving] = useState(false)
   const [savingAdmin, setSavingAdmin] = useState(false)
 
@@ -205,7 +207,7 @@ export default function ResidentialDetailPage({
           ← Volver
         </Link>
 
-        <header className="rounded-3xl bg-slate-950 p-6 text-white shadow-lg">
+        <header className="rounded-2xl bg-slate-950 p-6 text-white shadow-lg">
           <p className="text-sm text-slate-300">Residencial</p>
           <h1 className="mt-1 text-2xl font-bold">{residential.name}</h1>
           <p className="mt-2 text-sm text-slate-300">
@@ -227,7 +229,7 @@ export default function ResidentialDetailPage({
           Copiar link de registro
         </button>
 
-        <section className="space-y-3 rounded-3xl bg-white p-5 shadow-sm">
+        <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm">
           <div>
             <p className="text-sm font-semibold text-slate-500">
               Operación
@@ -355,20 +357,41 @@ export default function ResidentialDetailPage({
                 <span className="text-sm font-semibold text-slate-700">
                   Contraseña temporal
                 </span>
-                <input
-                  value={adminFormData.password}
-                  onChange={(e) =>
-                    setAdminFormData({
-                      ...adminFormData,
-                      password: e.target.value,
-                    })
-                  }
-                  placeholder="Mínimo 6 caracteres"
-                  type="password"
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none"
-                  required
-                  minLength={6}
-                />
+                <div className="relative">
+                  <input
+                    value={adminFormData.password}
+                    onChange={(e) =>
+                      setAdminFormData({
+                        ...adminFormData,
+                        password: e.target.value,
+                      })
+                    }
+                    placeholder="Mínimo 6 caracteres"
+                    type={showAdminPassword ? 'text' : 'password'}
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 pr-12 text-sm outline-none"
+                    required
+                    minLength={6}
+                  />
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault()
+                      setShowAdminPassword(!showAdminPassword)
+                    }}
+                    aria-label={
+                      showAdminPassword
+                        ? 'Ocultar contraseña'
+                        : 'Mostrar contraseña'
+                    }
+                    className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                  >
+                    {showAdminPassword ? (
+                      <EyeOff className="h-5 w-5" aria-hidden="true" />
+                    ) : (
+                      <Eye className="h-5 w-5" aria-hidden="true" />
+                    )}
+                  </button>
+                </div>
               </label>
 
               <button

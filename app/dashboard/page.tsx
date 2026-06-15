@@ -59,7 +59,7 @@ export default function HomePage() {
   if (!profile || profile.status !== 'approved') {
     return (
       <main className="min-h-screen bg-slate-100 px-5 py-6">
-        <div className="mx-auto max-w-sm rounded-3xl bg-white p-6 shadow">
+        <div className="mx-auto max-w-sm rounded-2xl bg-white p-5 shadow-sm">
           <h1 className="text-xl font-bold text-slate-900">Acceso pendiente</h1>
           <p className="mt-2 text-sm text-slate-500">
             Tu usuario aún no ha sido aprobado por administración.
@@ -78,7 +78,7 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-slate-100 px-5 py-6">
       <div className="mx-auto max-w-sm space-y-5">
-        <div className="rounded-3xl bg-slate-950 p-6 text-white shadow-lg">
+        <div className="rounded-2xl bg-slate-950 p-5 text-white shadow-sm">
           <p className="text-sm text-slate-300">Bienvenido</p>
           <h1 className="mt-1 text-2xl font-bold">
             {profile.first_name} {profile.last_name}
@@ -106,7 +106,7 @@ export default function HomePage() {
 
 function SuperAdminDashboard() {
   return (
-    <div className="grid gap-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <DashboardButton
         title="Residenciales"
         subtitle="Crear y administrar residenciales"
@@ -120,7 +120,7 @@ function SuperAdminDashboard() {
 
 function AdminDashboard() {
   return (
-    <div className="grid gap-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <DashboardButton title="Casas" subtitle="Registrar lotes y casas" />
       <DashboardButton
         title="Residentes pendientes"
@@ -138,7 +138,7 @@ function AdminDashboard() {
 
 function ResidentDashboard() {
   return (
-    <div className="grid gap-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <DashboardButton
         title="Nueva visita"
         subtitle="Generar QR para visitante"
@@ -160,7 +160,7 @@ function ResidentDashboard() {
 
 function GuardDashboard() {
   return (
-    <div className="grid gap-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <DashboardButton
         title="Escanear QR"
         subtitle="Validar acceso de visitantes"
@@ -195,7 +195,7 @@ function DashboardButton({
     return (
       <Link
         href={href}
-        className="rounded-2xl bg-white p-5 text-left shadow-sm active:scale-[0.99]"
+        className="min-h-12 rounded-2xl bg-white p-4 text-left shadow-sm active:scale-[0.99]"
       >
         {content}
       </Link>
@@ -203,7 +203,7 @@ function DashboardButton({
   }
 
   return (
-    <button className="rounded-2xl bg-white p-5 text-left shadow-sm active:scale-[0.99]">
+    <button className="min-h-12 w-full rounded-2xl bg-white p-4 text-left shadow-sm active:scale-[0.99]">
       {content}
     </button>
   )

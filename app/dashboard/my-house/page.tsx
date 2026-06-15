@@ -43,6 +43,8 @@ export default function MyHousePage() {
   const [approvedResidents, setApprovedResidents] = useState<
     ApprovedResident[]
   >([])
+  const [activeVisitsCount, setActiveVisitsCount] = useState(0)
+  const [monthlyVisitsCount, setMonthlyVisitsCount] = useState(0)
   const [loading, setLoading] = useState(true)
 
   const loadMyHouse = async () => {
@@ -123,6 +125,46 @@ export default function MyHousePage() {
       setApprovedResidents(residentsData || [])
     }
 
+    const now = new Date()
+    const startOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1,
+    ).toISOString()
+    const startOfNextMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      1,
+    ).toISOString()
+
+    const { count: activeCount, error: activeVisitsError } = await supabase
+      .from('visits')
+      .select('id', { count: 'exact', head: true })
+      .eq('house_id', houseData.id)
+      .eq('status', 'active')
+      .gt('valid_until', now.toISOString())
+
+    if (activeVisitsError) {
+      console.error('Error loading active visits count:', activeVisitsError)
+      toast.error('No se pudieron cargar las visitas activas')
+    } else {
+      setActiveVisitsCount(activeCount || 0)
+    }
+
+    const { count: monthlyCount, error: monthlyVisitsError } = await supabase
+      .from('visits')
+      .select('id', { count: 'exact', head: true })
+      .eq('house_id', houseData.id)
+      .gte('created_at', startOfMonth)
+      .lt('created_at', startOfNextMonth)
+
+    if (monthlyVisitsError) {
+      console.error('Error loading monthly visits count:', monthlyVisitsError)
+      toast.error('No se pudieron cargar las visitas del mes')
+    } else {
+      setMonthlyVisitsCount(monthlyCount || 0)
+    }
+
     setLoading(false)
   }
 
@@ -135,7 +177,7 @@ export default function MyHousePage() {
       <main className="min-h-screen bg-slate-100 px-5 py-6">
         <div className="mx-auto max-w-sm space-y-5">
           <div className="h-5 w-28 rounded-full bg-slate-200" />
-          <section className="rounded-3xl bg-white p-6 shadow-sm">
+          <section className="rounded-2xl bg-white p-6 shadow-sm">
             <div className="h-4 w-24 rounded-full bg-slate-200" />
             <div className="mt-3 h-8 w-32 rounded-full bg-slate-200" />
             <div className="mt-4 h-4 w-48 rounded-full bg-slate-200" />
@@ -163,7 +205,7 @@ export default function MyHousePage() {
   ) {
     return (
       <main className="min-h-screen bg-slate-100 px-5 py-6">
-        <div className="mx-auto max-w-sm rounded-3xl bg-white p-6 shadow-sm">
+        <div className="mx-auto max-w-sm rounded-2xl bg-white p-6 shadow-sm">
           <p className="text-sm font-semibold text-slate-500">Mi casa</p>
           <h1 className="mt-2 text-2xl font-bold text-slate-950">
             Acceso no disponible
@@ -195,7 +237,7 @@ export default function MyHousePage() {
           ← Volver al dashboard
         </Link>
 
-        <header className="rounded-3xl bg-slate-950 p-6 text-white shadow-lg">
+        <header className="rounded-2xl bg-slate-950 p-6 text-white shadow-lg">
           <p className="text-sm text-slate-300">Mi casa</p>
           <h1 className="mt-1 text-3xl font-bold">
             {house.block}-{house.house_number}
@@ -231,11 +273,11 @@ export default function MyHousePage() {
         </Link>
 
         <section className="grid gap-3">
-          <KpiCard label="Visitas activas" value="0" />
-          <KpiCard label="Visitas este mes" value="0" />
+          <KpiCard label="Visitas activas" value={activeVisitsCount} />
+          <KpiCard label="Visitas este mes" value={monthlyVisitsCount} />
         </section>
 
-        <section className="space-y-3 rounded-3xl bg-white p-5 shadow-sm">
+        <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm">
           <div>
             <p className="text-sm font-semibold text-slate-500">
               Residentes
@@ -272,7 +314,7 @@ export default function MyHousePage() {
   )
 }
 
-function KpiCard({ label, value }: { label: string; value: string }) {
+function KpiCard({ label, value }: { label: string; value: number }) {
   return (
     <article className="rounded-2xl bg-white p-5 shadow-sm">
       <p className="text-sm font-semibold text-slate-500">{label}</p>

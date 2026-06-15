@@ -279,7 +279,7 @@ export default function VisitsPage() {
       <main className="min-h-screen bg-slate-100 px-5 py-6">
         <div className="mx-auto max-w-sm space-y-5">
           <div className="h-5 w-28 rounded-full bg-slate-200" />
-          <section className="rounded-3xl bg-white p-6 shadow-sm">
+          <section className="rounded-2xl bg-white p-6 shadow-sm">
             <div className="h-6 w-36 rounded-full bg-slate-200" />
             <div className="mt-4 h-4 w-full rounded-full bg-slate-200" />
             <div className="mt-3 h-4 w-3/4 rounded-full bg-slate-200" />
@@ -289,7 +289,7 @@ export default function VisitsPage() {
               <div className="h-12 rounded-2xl bg-slate-200" />
             </div>
           </section>
-          <section className="rounded-3xl bg-white p-6 shadow-sm">
+          <section className="rounded-2xl bg-white p-6 shadow-sm">
             <div className="h-6 w-40 rounded-full bg-slate-200" />
             <div className="mt-4 h-4 w-full rounded-full bg-slate-200" />
             <div className="mt-3 h-4 w-2/3 rounded-full bg-slate-200" />
@@ -302,7 +302,7 @@ export default function VisitsPage() {
   if (!canViewVisits) {
     return (
       <main className="min-h-screen bg-slate-100 px-5 py-6">
-        <div className="mx-auto max-w-sm rounded-3xl bg-white p-6 shadow-sm">
+        <div className="mx-auto max-w-sm rounded-2xl bg-white p-6 shadow-sm">
           <p className="text-sm font-semibold text-slate-500">Mis visitas</p>
           <h1 className="mt-2 text-2xl font-bold text-slate-950">
             Acceso no disponible
@@ -332,7 +332,7 @@ export default function VisitsPage() {
           ← Volver al dashboard
         </Link>
 
-        <header className="rounded-3xl bg-slate-950 p-6 text-white shadow-lg">
+        <header className="rounded-2xl bg-slate-950 p-6 text-white shadow-lg">
           <p className="text-sm text-slate-300">Residente</p>
           <h1 className="mt-1 text-2xl font-bold">Mis visitas</h1>
           <p className="mt-2 text-sm leading-6 text-slate-300">
@@ -347,7 +347,7 @@ export default function VisitsPage() {
         </header>
 
         {visits.length === 0 ? (
-          <section className="rounded-3xl bg-white p-6 text-center shadow-sm">
+          <section className="rounded-2xl bg-white p-6 text-center shadow-sm">
             <h2 className="text-xl font-bold text-slate-950">
               Aún no tienes visitas
             </h2>
@@ -375,7 +375,7 @@ export default function VisitsPage() {
               return (
                 <article
                   key={visit.id}
-                  className="space-y-4 rounded-3xl bg-white p-6 shadow-sm"
+                  className="space-y-4 rounded-2xl bg-white p-6 shadow-sm"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
