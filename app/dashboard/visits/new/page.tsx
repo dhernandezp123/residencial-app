@@ -1,11 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { VisitQrCard } from '../VisitQrCard'
 
 type Profile = {
   id: string
@@ -285,21 +285,10 @@ export default function NewVisitPage() {
           </section>
 
           <section className="space-y-3 rounded-3xl bg-white p-6 shadow-sm">
-            <div>
-              <p className="text-sm font-semibold text-slate-500">
-                Código QR para ingreso
-              </p>
-              <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
-                <Image
-                  src={createdVisit.qrDataUrl}
-                  alt="Código QR para ingreso"
-                  width={256}
-                  height={256}
-                  unoptimized
-                  className="mx-auto aspect-square w-full max-w-64"
-                />
-              </div>
-            </div>
+            <VisitQrCard
+              qrDataUrl={createdVisit.qrDataUrl}
+              visitorName={createdVisit.visitor_name}
+            />
 
             <button
               type="button"
@@ -308,14 +297,6 @@ export default function NewVisitPage() {
             >
               Compartir por WhatsApp
             </button>
-
-            <a
-              href={createdVisit.qrDataUrl}
-              download={`visita-${createdVisit.visitor_name}.png`}
-              className="block min-h-12 w-full rounded-2xl border border-slate-200 px-4 py-3 text-center font-semibold text-slate-800 active:scale-[0.99]"
-            >
-              Descargar QR
-            </a>
 
             <button
               type="button"
