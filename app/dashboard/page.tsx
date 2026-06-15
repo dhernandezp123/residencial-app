@@ -127,7 +127,11 @@ function AdminDashboard() {
         subtitle="Aprobar vecinos"
         href="/dashboard/residents"
       />
-      <DashboardButton title="Guardias" subtitle="Crear usuarios de seguridad" />
+      <DashboardButton
+        title="Guardias"
+        subtitle="Crear usuarios de seguridad"
+        href="/dashboard/guards"
+      />
     </div>
   )
 }
