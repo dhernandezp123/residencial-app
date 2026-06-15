@@ -1,6 +1,7 @@
 'use client'
 
 import { Suspense, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { Html5Qrcode } from 'html5-qrcode'
 import { toast } from 'sonner'
@@ -297,6 +298,8 @@ function GateScanContent() {
       .eq('id', qrToken.visit_id)
       .single()
 
+    console.log('VISIT:', visitData)
+
     if (visitError || !visitData) {
       console.error('Error loading visit:', visitError)
       setErrorResult('QR inválido')
@@ -362,6 +365,7 @@ function GateScanContent() {
     }
 
     const currentOpenEntry = (openEntryData as OpenEntry | null) || null
+    console.log('OPEN ENTRY:', currentOpenEntry, openEntryError)
     setOpenEntry(currentOpenEntry)
 
     setResult({
@@ -450,7 +454,7 @@ function GateScanContent() {
       return
     }
 
-    const { error: entryError } = await supabase.from('visitor_entries').insert({
+    const entryPayload = {
       residential_id: result.visit.residential_id,
       visit_id: result.visit.id,
       qr_token_id: result.qrToken.id,
@@ -458,7 +462,14 @@ function GateScanContent() {
       guard_id: guardProfile.id,
       entry_status: 'allowed',
       notes: null,
-    })
+    }
+    console.log('ENTRY PAYLOAD:', entryPayload)
+
+    const { data: entryData, error: entryError } = await supabase
+      .from('visitor_entries')
+      .insert(entryPayload)
+
+    console.log('ENTRY INSERT:', entryData, entryError)
 
     if (entryError) {
       console.error('Error registering visitor entry:', entryError)
@@ -600,6 +611,12 @@ function GateScanContent() {
           >
             Reintentar
           </button>
+          <Link
+            href="/dashboard"
+            className="mt-3 block min-h-14 w-full rounded-2xl border border-white/40 px-4 py-4 text-center text-lg font-black text-white active:scale-[0.99]"
+          >
+            Volver al dashboard
+          </Link>
         </section>
       </main>
     )
@@ -630,6 +647,12 @@ function GateScanContent() {
             <Detail label="Casa" value={registeredEntry.house_label} />
             <Detail label="Hora" value={registeredTimeLabel} />
           </div>
+          <Link
+            href="/dashboard"
+            className="mt-5 block min-h-14 w-full rounded-2xl bg-green-950 px-4 py-4 text-center text-lg font-black text-white active:scale-[0.99]"
+          >
+            Volver al dashboard
+          </Link>
         </section>
       </main>
     )
@@ -724,6 +747,12 @@ function GateScanContent() {
               ? 'Registrar salida'
               : 'Registrar ingreso'}
         </button>
+        <Link
+          href="/dashboard"
+          className="block min-h-14 w-full rounded-2xl border border-white/30 px-4 py-4 text-center text-lg font-black text-white active:scale-[0.99]"
+        >
+          Volver al dashboard
+        </Link>
       </div>
     </main>
   )

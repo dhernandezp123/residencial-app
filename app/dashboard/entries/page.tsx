@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -24,6 +24,7 @@ type VisitorEntry = {
   entry_status: 'allowed' | 'denied'
   entry_time: string
   exit_time: string | null
+  created_at: string
 }
 
 type VisitSummary = {
@@ -76,7 +77,7 @@ export default function EntriesPage() {
     const { data: sessionData } = await supabase.auth.getSession()
 
     if (!sessionData.session) {
-      toast.error('Inicia sesión para ver entradas recientes')
+      toast.error('Inicia sesiÃ³n para ver entradas recientes')
       setLoading(false)
       return
     }
@@ -106,7 +107,7 @@ export default function EntriesPage() {
     let entriesQuery = supabase
       .from('visitor_entries')
       .select(
-        'id,residential_id,visit_id,house_id,guard_id,entry_status,entry_time,exit_time',
+        'id,residential_id,visit_id,house_id,guard_id,entry_status,entry_time,exit_time,created_at',
       )
       .order('entry_time', { ascending: false })
       .limit(40)
@@ -265,7 +266,7 @@ export default function EntriesPage() {
           </h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">
             Solo guardias, administradores y super administradores aprobados
-            pueden ver esta bitácora.
+            pueden ver esta bitÃ¡cora.
           </p>
           <Link
             href="/dashboard"
@@ -299,10 +300,10 @@ export default function EntriesPage() {
         {entries.length === 0 ? (
           <section className="rounded-2xl bg-white p-6 text-center shadow-sm">
             <h2 className="text-xl font-bold text-slate-950">
-              Sin entradas recientes
+              No hay ingresos registrados todavía
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Los ingresos registrados aparecerán aquí.
+              Cuando la garita registre accesos, aparecerán aquí.
             </p>
           </section>
         ) : (
@@ -350,7 +351,7 @@ export default function EntriesPage() {
                           : 'bg-slate-100 text-slate-700'
                       }`}
                     >
-                      {isInside ? 'Dentro' : 'Salió'}
+                      {isInside ? 'Dentro' : 'SaliÃ³'}
                     </span>
                   </div>
 
