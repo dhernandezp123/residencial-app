@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import type { Html5Qrcode } from 'html5-qrcode'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 
@@ -83,6 +84,7 @@ const visitTypeLabels: Record<Visit['visit_type'], string> = {
 }
 
 export default function GateScanPage() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get('token')?.trim() || ''
   const [result, setResult] = useState<ScanResult>({ status: 'loading' })
@@ -90,6 +92,10 @@ export default function GateScanPage() {
   const [registeredEntry, setRegisteredEntry] = useState<RegisteredEntry | null>(
     null
   )
+  const [cameraOpen, setCameraOpen] = useState(false)
+  const [startingCamera, setStartingCamera] = useState(false)
+  const scannerRef = useRef<Html5Qrcode | null>(null)
+  const scannedRef = useRef(false)
 
   const vibrate = (pattern: number | number[]) => {
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
@@ -100,6 +106,87 @@ export default function GateScanPage() {
   const setErrorResult = (title: string) => {
     setResult({ status: 'error', title })
     vibrate([180, 80, 180])
+  }
+
+  const extractTokenFromQr = (decodedText: string) => {
+    const trimmedText = decodedText.trim()
+
+    try {
+      const decodedUrl = new URL(trimmedText, window.location.origin)
+
+      if (decodedUrl.pathname === '/gate/scan') {
+        return decodedUrl.searchParams.get('token')?.trim() || ''
+      }
+    } catch {
+      return trimmedText
+    }
+
+    return trimmedText
+  }
+
+  const stopScanner = async () => {
+    if (!scannerRef.current) {
+      return
+    }
+
+    try {
+      await scannerRef.current.stop()
+      await scannerRef.current.clear()
+    } catch (error) {
+      console.error('Error stopping QR scanner:', error)
+    } finally {
+      scannerRef.current = null
+      setCameraOpen(false)
+    }
+  }
+
+  const handleOpenCamera = async () => {
+    setStartingCamera(true)
+    scannedRef.current = false
+
+    try {
+      const { Html5Qrcode } = await import('html5-qrcode')
+      const scanner = new Html5Qrcode('gate-qr-reader')
+      scannerRef.current = scanner
+      setCameraOpen(true)
+
+      await scanner.start(
+        { facingMode: 'environment' },
+        {
+          fps: 10,
+          qrbox: {
+            width: 260,
+            height: 260,
+          },
+        },
+        (decodedText) => {
+          if (scannedRef.current) {
+            return
+          }
+
+          const scannedToken = extractTokenFromQr(decodedText)
+
+          if (!scannedToken) {
+            vibrate([180, 80, 180])
+            toast.error('QR no válido')
+            return
+          }
+
+          scannedRef.current = true
+          vibrate(80)
+          void stopScanner().then(() => {
+            router.push(`/gate/scan?token=${encodeURIComponent(scannedToken)}`)
+          })
+        },
+        () => {}
+      )
+    } catch (error) {
+      console.error('Error opening QR scanner:', error)
+      toast.error('No se pudo abrir la cámara')
+      setCameraOpen(false)
+    } finally {
+      setStartingCamera(false)
+    }
   }
 
   const validateToken = async () => {
@@ -307,9 +394,69 @@ export default function GateScanPage() {
   }
 
   useEffect(() => {
-    void Promise.resolve().then(validateToken)
+    if (token) {
+      void Promise.resolve().then(validateToken)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
+
+  useEffect(() => {
+    return () => {
+      void stopScanner()
+    }
+  }, [])
+
+  if (!token) {
+    return (
+      <main className="min-h-screen bg-slate-950 px-5 py-6 text-white">
+        <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-sm flex-col justify-between gap-5">
+          <section className="rounded-3xl bg-white/10 p-6 text-center shadow-2xl">
+            <p className="text-sm font-semibold uppercase tracking-wide text-slate-300">
+              Garita
+            </p>
+            <h1 className="mt-3 text-4xl font-black leading-tight">
+              Escanear QR
+            </h1>
+            <p className="mt-4 text-lg font-bold text-slate-200">
+              Apunte la cámara al código QR del visitante
+            </p>
+          </section>
+
+          <section className="min-h-[58vh] overflow-hidden rounded-3xl bg-black shadow-2xl">
+            <div
+              id="gate-qr-reader"
+              className="flex min-h-[58vh] items-center justify-center text-center text-sm font-semibold text-slate-400"
+            >
+              {!cameraOpen && 'La cámara se mostrará aquí.'}
+            </div>
+          </section>
+
+          <button
+            type="button"
+            onClick={handleOpenCamera}
+            disabled={startingCamera || cameraOpen}
+            className="min-h-16 w-full rounded-2xl bg-white px-4 py-4 text-xl font-black text-slate-950 shadow-xl disabled:opacity-60 active:scale-[0.99]"
+          >
+            {startingCamera
+              ? 'Abriendo cámara...'
+              : cameraOpen
+                ? 'Cámara activa'
+                : 'Abrir cámara'}
+          </button>
+
+          {cameraOpen && (
+            <button
+              type="button"
+              onClick={() => void stopScanner()}
+              className="min-h-14 w-full rounded-2xl border border-white/30 px-4 py-4 text-lg font-black text-white active:scale-[0.99]"
+            >
+              Cerrar cámara
+            </button>
+          )}
+        </div>
+      </main>
+    )
+  }
 
   if (result.status === 'loading') {
     return (

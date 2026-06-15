@@ -161,8 +161,16 @@ function ResidentDashboard() {
 function GuardDashboard() {
   return (
     <div className="grid gap-3">
-      <DashboardButton title="Escanear QR" subtitle="Validar acceso de visitantes" />
-      <DashboardButton title="Entradas recientes" subtitle="Ver ingresos registrados" />
+      <DashboardButton
+        title="Escanear QR"
+        subtitle="Validar acceso de visitantes"
+        href="/gate/scan"
+      />
+      <DashboardButton
+        title="Entradas recientes"
+        subtitle="Ver ingresos registrados"
+        href="/dashboard/entries"
+      />
     </div>
   )
 }
