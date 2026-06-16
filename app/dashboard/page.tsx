@@ -171,6 +171,11 @@ function GuardDashboard() {
         subtitle="Ver ingresos registrados"
         href="/dashboard/entries"
       />
+      <DashboardButton
+        title="Personas dentro"
+        subtitle="Ver visitantes actualmente dentro"
+        href="/dashboard/inside"
+      />
     </div>
   )
 }
