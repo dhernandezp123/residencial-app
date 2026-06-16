@@ -339,16 +339,6 @@ function GateScanContent() {
 
     const qrToken = qrTokenData as QrToken
 
-    if (qrToken.status !== 'active') {
-      setErrorResult('QR no disponible')
-      return
-    }
-
-    if (new Date(qrToken.expires_at).getTime() <= Date.now()) {
-      setErrorResult('QR vencido')
-      return
-    }
-
     const { data: visitData, error: visitError } = await supabase
       .from('visits')
       .select(
@@ -366,11 +356,6 @@ function GateScanContent() {
     }
 
     const visit = visitData as Visit
-
-    if (visit.status !== 'active') {
-      setErrorResult('QR no disponible')
-      return
-    }
 
     const { data: houseData, error: houseError } = await supabase
       .from('houses')
@@ -408,23 +393,51 @@ function GateScanContent() {
       console.error('Error loading announced by profile:', announcedByError)
     }
 
-    const { data: openEntryData, error: openEntryError } = await supabase
-      .from('visitor_entries')
-      .select('id,entry_time,exit_time')
-      .eq('visit_id', visit.id)
-      .is('exit_time', null)
-      .eq('entry_status', 'allowed')
-      .order('entry_time', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    const { data: allowedEntriesData, error: allowedEntriesError } =
+      await supabase
+        .from('visitor_entries')
+        .select('id,entry_time,exit_time')
+        .eq('visit_id', visit.id)
+        .eq('entry_status', 'allowed')
+        .order('entry_time', { ascending: false })
 
-    if (openEntryError) {
-      console.error('Error loading open visitor entry:', openEntryError)
-      toast.error(openEntryError.message)
+    if (allowedEntriesError) {
+      console.error('Error loading visitor entries:', allowedEntriesError)
+      toast.error(allowedEntriesError.message)
+      setErrorResult('QR no disponible')
+      return
     }
 
-    const currentOpenEntry = (openEntryData as OpenEntry | null) || null
-    console.log('OPEN ENTRY:', currentOpenEntry, openEntryError)
+    const allowedEntries = (allowedEntriesData as OpenEntry[] | null) || []
+    const currentOpenEntry =
+      allowedEntries.find((entry) => entry.exit_time === null) || null
+    console.log('ALLOWED ENTRIES:', allowedEntries, allowedEntriesError)
+
+    if (
+      visit.access_mode === 'single_use' &&
+      allowedEntries.length > 0 &&
+      !currentOpenEntry
+    ) {
+      setErrorResult('QR no disponible')
+      return
+    }
+
+    if (visit.access_mode === 'multi_use' || !currentOpenEntry) {
+      if (qrToken.status !== 'active') {
+        setErrorResult('QR no disponible')
+        return
+      }
+
+      if (new Date(qrToken.expires_at).getTime() <= Date.now()) {
+        setErrorResult('QR vencido')
+        return
+      }
+
+      if (visit.status !== 'active') {
+        setErrorResult('QR no disponible')
+        return
+      }
+    }
 
     setResult({
       status: 'success',
@@ -509,6 +522,18 @@ function GateScanContent() {
     if (currentOpenEntry && !confirmingExit) {
       setConfirmingExit(true)
       toast.message('Confirma la salida tocando el botón nuevamente')
+      return
+    }
+
+    if (
+      !currentOpenEntry &&
+      (!entryPhotoFiles.identity ||
+        !entryPhotoFiles.vehicle ||
+        !entryPhotoFiles.plate)
+    ) {
+      toast.error(
+        'Debes tomar foto de identidad, vehículo y placa antes de registrar ingreso',
+      )
       return
     }
 
@@ -947,9 +972,14 @@ function GateScanContent() {
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
                 Evidencia fotográfica
               </p>
-              <p className="mt-1 text-sm font-semibold text-slate-600">
-                Capturas opcionales tomadas por garita.
+              <p className="mt-1 text-base font-black text-slate-950">
+                Evidencia requerida:
               </p>
+              <ul className="mt-2 space-y-1 text-sm font-semibold text-slate-600">
+                <li>Identidad</li>
+                <li>Vehículo</li>
+                <li>Placa</li>
+              </ul>
             </div>
             <EntryPhotoInput
               id="identity-photo"
@@ -1035,7 +1065,7 @@ function EntryPhotoInput({
       >
         {label}
       </label>
-      <p className="mt-1 text-sm font-semibold text-slate-500">Opcional</p>
+      <p className="mt-1 text-sm font-semibold text-slate-500">Requerida</p>
       <input
         id={id}
         type="file"
