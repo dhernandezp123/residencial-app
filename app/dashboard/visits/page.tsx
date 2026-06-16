@@ -493,6 +493,7 @@ export default function VisitsPage() {
                           : 'Residente'
                       }
                       accessMode={visit.access_mode}
+                      createdAt={visit.created_at}
                       validUntil={visit.valid_until}
                       residentialName={residentialName}
                       houseLabel={houseLabel}

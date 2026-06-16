@@ -12,6 +12,7 @@ type VisitQrCardProps = {
   visitorName: string
   announcedBy: string
   accessMode: AccessMode
+  createdAt: string
   validUntil: string
   residentialName: string
   houseLabel: string
@@ -27,8 +28,8 @@ const cardHeight = 1536
 const templatePath = '/visit-card-template.png'
 
 const accessModeLabels: Record<AccessMode, string> = {
-  single_use: 'Un solo ingreso',
-  multi_use: 'Múltiples ingresos',
+  single_use: 'ACCESO ÚNICO',
+  multi_use: 'ACCESO MÚLTIPLE',
 }
 
 function loadImage(src: string) {
@@ -39,6 +40,37 @@ function loadImage(src: string) {
     image.onerror = () => reject(new Error('No se pudo cargar la imagen QR'))
     image.src = src
   })
+}
+
+function normalizeDisplayName(name: string) {
+  return name
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function setResponsiveFont(
+  context: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  fontWeight: number,
+  maxSize: number,
+  minSize: number,
+) {
+  let fontSize = maxSize
+
+  while (fontSize > minSize) {
+    context.font = `${fontWeight} ${fontSize}px Arial`
+
+    if (context.measureText(text).width <= maxWidth) {
+      return fontSize
+    }
+
+    fontSize -= 1
+  }
+
+  context.font = `${fontWeight} ${minSize}px Arial`
+  return minSize
 }
 
 function drawWrappedText(
@@ -74,15 +106,17 @@ function drawWrappedText(
 
   lines.slice(0, maxLines).forEach((line, index) => {
     const isLastVisibleLine = index === maxLines - 1 && lines.length > maxLines
-    const renderedLine = isLastVisibleLine ? `${line.replace(/\.$/, '')}...` : line
+    const renderedLine = isLastVisibleLine
+      ? `${line.replace(/\.$/, '')}...`
+      : line
     context.fillText(renderedLine, x, y + index * lineHeight)
   })
 
   return Math.min(lines.length, maxLines) * lineHeight
 }
 
-function formatValidUntil(validUntil: string) {
-  const date = new Date(validUntil)
+function formatCardDate(dateValue: string) {
+  const date = new Date(dateValue)
 
   return new Intl.DateTimeFormat('es-HN', {
     day: 'numeric',
@@ -110,6 +144,7 @@ export function VisitQrCard({
   visitorName,
   announcedBy,
   accessMode,
+  createdAt,
   validUntil,
   residentialName,
   houseLabel,
@@ -134,45 +169,68 @@ export function VisitQrCard({
 
     const qrSize = 520
     const qrX = (cardWidth - qrSize) / 2
-    const qrY = 280
+    const qrY = 248
     context.fillStyle = '#ffffff'
     context.fillRect(qrX - 24, qrY - 24, qrSize + 48, qrSize + 48)
     context.drawImage(qrImage, qrX, qrY, qrSize, qrSize)
 
-    context.textAlign = 'center'
-    context.fillStyle = '#05234c'
-    context.font = '700 46px Arial'
-    drawWrappedText(context, visitorName, cardWidth / 2, 870, 660, 54, 2)
+    const displayVisitorName = normalizeDisplayName(visitorName)
 
-    context.font = '700 25px Arial'
+    context.textAlign = 'center'
+    context.font = '700 22px Arial'
     context.fillStyle = '#ed6216'
-    context.fillText('ACCESO RESIDENCIAL', cardWidth / 2, 990)
+    context.fillText('VISITANTE', cardWidth / 2, 825)
+
+    context.fillStyle = '#05234c'
+    setResponsiveFont(context, displayVisitorName, 720, 700, 44, 31)
+    drawWrappedText(context, displayVisitorName, cardWidth / 2, 875, 720, 50, 2)
+
+    const badgeText = accessModeLabels[accessMode]
+    context.font = '700 26px Arial'
+    const badgeWidth = Math.max(275, context.measureText(badgeText).width + 58)
+    const badgeX = (cardWidth - badgeWidth) / 2
+    const badgeY = 960
+    context.fillStyle = '#ed6216'
+    context.beginPath()
+    context.roundRect(badgeX, badgeY, badgeWidth, 50, 25)
+    context.fill()
+    context.fillStyle = '#ffffff'
+    context.fillText(badgeText, cardWidth / 2, badgeY + 34)
+
+    context.font = '700 22px Arial'
+    context.fillStyle = '#05234c'
+    context.fillText(
+      'Presentar este código al ingresar y salir.',
+      cardWidth / 2,
+      1048,
+    )
 
     const lines: CardLine[] = [
-      { label: 'Anunciado por', value: announcedBy },
-      { label: 'Tipo de acceso', value: accessModeLabels[accessMode] },
-      { label: 'Válido hasta', value: formatValidUntil(validUntil) },
+      { label: 'Anunciado por', value: normalizeDisplayName(announcedBy) },
+      { label: 'Creado', value: formatCardDate(createdAt) },
+      { label: 'Válido hasta', value: formatCardDate(validUntil) },
       { label: 'Residencial', value: residentialName },
       { label: 'Casa', value: houseLabel },
     ]
 
     context.textAlign = 'left'
-    const firstColumnX = 220
-    const secondColumnX = 585
-    const firstRowY = 1056
-    const rowGap = 82
+    const firstColumnX = 195
+    const secondColumnX = 565
+    const firstRowY = 1112
+    const rowGap = 70
+    const columnWidth = 330
 
     lines.forEach((line, index) => {
       const isSecondColumn = index % 2 === 1
       const columnX = isSecondColumn ? secondColumnX : firstColumnX
       const rowY = firstRowY + Math.floor(index / 2) * rowGap
 
-      context.font = '700 20px Arial'
+      context.font = '700 18px Arial'
       context.fillStyle = '#ed6216'
       context.fillText(line.label.toUpperCase(), columnX, rowY)
-      context.font = '700 25px Arial'
       context.fillStyle = '#05234c'
-      drawWrappedText(context, line.value, columnX, rowY + 32, 310, 30, 2)
+      setResponsiveFont(context, line.value, columnWidth, 700, 22, 17)
+      drawWrappedText(context, line.value, columnX, rowY + 28, columnWidth, 26, 2)
     })
 
     return new Promise<Blob>((resolve, reject) => {

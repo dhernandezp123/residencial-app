@@ -32,6 +32,7 @@ type VisitFormData = {
 type CreatedVisit = {
   visitor_name: string
   access_mode: AccessMode
+  created_at: string
   valid_until: string
   shareUrl: string
   qrDataUrl: string
@@ -174,7 +175,7 @@ export default function NewVisitPage() {
         status: 'active',
         notes: formData.notes.trim() || null,
       })
-      .select('id,visitor_name,valid_until')
+      .select('id,visitor_name,created_at,valid_until')
       .single()
 
     if (visitError || !visitData) {
@@ -225,6 +226,7 @@ export default function NewVisitPage() {
     setCreatedVisit({
       visitor_name: visitData.visitor_name,
       access_mode: formData.access_mode,
+      created_at: visitData.created_at,
       valid_until: visitData.valid_until,
       shareUrl,
       qrDataUrl,
@@ -367,6 +369,7 @@ export default function NewVisitPage() {
               visitorName={createdVisit.visitor_name}
               announcedBy={createdVisit.announcedBy}
               accessMode={createdVisit.access_mode}
+              createdAt={createdVisit.created_at}
               validUntil={createdVisit.valid_until}
               residentialName={createdVisit.residentialName}
               houseLabel={createdVisit.houseLabel}
