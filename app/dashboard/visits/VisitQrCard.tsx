@@ -189,7 +189,7 @@ export function VisitQrCard({
     context.font = '700 26px Arial'
     const badgeWidth = Math.max(275, context.measureText(badgeText).width + 58)
     const badgeX = (cardWidth - badgeWidth) / 2
-    const badgeY = 960
+    const badgeY = 920
     context.fillStyle = '#ed6216'
     context.beginPath()
     context.roundRect(badgeX, badgeY, badgeWidth, 50, 25)
@@ -202,7 +202,7 @@ export function VisitQrCard({
     context.fillText(
       'Presentar este código al ingresar y salir.',
       cardWidth / 2,
-      1048,
+      1008,
     )
 
     const lines: CardLine[] = [
@@ -216,7 +216,7 @@ export function VisitQrCard({
     context.textAlign = 'left'
     const firstColumnX = 195
     const secondColumnX = 565
-    const firstRowY = 1060
+    const firstRowY = 1045
     const rowGap = 70
     const columnWidth = 330
 
