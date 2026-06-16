@@ -68,6 +68,16 @@ type OpenEntry = {
   exit_time: string | null
 }
 
+type EntryPhotoKind = 'identity' | 'vehicle' | 'plate'
+
+type EntryPhotoFiles = Record<EntryPhotoKind, File | null>
+
+type EntryPhotoUpload = {
+  kind: EntryPhotoKind
+  bucket: string
+  file: File | null
+}
+
 type ScanResult =
   | {
       status: 'loading'
@@ -123,6 +133,11 @@ function GateScanContent() {
   const [openEntry, setOpenEntry] = useState<OpenEntry | null>(null)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [startingCamera, setStartingCamera] = useState(false)
+  const [entryPhotoFiles, setEntryPhotoFiles] = useState<EntryPhotoFiles>({
+    identity: null,
+    vehicle: null,
+    plate: null,
+  })
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const scannedRef = useRef(false)
 
@@ -296,6 +311,11 @@ function GateScanContent() {
     setResult({ status: 'loading' })
     setRegisteredEntry(null)
     setOpenEntry(null)
+    setEntryPhotoFiles({
+      identity: null,
+      vehicle: null,
+      plate: null,
+    })
 
     if (!token) {
       setErrorResult('QR no encontrado')
@@ -416,6 +436,58 @@ function GateScanContent() {
     signal('scan_success')
   }
 
+  const handleEntryPhotoChange = (
+    kind: EntryPhotoKind,
+    fileList: FileList | null,
+  ) => {
+    const selectedFile = fileList?.[0] || null
+
+    setEntryPhotoFiles((currentFiles) => ({
+      ...currentFiles,
+      [kind]: selectedFile,
+    }))
+  }
+
+  const buildEntryPhotoPath = (
+    resultData: Extract<ScanResult, { status: 'success' }>,
+    kind: EntryPhotoKind,
+    file: File,
+  ) => {
+    const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+    const safeExtension = extension.replace(/[^a-z0-9]/g, '') || 'jpg'
+    const uniqueId =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+    return `${resultData.visit.residential_id}/${resultData.visit.id}/${kind}-${uniqueId}.${safeExtension}`
+  }
+
+  const uploadEntryPhoto = async ({
+    kind,
+    bucket,
+    file,
+  }: EntryPhotoUpload) => {
+    if (!file || result.status !== 'success') {
+      return null
+    }
+
+    const path = buildEntryPhotoPath(result, kind, file)
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(path, file, {
+        cacheControl: '3600',
+        contentType: file.type || 'image/jpeg',
+        upsert: false,
+      })
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    return data.path
+  }
+
   const handleRegisterAccess = async () => {
     if (result.status !== 'success') {
       return
@@ -491,6 +563,37 @@ function GateScanContent() {
       return
     }
 
+    let identityPhotoUrl: string | null = null
+    let vehiclePhotoUrl: string | null = null
+    let platePhotoUrl: string | null = null
+
+    try {
+      identityPhotoUrl = await uploadEntryPhoto({
+        kind: 'identity',
+        bucket: 'visitor-identities',
+        file: entryPhotoFiles.identity,
+      })
+      vehiclePhotoUrl = await uploadEntryPhoto({
+        kind: 'vehicle',
+        bucket: 'visitor-vehicles',
+        file: entryPhotoFiles.vehicle,
+      })
+      platePhotoUrl = await uploadEntryPhoto({
+        kind: 'plate',
+        bucket: 'visitor-plates',
+        file: entryPhotoFiles.plate,
+      })
+    } catch (error) {
+      console.error('Error uploading entry photo:', error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'No se pudo subir la evidencia fotogrÃ¡fica',
+      )
+      setSavingEntry(false)
+      return
+    }
+
     const entryPayload = {
       residential_id: result.visit.residential_id,
       visit_id: result.visit.id,
@@ -499,6 +602,9 @@ function GateScanContent() {
       guard_id: guardProfile.id,
       entry_status: 'allowed',
       notes: null,
+      identity_photo_url: identityPhotoUrl,
+      vehicle_photo_url: vehiclePhotoUrl,
+      plate_photo_url: platePhotoUrl,
     }
     console.log('ENTRY PAYLOAD:', entryPayload)
 
@@ -799,6 +905,41 @@ function GateScanContent() {
           )}
         </section>
 
+        {!openEntry && (
+          <section className="space-y-4 rounded-2xl bg-white p-6 text-slate-950 shadow-xl">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                Evidencia fotogrÃ¡fica
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-600">
+                Capturas opcionales tomadas por garita.
+              </p>
+            </div>
+            <EntryPhotoInput
+              id="identity-photo"
+              label="Foto identidad"
+              file={entryPhotoFiles.identity}
+              onChange={(fileList) =>
+                handleEntryPhotoChange('identity', fileList)
+              }
+            />
+            <EntryPhotoInput
+              id="vehicle-photo"
+              label="Foto vehÃ­culo"
+              file={entryPhotoFiles.vehicle}
+              onChange={(fileList) =>
+                handleEntryPhotoChange('vehicle', fileList)
+              }
+            />
+            <EntryPhotoInput
+              id="plate-photo"
+              label="Foto placa"
+              file={entryPhotoFiles.plate}
+              onChange={(fileList) => handleEntryPhotoChange('plate', fileList)}
+            />
+          </section>
+        )}
+
         <button
           type="button"
           onClick={handleRegisterAccess}
@@ -829,6 +970,43 @@ function Detail({ label, value }: { label: string; value: string }) {
         {label}
       </p>
       <p className="mt-1 text-xl font-black text-slate-950">{value}</p>
+    </div>
+  )
+}
+
+function EntryPhotoInput({
+  id,
+  label,
+  file,
+  onChange,
+}: {
+  id: string
+  label: string
+  file: File | null
+  onChange: (fileList: FileList | null) => void
+}) {
+  return (
+    <div className="rounded-2xl bg-slate-50 p-4">
+      <label
+        htmlFor={id}
+        className="block text-sm font-black text-slate-950"
+      >
+        {label}
+      </label>
+      <p className="mt-1 text-sm font-semibold text-slate-500">Opcional</p>
+      <input
+        id={id}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={(event) => onChange(event.target.files)}
+        className="mt-3 block w-full text-sm font-semibold text-slate-700 file:mr-3 file:min-h-12 file:rounded-xl file:border-0 file:bg-slate-950 file:px-4 file:py-3 file:font-black file:text-white"
+      />
+      {file && (
+        <p className="mt-2 break-words text-sm font-semibold text-slate-600">
+          {file.name}
+        </p>
+      )}
     </div>
   )
 }
