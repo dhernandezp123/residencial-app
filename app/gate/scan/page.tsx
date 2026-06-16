@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { Html5Qrcode } from 'html5-qrcode'
@@ -78,6 +78,8 @@ type EntryPhotoUpload = {
   file: File | null
 }
 
+const maxEntryPhotoSizeBytes = 8 * 1024 * 1024
+
 type ScanResult =
   | {
       status: 'loading'
@@ -130,9 +132,9 @@ function GateScanContent() {
   const [registeredEntry, setRegisteredEntry] = useState<RegisteredEntry | null>(
     null
   )
-  const [openEntry, setOpenEntry] = useState<OpenEntry | null>(null)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [startingCamera, setStartingCamera] = useState(false)
+  const [confirmingExit, setConfirmingExit] = useState(false)
   const [entryPhotoFiles, setEntryPhotoFiles] = useState<EntryPhotoFiles>({
     identity: null,
     vehicle: null,
@@ -141,12 +143,13 @@ function GateScanContent() {
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const scannedRef = useRef(false)
 
-  const vibrate = (pattern: number | number[]) => {
+  const vibrate = useCallback((pattern: number | number[]) => {
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       navigator.vibrate(pattern)
     }
-  }
-  const playBeep = (durationMs: number = 500, frequency: number = 880) => {
+  }, [])
+
+  const playBeep = useCallback((durationMs: number = 500, frequency: number = 880) => {
     try {
       const AudioContextClass =
         window.AudioContext ||
@@ -190,7 +193,7 @@ function GateScanContent() {
     } catch (error) {
       console.error('Error playing QR beep:', error)
     }
-  }
+  }, [])
 
   type SignalType =
     | 'scan_success'
@@ -198,7 +201,7 @@ function GateScanContent() {
     | 'entry_success'
     | 'exit_success'
 
-  function signal(type: SignalType) {
+  const signal = useCallback((type: SignalType) => {
     switch (type) {
       case 'scan_success':
         playBeep(500, 880)
@@ -217,12 +220,12 @@ function GateScanContent() {
         vibrate([500])
         break
     }
-  }
+  }, [playBeep, vibrate])
 
-  const setErrorResult = (title: string) => {
+  const setErrorResult = useCallback((title: string) => {
     setResult({ status: 'error', title })
     signal('scan_error')
-  }
+  }, [signal])
 
   const extractTokenFromQr = (decodedText: string) => {
     const trimmedText = decodedText.trim()
@@ -240,7 +243,7 @@ function GateScanContent() {
     return trimmedText
   }
 
-  const stopScanner = async () => {
+  const stopScanner = useCallback(async () => {
     if (!scannerRef.current) {
       return
     }
@@ -254,7 +257,7 @@ function GateScanContent() {
       scannerRef.current = null
       setCameraOpen(false)
     }
-  }
+  }, [])
 
   const handleOpenCamera = async () => {
     setStartingCamera(true)
@@ -307,10 +310,10 @@ function GateScanContent() {
     }
   }
 
-  const validateToken = async () => {
+  const validateToken = useCallback(async () => {
     setResult({ status: 'loading' })
     setRegisteredEntry(null)
-    setOpenEntry(null)
+    setConfirmingExit(false)
     setEntryPhotoFiles({
       identity: null,
       vehicle: null,
@@ -422,7 +425,6 @@ function GateScanContent() {
 
     const currentOpenEntry = (openEntryData as OpenEntry | null) || null
     console.log('OPEN ENTRY:', currentOpenEntry, openEntryError)
-    setOpenEntry(currentOpenEntry)
 
     setResult({
       status: 'success',
@@ -434,13 +436,22 @@ function GateScanContent() {
       openEntry: currentOpenEntry,
     })
     signal('scan_success')
-  }
+  }, [setErrorResult, signal, token])
 
   const handleEntryPhotoChange = (
     kind: EntryPhotoKind,
     fileList: FileList | null,
   ) => {
     const selectedFile = fileList?.[0] || null
+
+    if (selectedFile && selectedFile.size > maxEntryPhotoSizeBytes) {
+      toast.error('La foto debe pesar menos de 8 MB')
+      setEntryPhotoFiles((currentFiles) => ({
+        ...currentFiles,
+        [kind]: null,
+      }))
+      return
+    }
 
     setEntryPhotoFiles((currentFiles) => ({
       ...currentFiles,
@@ -489,7 +500,15 @@ function GateScanContent() {
   }
 
   const handleRegisterAccess = async () => {
-    if (result.status !== 'success') {
+    if (savingEntry || result.status !== 'success') {
+      return
+    }
+
+    const currentOpenEntry = result.openEntry
+
+    if (currentOpenEntry && !confirmingExit) {
+      setConfirmingExit(true)
+      toast.message('Confirma la salida tocando el botón nuevamente')
       return
     }
 
@@ -537,11 +556,11 @@ function GateScanContent() {
 
     const registeredAt = new Date().toISOString()
 
-    if (openEntry) {
+    if (currentOpenEntry) {
       const { error: exitError } = await supabase
         .from('visitor_entries')
         .update({ exit_time: registeredAt })
-        .eq('id', openEntry.id)
+        .eq('id', currentOpenEntry.id)
 
       if (exitError) {
         console.error('Error registering visitor exit:', exitError)
@@ -555,7 +574,7 @@ function GateScanContent() {
         visitor_name: result.visit.visitor_name,
         house_label: `${result.house.block}-${result.house.house_number}`,
         registered_time: registeredAt,
-        entry_time: openEntry.entry_time,
+        entry_time: currentOpenEntry.entry_time,
       })
       setSavingEntry(false)
       toast.success('Salida registrada correctamente')
@@ -588,7 +607,7 @@ function GateScanContent() {
       toast.error(
         error instanceof Error
           ? error.message
-          : 'No se pudo subir la evidencia fotogrÃ¡fica',
+          : 'No se pudo subir la evidencia fotográfica',
       )
       setSavingEntry(false)
       return
@@ -663,17 +682,22 @@ function GateScanContent() {
   }
 
   useEffect(() => {
-    if (token) {
-      void Promise.resolve().then(validateToken)
+    if (!token) {
+      return
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token])
+
+    const validationTimer = window.setTimeout(() => {
+      void validateToken()
+    }, 0)
+
+    return () => window.clearTimeout(validationTimer)
+  }, [token, validateToken])
 
   useEffect(() => {
     return () => {
       void stopScanner()
     }
-  }, [])
+  }, [stopScanner])
 
   if (!token) {
     return (
@@ -828,6 +852,7 @@ function GateScanContent() {
     )
   }
 
+  const openEntry = result.openEntry
   const validUntil = new Date(result.visit.valid_until)
   const validUntilLabel = new Intl.DateTimeFormat('es-HN', {
     day: 'numeric',
@@ -905,11 +930,22 @@ function GateScanContent() {
           )}
         </section>
 
+        {openEntry && confirmingExit && (
+          <section className="rounded-2xl bg-orange-100 p-5 text-orange-950 shadow-xl">
+            <p className="text-sm font-black uppercase tracking-wide">
+              Confirmar salida
+            </p>
+            <p className="mt-2 text-base font-semibold">
+              Toca nuevamente el botón para registrar la salida del visitante.
+            </p>
+          </section>
+        )}
+
         {!openEntry && (
           <section className="space-y-4 rounded-2xl bg-white p-6 text-slate-950 shadow-xl">
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                Evidencia fotogrÃ¡fica
+                Evidencia fotográfica
               </p>
               <p className="mt-1 text-sm font-semibold text-slate-600">
                 Capturas opcionales tomadas por garita.
@@ -925,7 +961,7 @@ function GateScanContent() {
             />
             <EntryPhotoInput
               id="vehicle-photo"
-              label="Foto vehÃ­culo"
+              label="Foto vehículo"
               file={entryPhotoFiles.vehicle}
               onChange={(fileList) =>
                 handleEntryPhotoChange('vehicle', fileList)
@@ -944,12 +980,18 @@ function GateScanContent() {
           type="button"
           onClick={handleRegisterAccess}
           disabled={savingEntry}
-          className="min-h-14 w-full rounded-2xl bg-white px-4 py-4 text-lg font-black text-green-800 shadow-xl disabled:opacity-60 active:scale-[0.99]"
+          className={`min-h-14 w-full rounded-2xl px-4 py-4 text-lg font-black shadow-xl disabled:opacity-60 active:scale-[0.99] ${
+            confirmingExit
+              ? 'bg-orange-500 text-orange-950'
+              : 'bg-white text-green-800'
+          }`}
         >
           {savingEntry
             ? 'Registrando...'
             : openEntry
-              ? 'Registrar salida'
+              ? confirmingExit
+                ? 'Confirmar salida'
+                : 'Registrar salida'
               : 'Registrar ingreso'}
         </button>
         <Link
