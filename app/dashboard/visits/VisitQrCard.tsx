@@ -179,17 +179,17 @@ export function VisitQrCard({
     context.textAlign = 'center'
     context.font = '700 22px Arial'
     context.fillStyle = '#ed6216'
-    context.fillText('VISITANTE', cardWidth / 2, 825)
+    context.fillText('VISITANTE', cardWidth / 2, 805)
 
     context.fillStyle = '#05234c'
     setResponsiveFont(context, displayVisitorName, 720, 700, 44, 31)
-    drawWrappedText(context, displayVisitorName, cardWidth / 2, 875, 720, 50, 2)
+    drawWrappedText(context, displayVisitorName, cardWidth / 2, 855, 720, 50, 2)
 
     const badgeText = accessModeLabels[accessMode]
     context.font = '700 26px Arial'
     const badgeWidth = Math.max(275, context.measureText(badgeText).width + 58)
     const badgeX = (cardWidth - badgeWidth) / 2
-    const badgeY = 920
+    const badgeY = 895
     context.fillStyle = '#ed6216'
     context.beginPath()
     context.roundRect(badgeX, badgeY, badgeWidth, 50, 25)
@@ -202,7 +202,7 @@ export function VisitQrCard({
     context.fillText(
       'Presentar este código al ingresar y salir.',
       cardWidth / 2,
-      1008,
+      975,
     )
 
     const lines: CardLine[] = [
@@ -216,7 +216,7 @@ export function VisitQrCard({
     context.textAlign = 'left'
     const firstColumnX = 195
     const secondColumnX = 565
-    const firstRowY = 1045
+    const firstRowY = 990
     const rowGap = 70
     const columnWidth = 330
 
