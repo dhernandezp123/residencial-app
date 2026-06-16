@@ -216,7 +216,7 @@ export function VisitQrCard({
     context.textAlign = 'left'
     const firstColumnX = 195
     const secondColumnX = 565
-    const firstRowY = 1112
+    const firstRowY = 1060
     const rowGap = 70
     const columnWidth = 330
 
