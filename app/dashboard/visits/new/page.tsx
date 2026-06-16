@@ -9,6 +9,8 @@ import { VisitQrCard } from '../VisitQrCard'
 
 type Profile = {
   id: string
+  first_name: string
+  last_name: string
   residential_id: string | null
   house_id: string | null
   role: 'super_admin' | 'admin' | 'resident' | 'guard'
@@ -29,9 +31,13 @@ type VisitFormData = {
 
 type CreatedVisit = {
   visitor_name: string
+  access_mode: AccessMode
   valid_until: string
   shareUrl: string
   qrDataUrl: string
+  announcedBy: string
+  residentialName: string
+  houseLabel: string
 }
 
 const initialFormData: VisitFormData = {
@@ -61,6 +67,8 @@ export default function NewVisitPage() {
   const [formData, setFormData] = useState<VisitFormData>(initialFormData)
   const [createdVisit, setCreatedVisit] = useState<CreatedVisit | null>(null)
   const [accessLabel, setAccessLabel] = useState('tu residencial/casa')
+  const [residentialName, setResidentialName] = useState('Residencial')
+  const [houseLabel, setHouseLabel] = useState('Casa')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -77,7 +85,7 @@ export default function NewVisitPage() {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('id,residential_id,house_id,role,status')
+      .select('id,first_name,last_name,residential_id,house_id,role,status')
       .eq('user_id', sessionData.session.user.id)
       .single()
 
@@ -114,10 +122,13 @@ export default function NewVisitPage() {
             residentialError,
           )
           setAccessLabel(`Casa ${houseData.block}-${houseData.house_number}`)
+          setHouseLabel(`Casa ${houseData.block}-${houseData.house_number}`)
         } else {
           setAccessLabel(
             `${residentialData.name} / Casa ${houseData.block}-${houseData.house_number}`,
           )
+          setResidentialName(residentialData.name)
+          setHouseLabel(`Casa ${houseData.block}-${houseData.house_number}`)
         }
       }
     }
@@ -195,7 +206,7 @@ export default function NewVisitPage() {
     let qrDataUrl = ''
 
     try {
-      qrDataUrl = await QRCode.toDataURL(tokenData.token, {
+      qrDataUrl = await QRCode.toDataURL(shareUrl, {
         width: 320,
         margin: 2,
         errorCorrectionLevel: 'M',
@@ -213,9 +224,13 @@ export default function NewVisitPage() {
 
     setCreatedVisit({
       visitor_name: visitData.visitor_name,
+      access_mode: formData.access_mode,
       valid_until: visitData.valid_until,
       shareUrl,
       qrDataUrl,
+      announcedBy: `${profile.first_name} ${profile.last_name}`,
+      residentialName,
+      houseLabel,
     })
     setFormData(initialFormData)
     setSaving(false)
@@ -348,7 +363,13 @@ export default function NewVisitPage() {
           <section className="space-y-3 rounded-2xl bg-white p-6 shadow-sm">
             <VisitQrCard
               qrDataUrl={createdVisit.qrDataUrl}
+              qrScanUrl={createdVisit.shareUrl}
               visitorName={createdVisit.visitor_name}
+              announcedBy={createdVisit.announcedBy}
+              accessMode={createdVisit.access_mode}
+              validUntil={createdVisit.valid_until}
+              residentialName={createdVisit.residentialName}
+              houseLabel={createdVisit.houseLabel}
             />
 
             <button

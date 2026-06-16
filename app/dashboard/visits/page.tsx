@@ -9,6 +9,10 @@ import { VisitQrCard } from './VisitQrCard'
 
 type Profile = {
   id: string
+  first_name: string
+  last_name: string
+  residential_id: string | null
+  house_id: string | null
   role: 'super_admin' | 'admin' | 'resident' | 'guard'
   status: 'pending' | 'approved' | 'rejected' | 'inactive'
 }
@@ -16,11 +20,13 @@ type Profile = {
 type VisitStatus = 'active' | 'used' | 'expired' | 'cancelled'
 
 type VisitType = 'family' | 'delivery' | 'service' | 'provider' | 'other'
+type AccessMode = 'single_use' | 'multi_use'
 
 type Visit = {
   id: string
   visitor_name: string
   visit_type: VisitType
+  access_mode: AccessMode
   valid_until: string
   status: VisitStatus
   created_at: string
@@ -63,6 +69,8 @@ const statusStyles: Record<VisitStatus, string> = {
 export default function VisitsPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [visits, setVisits] = useState<VisitWithToken[]>([])
+  const [residentialName, setResidentialName] = useState('Residencial')
+  const [houseLabel, setHouseLabel] = useState('Casa')
   const [loading, setLoading] = useState(true)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
   const [expandedVisitId, setExpandedVisitId] = useState<string | null>(null)
@@ -83,7 +91,7 @@ export default function VisitsPage() {
 
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .select('id,role,status')
+      .select('id,first_name,last_name,residential_id,house_id,role,status')
       .eq('user_id', sessionData.session.user.id)
       .single()
 
@@ -96,6 +104,33 @@ export default function VisitsPage() {
 
     setProfile(profileData)
 
+    if (profileData.house_id) {
+      const { data: houseData, error: houseError } = await supabase
+        .from('houses')
+        .select('residential_id,block,house_number')
+        .eq('id', profileData.house_id)
+        .single()
+
+      if (houseError || !houseData) {
+        console.error('Error loading resident house:', houseError)
+      } else {
+        setHouseLabel(`Casa ${houseData.block}-${houseData.house_number}`)
+
+        const { data: residentialData, error: residentialError } =
+          await supabase
+            .from('residentials')
+            .select('name')
+            .eq('id', houseData.residential_id)
+            .single()
+
+        if (residentialError || !residentialData) {
+          console.error('Error loading resident residential:', residentialError)
+        } else {
+          setResidentialName(residentialData.name)
+        }
+      }
+    }
+
     if (
       profileData.role !== 'resident' ||
       profileData.status !== 'approved'
@@ -107,7 +142,7 @@ export default function VisitsPage() {
 
     const { data: visitsData, error: visitsError } = await supabase
       .from('visits')
-      .select('id,visitor_name,visit_type,valid_until,status,created_at')
+      .select('id,visitor_name,visit_type,access_mode,valid_until,status,created_at')
       .eq('created_by', profileData.id)
       .order('created_at', { ascending: false })
 
@@ -179,15 +214,18 @@ export default function VisitsPage() {
 
     if (!qrImagesByVisitId[visit.id]) {
       try {
-        const qrDataUrl = await QRCode.toDataURL(visit.qrToken.token, {
-          width: 320,
-          margin: 2,
-          errorCorrectionLevel: 'M',
-          color: {
-            dark: '#020617',
-            light: '#ffffff',
+        const qrDataUrl = await QRCode.toDataURL(
+          getShareUrl(visit.qrToken.token),
+          {
+            width: 320,
+            margin: 2,
+            errorCorrectionLevel: 'M',
+            color: {
+              dark: '#020617',
+              light: '#ffffff',
+            },
           },
-        })
+        )
 
         setQrImagesByVisitId((currentImages) => ({
           ...currentImages,
@@ -444,10 +482,20 @@ export default function VisitsPage() {
                     </button>
                   </div>
 
-                  {isExpanded && qrDataUrl && (
+                  {isExpanded && qrDataUrl && visit.qrToken && (
                     <VisitQrCard
                       qrDataUrl={qrDataUrl}
+                      qrScanUrl={getShareUrl(visit.qrToken.token)}
                       visitorName={visit.visitor_name}
+                      announcedBy={
+                        profile
+                          ? `${profile.first_name} ${profile.last_name}`
+                          : 'Residente'
+                      }
+                      accessMode={visit.access_mode}
+                      validUntil={visit.valid_until}
+                      residentialName={residentialName}
+                      houseLabel={houseLabel}
                     />
                   )}
                 </article>
