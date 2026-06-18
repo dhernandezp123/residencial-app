@@ -288,7 +288,7 @@ function DashboardButton({
     </div>
   )
 
-  const baseClass = `w-full rounded-2xl p-4 shadow-sm active:scale-[0.99] transition-transform min-h-[4.5rem] ${
+  const baseClass = `block w-full rounded-2xl p-4 shadow-sm active:scale-[0.99] transition-transform min-h-[4.5rem] ${
     comingSoon
       ? 'bg-slate-200 dark:bg-slate-700 cursor-default opacity-60'
       : highlight
