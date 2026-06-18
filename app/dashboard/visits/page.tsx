@@ -6,6 +6,7 @@ import QRCode from 'qrcode'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { VisitQrCard } from './VisitQrCard'
+import { PageHeader } from '@/app/components/PageHeader'
 
 type Profile = {
   id: string
@@ -44,6 +45,8 @@ type VisitWithToken = Visit & {
   qrToken: QrToken | null
 }
 
+const PAGE_SIZE = 10
+
 const visitTypeLabels: Record<VisitType, string> = {
   family: 'Familiar',
   delivery: 'Delivery',
@@ -73,7 +76,11 @@ export default function VisitsPage() {
   const [houseLabel, setHouseLabel] = useState('Casa')
   const [loading, setLoading] = useState(true)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
+  const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null)
   const [expandedVisitId, setExpandedVisitId] = useState<string | null>(null)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [visitsOffset, setVisitsOffset] = useState(0)
   const [qrImagesByVisitId, setQrImagesByVisitId] = useState<
     Record<string, string>
   >({})
@@ -145,6 +152,7 @@ export default function VisitsPage() {
       .select('id,visitor_name,visit_type,access_mode,valid_until,status,created_at')
       .eq('created_by', profileData.id)
       .order('created_at', { ascending: false })
+      .range(0, PAGE_SIZE)
 
     if (visitsError) {
       console.error('Error loading visits:', visitsError)
@@ -153,7 +161,10 @@ export default function VisitsPage() {
       return
     }
 
-    const loadedVisits = (visitsData || []) as Visit[]
+    const allFetched = (visitsData || []) as Visit[]
+    const loadedVisits = allFetched.slice(0, PAGE_SIZE)
+    setHasMore(allFetched.length > PAGE_SIZE)
+    setVisitsOffset(PAGE_SIZE)
     const visitIds = loadedVisits.map((visit) => visit.id)
     let tokensByVisitId: Record<string, QrToken> = {}
 
@@ -192,6 +203,53 @@ export default function VisitsPage() {
   useEffect(() => {
     void Promise.resolve().then(loadVisits)
   }, [loadVisits])
+
+  const handleLoadMore = async () => {
+    if (!profile || loadingMore) return
+    setLoadingMore(true)
+
+    const { data, error } = await supabase
+      .from('visits')
+      .select('id,visitor_name,visit_type,access_mode,valid_until,status,created_at')
+      .eq('created_by', profile.id)
+      .order('created_at', { ascending: false })
+      .range(visitsOffset, visitsOffset + PAGE_SIZE)
+
+    if (error) {
+      toast.error('No se pudieron cargar más visitas')
+      setLoadingMore(false)
+      return
+    }
+
+    const newVisits = (data || []) as Visit[]
+    const page = newVisits.slice(0, PAGE_SIZE)
+
+    const newVisitIds = page.map((v) => v.id)
+    let newTokensByVisitId: Record<string, QrToken> = {}
+
+    if (newVisitIds.length > 0) {
+      const { data: tokensData } = await supabase
+        .from('qr_tokens')
+        .select('id,visit_id,token,status,expires_at,created_at')
+        .in('visit_id', newVisitIds)
+        .order('created_at', { ascending: false })
+
+      newTokensByVisitId = ((tokensData || []) as QrToken[]).reduce<
+        Record<string, QrToken>
+      >((acc, token) => {
+        if (!acc[token.visit_id]) acc[token.visit_id] = token
+        return acc
+      }, {})
+    }
+
+    setVisits((prev) => [
+      ...prev,
+      ...page.map((v) => ({ ...v, qrToken: newTokensByVisitId[v.id] || null })),
+    ])
+    setHasMore(newVisits.length > PAGE_SIZE)
+    setVisitsOffset((prev) => prev + PAGE_SIZE)
+    setLoadingMore(false)
+  }
 
   const canViewVisits = useMemo(
     () => profile?.role === 'resident' && profile.status === 'approved',
@@ -273,6 +331,13 @@ export default function VisitsPage() {
       return
     }
 
+    if (cancelConfirmId !== visit.id) {
+      setCancelConfirmId(visit.id)
+      toast.warning('Toca nuevamente para confirmar la cancelación')
+      return
+    }
+
+    setCancelConfirmId(null)
     setActionLoadingId(visit.id)
 
     const { error: visitError } = await supabase
@@ -303,6 +368,7 @@ export default function VisitsPage() {
 
     toast.success('Visita cancelada correctamente')
     setExpandedVisitId(null)
+    setCancelConfirmId(null)
     setQrImagesByVisitId((currentImages) => {
       const nextImages = { ...currentImages }
       delete nextImages[visit.id]
@@ -316,21 +382,21 @@ export default function VisitsPage() {
     return (
       <main className="min-h-screen bg-slate-100 px-5 py-6">
         <div className="mx-auto max-w-sm space-y-5">
-          <div className="h-5 w-28 rounded-full bg-slate-200" />
+          <div className="h-5 w-28 animate-pulse rounded-full bg-slate-200" />
           <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <div className="h-6 w-36 rounded-full bg-slate-200" />
-            <div className="mt-4 h-4 w-full rounded-full bg-slate-200" />
-            <div className="mt-3 h-4 w-3/4 rounded-full bg-slate-200" />
+            <div className="h-6 w-36 animate-pulse rounded-full bg-slate-200" />
+            <div className="mt-4 h-4 w-full animate-pulse rounded-full bg-slate-200" />
+            <div className="mt-3 h-4 w-3/4 animate-pulse rounded-full bg-slate-200" />
             <div className="mt-5 grid grid-cols-3 gap-2">
-              <div className="h-12 rounded-2xl bg-slate-200" />
-              <div className="h-12 rounded-2xl bg-slate-200" />
-              <div className="h-12 rounded-2xl bg-slate-200" />
+              <div className="h-12 animate-pulse rounded-2xl bg-slate-200" />
+              <div className="h-12 animate-pulse rounded-2xl bg-slate-200" />
+              <div className="h-12 animate-pulse rounded-2xl bg-slate-200" />
             </div>
           </section>
           <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <div className="h-6 w-40 rounded-full bg-slate-200" />
-            <div className="mt-4 h-4 w-full rounded-full bg-slate-200" />
-            <div className="mt-3 h-4 w-2/3 rounded-full bg-slate-200" />
+            <div className="h-6 w-40 animate-pulse rounded-full bg-slate-200" />
+            <div className="mt-4 h-4 w-full animate-pulse rounded-full bg-slate-200" />
+            <div className="mt-3 h-4 w-2/3 animate-pulse rounded-full bg-slate-200" />
           </section>
         </div>
       </main>
@@ -363,26 +429,14 @@ export default function VisitsPage() {
   return (
     <main className="min-h-screen bg-slate-100 px-5 py-6">
       <div className="mx-auto max-w-sm space-y-5">
-        <Link
-          href="/dashboard"
-          className="block text-sm font-semibold text-slate-600"
-        >
-          ← Volver al dashboard
-        </Link>
+        <PageHeader title="Mis visitas" subtitle="Visitas activas e historial" />
 
-        <header className="rounded-2xl bg-slate-950 p-6 text-white shadow-lg">
-          <p className="text-sm text-slate-300">Residente</p>
-          <h1 className="mt-1 text-2xl font-bold">Mis visitas</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-300">
-            Revisa tus accesos, comparte el QR o cancela visitas activas.
-          </p>
-          <Link
-            href="/dashboard/visits/new"
-            className="mt-5 block min-h-12 rounded-2xl bg-white px-4 py-3 text-center font-semibold text-slate-950 active:scale-[0.99]"
-          >
-            Nueva visita
-          </Link>
-        </header>
+        <Link
+          href="/dashboard/visits/new"
+          className="block min-h-14 w-full rounded-2xl bg-slate-950 px-4 py-4 text-center text-lg font-bold text-white shadow-sm active:scale-[0.99]"
+        >
+          + Nueva visita
+        </Link>
 
         {visits.length === 0 ? (
           <section className="rounded-2xl bg-white p-6 text-center shadow-sm">
@@ -394,15 +448,13 @@ export default function VisitsPage() {
             </p>
           </section>
         ) : (
-          <section className="space-y-4">
+          <section className="space-y-4" aria-label="Lista de visitas">
             {visits.map((visit) => {
               const expiresAt = new Date(visit.valid_until)
-              const expiresDate = new Intl.DateTimeFormat('es-HN', {
+              const expiresLabel = new Intl.DateTimeFormat('es-HN', {
                 day: 'numeric',
                 month: 'short',
                 year: 'numeric',
-              }).format(expiresAt)
-              const expiresTime = new Intl.DateTimeFormat('en-US', {
                 hour: 'numeric',
                 minute: '2-digit',
               }).format(expiresAt)
@@ -431,7 +483,7 @@ export default function VisitsPage() {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-2xl bg-slate-50 p-4">
                       <p className="text-xs font-semibold uppercase text-slate-500">
                         Tipo
@@ -442,15 +494,20 @@ export default function VisitsPage() {
                     </div>
                     <div className="rounded-2xl bg-slate-50 p-4">
                       <p className="text-xs font-semibold uppercase text-slate-500">
-                        Expira
+                        Acceso
                       </p>
                       <p className="mt-1 text-sm font-semibold text-slate-900">
-                        {expiresDate}
-                      </p>
-                      <p className="text-sm font-semibold text-slate-900">
-                        {expiresTime}
+                        {visit.access_mode === 'single_use' ? 'Uso único' : 'Múltiple'}
                       </p>
                     </div>
+                  </div>
+                  <div className="rounded-2xl bg-slate-50 p-4">
+                    <p className="text-xs font-semibold uppercase text-slate-500">
+                      Expira
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                      {expiresLabel}
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-1 gap-2">
@@ -474,11 +531,17 @@ export default function VisitsPage() {
                       type="button"
                       onClick={() => void handleCancelVisit(visit)}
                       disabled={!isActive || actionLoadingId === visit.id}
-                      className="min-h-12 w-full rounded-2xl border border-red-200 px-4 py-3 font-semibold text-red-700 disabled:opacity-50 active:scale-[0.99]"
+                      className={`min-h-12 w-full rounded-2xl px-4 py-3 font-semibold disabled:opacity-50 active:scale-[0.99] ${
+                        cancelConfirmId === visit.id
+                          ? 'bg-red-600 text-white'
+                          : 'border border-red-200 text-red-700'
+                      }`}
                     >
                       {actionLoadingId === visit.id
                         ? 'Cancelando...'
-                        : 'Cancelar visita'}
+                        : cancelConfirmId === visit.id
+                          ? 'Confirmar cancelación'
+                          : 'Cancelar visita'}
                     </button>
                   </div>
 
@@ -502,6 +565,17 @@ export default function VisitsPage() {
                 </article>
               )
             })}
+
+            {hasMore && (
+              <button
+                type="button"
+                onClick={() => void handleLoadMore()}
+                disabled={loadingMore}
+                className="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-700 shadow-sm disabled:opacity-60 active:scale-[0.99]"
+              >
+                {loadingMore ? 'Cargando...' : 'Cargar más visitas'}
+              </button>
+            )}
           </section>
         )}
       </div>

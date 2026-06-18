@@ -6,6 +6,7 @@ import QRCode from 'qrcode'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { VisitQrCard } from '../VisitQrCard'
+import { PageHeader } from '@/app/components/PageHeader'
 
 type Profile = {
   id: string
@@ -25,7 +26,8 @@ type VisitFormData = {
   visitor_identity: string
   visit_type: VisitType
   access_mode: AccessMode
-  valid_until: string
+  valid_date: string
+  valid_time: string
   notes: string
 }
 
@@ -46,7 +48,8 @@ const initialFormData: VisitFormData = {
   visitor_identity: '',
   visit_type: 'family',
   access_mode: 'single_use',
-  valid_until: '',
+  valid_date: '',
+  valid_time: '',
   notes: '',
 }
 
@@ -155,9 +158,14 @@ export default function NewVisitPage() {
       return
     }
 
+    if (!formData.valid_date || !formData.valid_time) {
+      toast.error('Selecciona la fecha y hora de vencimiento')
+      return
+    }
+
     setSaving(true)
 
-    const validUntil = new Date(formData.valid_until).toISOString()
+    const validUntil = new Date(`${formData.valid_date}T${formData.valid_time}`).toISOString()
 
     const { data: visitData, error: visitError } = await supabase
       .from('visits')
@@ -286,12 +294,12 @@ export default function NewVisitPage() {
     return (
       <main className="min-h-screen bg-slate-100 px-5 py-6">
         <div className="mx-auto max-w-sm space-y-5">
-          <div className="h-5 w-32 rounded-full bg-slate-200" />
+          <div className="h-5 w-32 animate-pulse rounded-full bg-slate-200" />
           <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <div className="h-5 w-40 rounded-full bg-slate-200" />
-            <div className="mt-4 h-12 rounded-2xl bg-slate-200" />
-            <div className="mt-3 h-12 rounded-2xl bg-slate-200" />
-            <div className="mt-3 h-12 rounded-2xl bg-slate-200" />
+            <div className="h-5 w-40 animate-pulse rounded-full bg-slate-200" />
+            <div className="mt-4 h-12 animate-pulse rounded-2xl bg-slate-200" />
+            <div className="mt-3 h-12 animate-pulse rounded-2xl bg-slate-200" />
+            <div className="mt-3 h-12 animate-pulse rounded-2xl bg-slate-200" />
           </section>
         </div>
       </main>
@@ -323,12 +331,10 @@ export default function NewVisitPage() {
 
   if (createdVisit) {
     const expiresAt = new Date(createdVisit.valid_until)
-    const expiresDate = new Intl.DateTimeFormat('es-HN', {
+    const expiresLabel = new Intl.DateTimeFormat('es-HN', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
-    }).format(expiresAt)
-    const expiresTime = new Intl.DateTimeFormat('en-US', {
       hour: 'numeric',
       minute: '2-digit',
     }).format(expiresAt)
@@ -336,12 +342,7 @@ export default function NewVisitPage() {
     return (
       <main className="min-h-screen bg-slate-100 px-5 py-6">
         <div className="mx-auto max-w-sm space-y-5">
-          <Link
-            href="/dashboard"
-            className="block text-sm font-semibold text-slate-600"
-          >
-            ← Volver al dashboard
-          </Link>
+          <PageHeader title="Visita creada" backHref="/dashboard/visits" />
 
           <section className="rounded-2xl bg-green-600 p-6 text-white shadow-lg">
             <div className="flex items-start justify-between gap-3">
@@ -357,8 +358,7 @@ export default function NewVisitPage() {
             </h1>
             <div className="mt-5 rounded-2xl bg-white/10 p-4">
               <p className="text-sm text-green-50">Válido hasta:</p>
-              <p className="mt-1 text-lg font-bold">{expiresDate}</p>
-              <p className="text-lg font-bold">{expiresTime}</p>
+              <p className="mt-1 text-lg font-bold">{expiresLabel}</p>
             </div>
           </section>
 
@@ -407,20 +407,7 @@ export default function NewVisitPage() {
   return (
     <main className="min-h-screen bg-slate-100 px-5 py-6">
       <div className="mx-auto max-w-sm space-y-5">
-        <Link
-          href="/dashboard"
-          className="block text-sm font-semibold text-slate-600"
-        >
-          ← Volver al dashboard
-        </Link>
-
-        <header className="rounded-2xl bg-slate-950 p-6 text-white shadow-lg">
-          <p className="text-sm text-slate-300">Residente</p>
-          <h1 className="mt-1 text-2xl font-bold">Nueva visita</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-300">
-            Genera un token de acceso para tu visitante.
-          </p>
-        </header>
+        <PageHeader title="Nueva visita" subtitle="Genera un QR de acceso para tu visitante" />
 
         <form
           onSubmit={handleCreateVisit}
@@ -503,20 +490,42 @@ export default function NewVisitPage() {
             </p>
           </label>
 
-          <label className="block space-y-1">
+          <div className="space-y-1">
             <span className="text-sm font-semibold text-slate-700">
               Válido hasta
             </span>
-            <input
-              value={formData.valid_until}
-              onChange={(e) =>
-                setFormData({ ...formData, valid_until: e.target.value })
-              }
-              type="datetime-local"
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
-              required
-            />
-          </label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-500">
+                  Fecha
+                </label>
+                <input
+                  value={formData.valid_date}
+                  onChange={(e) =>
+                    setFormData({ ...formData, valid_date: e.target.value })
+                  }
+                  type="date"
+                  min={new Date().toISOString().slice(0, 10)}
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-500">
+                  Hora
+                </label>
+                <input
+                  value={formData.valid_time}
+                  onChange={(e) =>
+                    setFormData({ ...formData, valid_time: e.target.value })
+                  }
+                  type="time"
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+                  required
+                />
+              </div>
+            </div>
+          </div>
 
           <label className="block space-y-1">
             <span className="text-sm font-semibold text-slate-700">Notas</span>

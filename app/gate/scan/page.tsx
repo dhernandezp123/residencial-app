@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { Html5Qrcode } from 'html5-qrcode'
+import { Camera, CheckCircle, ArrowRightLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 
@@ -135,6 +136,7 @@ function GateScanContent() {
   const [cameraOpen, setCameraOpen] = useState(false)
   const [startingCamera, setStartingCamera] = useState(false)
   const [confirmingExit, setConfirmingExit] = useState(false)
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null)
   const [entryPhotoFiles, setEntryPhotoFiles] = useState<EntryPhotoFiles>({
     identity: null,
     vehicle: null,
@@ -347,8 +349,6 @@ function GateScanContent() {
       .eq('id', qrToken.visit_id)
       .single()
 
-    console.log('VISIT:', visitData)
-
     if (visitError || !visitData) {
       console.error('Error loading visit:', visitError)
       setErrorResult('QR inválido')
@@ -357,11 +357,34 @@ function GateScanContent() {
 
     const visit = visitData as Visit
 
-    const { data: houseData, error: houseError } = await supabase
-      .from('houses')
-      .select('id,residential_id,block,house_number')
-      .eq('id', visit.house_id)
-      .single()
+    const [
+      { data: houseData, error: houseError },
+      { data: residentialData, error: residentialError },
+      { data: announcedByData },
+      { data: allowedEntriesData, error: allowedEntriesError },
+    ] = await Promise.all([
+      supabase
+        .from('houses')
+        .select('id,residential_id,block,house_number')
+        .eq('id', visit.house_id)
+        .single(),
+      supabase
+        .from('residentials')
+        .select('id,name')
+        .eq('id', visit.residential_id)
+        .single(),
+      supabase
+        .from('profiles')
+        .select('id,first_name,last_name,phone')
+        .eq('id', visit.created_by)
+        .single(),
+      supabase
+        .from('visitor_entries')
+        .select('id,entry_time,exit_time')
+        .eq('visit_id', visit.id)
+        .eq('entry_status', 'allowed')
+        .order('entry_time', { ascending: false }),
+    ])
 
     if (houseError || !houseData) {
       console.error('Error loading house:', houseError)
@@ -369,37 +392,11 @@ function GateScanContent() {
       return
     }
 
-    const house = houseData as House
-
-    const { data: residentialData, error: residentialError } = await supabase
-      .from('residentials')
-      .select('id,name')
-      .eq('id', visit.residential_id)
-      .single()
-
     if (residentialError || !residentialData) {
       console.error('Error loading residential:', residentialError)
       setErrorResult('QR inválido')
       return
     }
-
-    const { data: announcedByData, error: announcedByError } = await supabase
-      .from('profiles')
-      .select('id,first_name,last_name,phone')
-      .eq('id', visit.created_by)
-      .single()
-
-    if (announcedByError) {
-      console.error('Error loading announced by profile:', announcedByError)
-    }
-
-    const { data: allowedEntriesData, error: allowedEntriesError } =
-      await supabase
-        .from('visitor_entries')
-        .select('id,entry_time,exit_time')
-        .eq('visit_id', visit.id)
-        .eq('entry_status', 'allowed')
-        .order('entry_time', { ascending: false })
 
     if (allowedEntriesError) {
       console.error('Error loading visitor entries:', allowedEntriesError)
@@ -408,10 +405,10 @@ function GateScanContent() {
       return
     }
 
+    const house = houseData as House
     const allowedEntries = (allowedEntriesData as OpenEntry[] | null) || []
     const currentOpenEntry =
       allowedEntries.find((entry) => entry.exit_time === null) || null
-    console.log('ALLOWED ENTRIES:', allowedEntries, allowedEntriesError)
 
     if (
       visit.access_mode === 'single_use' &&
@@ -561,19 +558,12 @@ function GateScanContent() {
     }
 
     const guardProfile = guardProfileData as GuardProfile
-    console.log('Gate Profile:', guardProfile)
-    console.log({
-      role: guardProfile?.role,
-      status: guardProfile?.status,
-      user_id: guardProfile?.user_id,
-    })
 
     const canRegister =
       guardProfile.status === 'approved' &&
       ['guard', 'admin', 'super_admin'].includes(guardProfile.role)
 
     if (!canRegister) {
-      toast.error(`role=${guardProfile?.role} status=${guardProfile?.status}`)
       toast.error('No tienes permisos para registrar ingresos')
       setSavingEntry(false)
       return
@@ -612,23 +602,28 @@ function GateScanContent() {
     let platePhotoUrl: string | null = null
 
     try {
+      setUploadStatus('Subiendo identidad (1/3)...')
       identityPhotoUrl = await uploadEntryPhoto({
         kind: 'identity',
         bucket: 'visitor-identities',
         file: entryPhotoFiles.identity,
       })
+      setUploadStatus('Subiendo vehículo (2/3)...')
       vehiclePhotoUrl = await uploadEntryPhoto({
         kind: 'vehicle',
         bucket: 'visitor-vehicles',
         file: entryPhotoFiles.vehicle,
       })
+      setUploadStatus('Subiendo placa (3/3)...')
       platePhotoUrl = await uploadEntryPhoto({
         kind: 'plate',
         bucket: 'visitor-plates',
         file: entryPhotoFiles.plate,
       })
+      setUploadStatus(null)
     } catch (error) {
       console.error('Error uploading entry photo:', error)
+      setUploadStatus(null)
       toast.error(
         error instanceof Error
           ? error.message
@@ -650,13 +645,10 @@ function GateScanContent() {
       vehicle_photo_url: vehiclePhotoUrl,
       plate_photo_url: platePhotoUrl,
     }
-    console.log('ENTRY PAYLOAD:', entryPayload)
 
-    const { data: entryData, error: entryError } = await supabase
+    const { error: entryError } = await supabase
       .from('visitor_entries')
       .insert(entryPayload)
-
-    console.log('ENTRY INSERT:', entryData, entryError)
 
     if (entryError) {
       console.error('Error registering visitor entry:', entryError)
@@ -743,9 +735,16 @@ function GateScanContent() {
           <section className="min-h-[58vh] overflow-hidden rounded-2xl bg-black shadow-2xl">
             <div
               id="gate-qr-reader"
-              className="flex min-h-[58vh] items-center justify-center text-center text-sm font-semibold text-slate-400"
+              className="flex min-h-[58vh] items-center justify-center text-center"
             >
-              {!cameraOpen && 'La cámara se mostrará aquí.'}
+              {!cameraOpen && (
+                <div className="flex flex-col items-center gap-3 px-6">
+                  <Camera className="h-20 w-20 text-slate-600" />
+                  <p className="text-base font-semibold text-slate-400">
+                    Toca el botón para abrir la cámara y escanear el QR del visitante
+                  </p>
+                </div>
+              )}
             </div>
           </section>
 
@@ -837,20 +836,25 @@ function GateScanContent() {
     return (
       <main
         className={`flex min-h-screen items-center justify-center px-5 py-6 text-white ${
-          isExit ? 'bg-orange-950' : 'bg-green-950'
+          isExit ? 'bg-blue-950' : 'bg-green-950'
         }`}
       >
         <section
           className={`w-full max-w-sm rounded-2xl p-6 text-center shadow-2xl ${
             isExit
-              ? 'bg-orange-500 text-orange-950'
+              ? 'bg-blue-500 text-blue-950'
               : 'bg-green-500 text-green-950'
           }`}
         >
           <p className="text-sm font-semibold uppercase tracking-wide">
             Control de acceso
           </p>
-          <h1 className="mt-4 text-5xl font-black leading-tight">
+          {isExit ? (
+            <ArrowRightLeft className="mx-auto mt-4 h-16 w-16" />
+          ) : (
+            <CheckCircle className="mx-auto mt-4 h-16 w-16" />
+          )}
+          <h1 className="mt-3 text-4xl font-black leading-tight">
             {isExit ? 'SALIDA REGISTRADA' : 'INGRESO REGISTRADO'}
           </h1>
           <div className="mt-6 space-y-3 rounded-2xl bg-white p-5 text-left">
@@ -865,10 +869,16 @@ function GateScanContent() {
             />
           </div>
           <Link
-            href="/dashboard"
+            href="/gate/scan"
             className={`mt-5 block min-h-14 w-full rounded-2xl px-4 py-4 text-center text-lg font-black text-white active:scale-[0.99] ${
-              isExit ? 'bg-orange-950' : 'bg-green-950'
+              isExit ? 'bg-blue-950' : 'bg-green-950'
             }`}
+          >
+            Escanear otro QR
+          </Link>
+          <Link
+            href="/dashboard"
+            className="mt-3 block min-h-14 w-full rounded-2xl border border-current px-4 py-4 text-center text-lg font-black opacity-70 active:scale-[0.99]"
           >
             Volver al dashboard
           </Link>
@@ -1017,7 +1027,7 @@ function GateScanContent() {
           }`}
         >
           {savingEntry
-            ? 'Registrando...'
+            ? (uploadStatus ?? 'Registrando...')
             : openEntry
               ? confirmingExit
                 ? 'Confirmar salida'
@@ -1075,9 +1085,11 @@ function EntryPhotoInput({
         className="mt-3 block w-full text-sm font-semibold text-slate-700 file:mr-3 file:min-h-12 file:rounded-xl file:border-0 file:bg-slate-950 file:px-4 file:py-3 file:font-black file:text-white"
       />
       {file && (
-        <p className="mt-2 break-words text-sm font-semibold text-slate-600">
-          {file.name}
-        </p>
+        <img
+          src={URL.createObjectURL(file)}
+          alt={`Vista previa ${label}`}
+          className="mt-3 h-32 w-full rounded-xl object-cover"
+        />
       )}
     </div>
   )
