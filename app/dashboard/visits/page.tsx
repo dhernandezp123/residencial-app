@@ -299,32 +299,6 @@ export default function VisitsPage() {
     setExpandedVisitId(visit.id)
   }
 
-  const handleShare = async (visit: VisitWithToken) => {
-    if (!visit.qrToken) {
-      toast.error('Esta visita no tiene un QR disponible')
-      return
-    }
-
-    const shareUrl = getShareUrl(visit.qrToken.token)
-    const shareText = `Visita para ${visit.visitor_name}: ${shareUrl}`
-
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: 'Acceso residencial',
-          text: shareText,
-          url: shareUrl,
-        })
-      } else {
-        await navigator.clipboard.writeText(shareText)
-        toast.success('Link copiado para compartir por WhatsApp')
-      }
-    } catch (error) {
-      console.error('Error sharing visit:', error)
-      toast.error('No se pudo compartir la visita')
-    }
-  }
-
   const handleCancelVisit = async (visit: VisitWithToken) => {
     if (visit.status !== 'active') {
       toast.error('Solo puedes cancelar visitas activas')
@@ -518,14 +492,6 @@ export default function VisitsPage() {
                       className="min-h-12 w-full rounded-2xl bg-slate-950 dark:bg-slate-700 px-4 py-3 font-semibold text-white disabled:opacity-50 active:scale-[0.99]"
                     >
                       {isExpanded ? 'Ocultar QR' : 'Ver QR'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleShare(visit)}
-                      disabled={!visit.qrToken}
-                      className="min-h-12 w-full rounded-2xl border border-slate-200 dark:border-slate-600 px-4 py-3 font-semibold text-slate-800 dark:text-slate-200 disabled:opacity-50 active:scale-[0.99]"
-                    >
-                      Compartir
                     </button>
                     <button
                       type="button"
