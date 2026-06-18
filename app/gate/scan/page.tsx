@@ -3,7 +3,6 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import type { Html5Qrcode } from 'html5-qrcode'
 import { Camera, CheckCircle, ArrowRightLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
@@ -142,7 +141,9 @@ function GateScanContent() {
     vehicle: null,
     plate: null,
   })
-  const scannerRef = useRef<Html5Qrcode | null>(null)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const animFrameRef = useRef<number | null>(null)
   const scannedRef = useRef(false)
 
   const vibrate = useCallback((pattern: number | number[]) => {
@@ -246,19 +247,18 @@ function GateScanContent() {
   }
 
   const stopScanner = useCallback(async () => {
-    if (!scannerRef.current) {
-      return
+    if (animFrameRef.current !== null) {
+      cancelAnimationFrame(animFrameRef.current)
+      animFrameRef.current = null
     }
-
-    try {
-      await scannerRef.current.stop()
-      await scannerRef.current.clear()
-    } catch (error) {
-      console.error('Error stopping QR scanner:', error)
-    } finally {
-      scannerRef.current = null
-      setCameraOpen(false)
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
     }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
+    setCameraOpen(false)
   }, [])
 
   const handleOpenCamera = async () => {
@@ -266,46 +266,59 @@ function GateScanContent() {
     scannedRef.current = false
 
     try {
-      const { Html5Qrcode } = await import('html5-qrcode')
-      const scanner = new Html5Qrcode('gate-qr-reader')
-      scannerRef.current = scanner
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      })
+
+      if (!videoRef.current) {
+        stream.getTracks().forEach((t) => t.stop())
+        setStartingCamera(false)
+        return
+      }
+
+      streamRef.current = stream
+      videoRef.current.srcObject = stream
+      await videoRef.current.play()
       setCameraOpen(true)
 
-      await scanner.start(
-        { facingMode: 'environment' },
-        {
-          fps: 10,
-          qrbox: {
-            width: 260,
-            height: 260,
-          },
-        },
-        (decodedText) => {
-          if (scannedRef.current) {
-            return
-          }
+      const { default: jsQR } = await import('jsqr')
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d', { willReadFrequently: true })
 
-          const scannedToken = extractTokenFromQr(decodedText)
+      const tick = () => {
+        const video = videoRef.current
+        if (scannedRef.current || !video || !ctx) return
 
-          if (!scannedToken) {
-            signal('scan_error')
-            toast.error('QR no válido')
-            return
-          }
-
-          scannedRef.current = true
-          signal('scan_success')
-          void stopScanner().then(() => {
-            router.push(`/gate/scan?token=${encodeURIComponent(scannedToken)}`)
+        if (video.readyState >= video.HAVE_ENOUGH_DATA) {
+          canvas.width = video.videoWidth
+          canvas.height = video.videoHeight
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: 'dontInvert',
           })
-        },
-        () => {}
-      )
+
+          if (code?.data) {
+            const scannedToken = extractTokenFromQr(code.data)
+            if (scannedToken) {
+              scannedRef.current = true
+              signal('scan_success')
+              void stopScanner().then(() => {
+                router.push(`/gate/scan?token=${encodeURIComponent(scannedToken)}`)
+              })
+              return
+            }
+          }
+        }
+
+        animFrameRef.current = requestAnimationFrame(tick)
+      }
+
+      animFrameRef.current = requestAnimationFrame(tick)
     } catch (error) {
-      console.error('Error opening QR scanner:', error)
-      toast.error(
-        'El navegador requiere HTTPS para usar la cámara. Abre la app desde una URL segura.',
-      )
+      console.error('Error opening camera:', error)
+      toast.error('No se pudo abrir la cámara. Asegúrate de permitir el acceso.')
       setCameraOpen(false)
     } finally {
       setStartingCamera(false)
@@ -733,18 +746,23 @@ function GateScanContent() {
           </section>
 
           <section className="min-h-[58vh] overflow-hidden rounded-2xl bg-black shadow-2xl">
-            <div
-              id="gate-qr-reader"
-              className="flex min-h-[58vh] items-center justify-center text-center"
-            >
+            <div className="relative flex min-h-[58vh] items-center justify-center">
               {!cameraOpen && (
-                <div className="flex flex-col items-center gap-3 px-6">
+                <div className="flex flex-col items-center gap-3 px-6 text-center">
                   <Camera className="h-20 w-20 text-slate-600" />
                   <p className="text-base font-semibold text-slate-400">
                     Toca el botón para abrir la cámara y escanear el QR del visitante
                   </p>
                 </div>
               )}
+              {/* playsInline es obligatorio en iOS para evitar fullscreen */}
+              <video
+                ref={videoRef}
+                className={`h-full w-full object-cover ${cameraOpen ? 'block' : 'hidden'}`}
+                playsInline
+                muted
+                autoPlay
+              />
             </div>
           </section>
 
