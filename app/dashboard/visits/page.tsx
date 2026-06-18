@@ -84,6 +84,9 @@ export default function VisitsPage() {
   const [qrImagesByVisitId, setQrImagesByVisitId] = useState<
     Record<string, string>
   >({})
+  const [openEntriesByVisitId, setOpenEntriesByVisitId] = useState<
+    Record<string, boolean>
+  >({})
 
   const loadVisits = useCallback(async () => {
     setLoading(true)
@@ -169,11 +172,22 @@ export default function VisitsPage() {
     let tokensByVisitId: Record<string, QrToken> = {}
 
     if (visitIds.length > 0) {
-      const { data: tokensData, error: tokensError } = await supabase
-        .from('qr_tokens')
-        .select('id,visit_id,token,status,expires_at,created_at')
-        .in('visit_id', visitIds)
-        .order('created_at', { ascending: false })
+      const [
+        { data: tokensData, error: tokensError },
+        { data: entriesData },
+      ] = await Promise.all([
+        supabase
+          .from('qr_tokens')
+          .select('id,visit_id,token,status,expires_at,created_at')
+          .in('visit_id', visitIds)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('visitor_entries')
+          .select('visit_id')
+          .in('visit_id', visitIds)
+          .is('exit_time', null)
+          .eq('entry_status', 'allowed'),
+      ])
 
       if (tokensError) {
         console.error('Error loading QR tokens:', tokensError)
@@ -189,6 +203,12 @@ export default function VisitsPage() {
           return accumulator
         }, {})
       }
+
+      const openMap: Record<string, boolean> = {}
+      ;(entriesData || []).forEach((e: { visit_id: string }) => {
+        openMap[e.visit_id] = true
+      })
+      setOpenEntriesByVisitId(openMap)
     }
 
     setVisits(
@@ -228,11 +248,20 @@ export default function VisitsPage() {
     let newTokensByVisitId: Record<string, QrToken> = {}
 
     if (newVisitIds.length > 0) {
-      const { data: tokensData } = await supabase
-        .from('qr_tokens')
-        .select('id,visit_id,token,status,expires_at,created_at')
-        .in('visit_id', newVisitIds)
-        .order('created_at', { ascending: false })
+      const [{ data: tokensData }, { data: newEntriesData }] =
+        await Promise.all([
+          supabase
+            .from('qr_tokens')
+            .select('id,visit_id,token,status,expires_at,created_at')
+            .in('visit_id', newVisitIds)
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('visitor_entries')
+            .select('visit_id')
+            .in('visit_id', newVisitIds)
+            .is('exit_time', null)
+            .eq('entry_status', 'allowed'),
+        ])
 
       newTokensByVisitId = ((tokensData || []) as QrToken[]).reduce<
         Record<string, QrToken>
@@ -240,6 +269,12 @@ export default function VisitsPage() {
         if (!acc[token.visit_id]) acc[token.visit_id] = token
         return acc
       }, {})
+
+      const moreOpenMap: Record<string, boolean> = {}
+      ;(newEntriesData || []).forEach((e: { visit_id: string }) => {
+        moreOpenMap[e.visit_id] = true
+      })
+      setOpenEntriesByVisitId((prev) => ({ ...prev, ...moreOpenMap }))
     }
 
     setVisits((prev) => [
@@ -435,6 +470,11 @@ export default function VisitsPage() {
               const isActive = visit.status === 'active'
               const isExpanded = expandedVisitId === visit.id
               const qrDataUrl = qrImagesByVisitId[visit.id]
+              const isExpiredNow =
+                visit.status === 'expired' ||
+                (visit.status === 'active' &&
+                  new Date(visit.valid_until) < new Date())
+              const isVisitorInside = openEntriesByVisitId[visit.id] === true
 
               return (
                 <article
@@ -483,6 +523,28 @@ export default function VisitsPage() {
                       {expiresLabel}
                     </p>
                   </div>
+
+                  {isVisitorInside && (
+                    <div className="rounded-2xl border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 px-4 py-3">
+                      <p className="text-sm font-bold text-blue-700 dark:text-blue-300">
+                        Visitante dentro
+                      </p>
+                      <p className="mt-0.5 text-xs leading-5 text-blue-600 dark:text-blue-400">
+                        {visit.visitor_name} está dentro del residencial y aún no ha registrado salida.
+                      </p>
+                    </div>
+                  )}
+
+                  {isExpiredNow && (
+                    <div className="rounded-2xl border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 px-4 py-3">
+                      <p className="text-sm font-bold text-amber-700 dark:text-amber-300">
+                        QR vencido
+                      </p>
+                      <p className="mt-0.5 text-xs leading-5 text-amber-600 dark:text-amber-400">
+                        Este código ya no puede ser utilizado para ingresos.
+                      </p>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 gap-2">
                     <button
