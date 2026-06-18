@@ -231,18 +231,18 @@ export default function InsideDashboardPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-100 px-5 py-6">
+      <main className="min-h-screen bg-slate-100 dark:bg-slate-900 px-5 py-6">
         <div className="mx-auto max-w-sm space-y-5">
-          <div className="h-6 w-40 rounded-full bg-slate-200" />
-          <div className="rounded-2xl bg-white p-5 shadow-sm">
-            <div className="h-5 w-32 rounded-full bg-slate-200" />
-            <div className="mt-4 h-4 w-full rounded-full bg-slate-200" />
-            <div className="mt-3 h-4 w-3/4 rounded-full bg-slate-200" />
+          <div className="h-6 w-40 rounded-full bg-slate-200 dark:bg-slate-700" />
+          <div className="rounded-2xl bg-white dark:bg-slate-800 p-5 shadow-sm">
+            <div className="h-5 w-32 rounded-full bg-slate-200 dark:bg-slate-700" />
+            <div className="mt-4 h-4 w-full rounded-full bg-slate-200 dark:bg-slate-700" />
+            <div className="mt-3 h-4 w-3/4 rounded-full bg-slate-200 dark:bg-slate-700" />
           </div>
-          <div className="rounded-2xl bg-white p-5 shadow-sm">
-            <div className="h-5 w-32 rounded-full bg-slate-200" />
-            <div className="mt-4 h-4 w-full rounded-full bg-slate-200" />
-            <div className="mt-3 h-4 w-2/3 rounded-full bg-slate-200" />
+          <div className="rounded-2xl bg-white dark:bg-slate-800 p-5 shadow-sm">
+            <div className="h-5 w-32 rounded-full bg-slate-200 dark:bg-slate-700" />
+            <div className="mt-4 h-4 w-full rounded-full bg-slate-200 dark:bg-slate-700" />
+            <div className="mt-3 h-4 w-2/3 rounded-full bg-slate-200 dark:bg-slate-700" />
           </div>
         </div>
       </main>
@@ -251,16 +251,16 @@ export default function InsideDashboardPage() {
 
   if (!hasAccess) {
     return (
-      <main className="min-h-screen bg-slate-100 px-5 py-6">
-        <div className="mx-auto max-w-sm rounded-2xl bg-white p-6 shadow-sm">
-          <p className="text-sm font-semibold text-slate-500">Dentro</p>
-          <h1 className="mt-2 text-2xl font-bold text-slate-950">Acceso no autorizado</h1>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
+      <main className="min-h-screen bg-slate-100 dark:bg-slate-900 px-5 py-6">
+        <div className="mx-auto max-w-sm rounded-2xl bg-white dark:bg-slate-800 p-6 shadow-sm">
+          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Dentro</p>
+          <h1 className="mt-2 text-2xl font-bold text-slate-950 dark:text-white">Acceso no autorizado</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
             Solo guardias, administradores y super administradores aprobados pueden ver los visitantes dentro.
           </p>
           <Link
             href="/dashboard"
-            className="mt-6 block w-full rounded-2xl bg-slate-950 px-4 py-3 text-center font-semibold text-white"
+            className="mt-6 block w-full rounded-2xl bg-slate-950 dark:bg-slate-700 px-4 py-3 text-center font-semibold text-white"
           >
             Volver al dashboard
           </Link>
@@ -270,13 +270,13 @@ export default function InsideDashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 px-5 py-6">
+    <main className="min-h-screen bg-slate-100 dark:bg-slate-900 px-5 py-6">
       <div className="mx-auto max-w-sm space-y-5">
-        <Link href="/dashboard" className="block text-sm font-semibold text-slate-600">
+        <Link href="/dashboard" className="block text-sm font-semibold text-slate-600 dark:text-slate-300">
           ← Volver al dashboard
         </Link>
 
-        <header className="rounded-2xl bg-slate-950 p-6 text-white shadow-sm">
+        <header className="rounded-2xl bg-slate-950 dark:bg-slate-800 p-6 text-white shadow-sm">
           <p className="text-sm text-slate-300">Dentro actualmente</p>
           <h1 className="mt-2 text-2xl font-bold">Visitantes dentro</h1>
           <p className="mt-3 text-sm leading-6 text-slate-300">
@@ -285,9 +285,9 @@ export default function InsideDashboardPage() {
         </header>
 
         {entries.length === 0 ? (
-          <section className="rounded-2xl bg-white p-6 text-center shadow-sm">
-            <h2 className="text-xl font-bold text-slate-950">No hay visitantes dentro actualmente</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
+          <section className="rounded-2xl bg-white dark:bg-slate-800 p-6 text-center shadow-sm">
+            <h2 className="text-xl font-bold text-slate-950 dark:text-white">No hay visitantes dentro actualmente</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
               Cuando se registre una entrada permitida, se mostrará aquí.
             </p>
           </section>
@@ -314,8 +314,8 @@ export default function InsideDashboardPage() {
                 : 'Guardia no disponible'
 
               return (
-                <article key={entry.id} className="overflow-hidden rounded-3xl bg-white shadow-sm">
-                  <div className="border-b border-slate-100 bg-slate-950 p-5 text-white">
+                <article key={entry.id} className="overflow-hidden rounded-3xl bg-white dark:bg-slate-800 shadow-sm">
+                  <div className="border-b border-slate-100 dark:border-slate-700 bg-slate-950 dark:bg-slate-700 p-5 text-white">
                     <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Visitante</p>
                     <h2 className="mt-2 text-xl font-bold">{guestName}</h2>
                     <p className="mt-1 text-sm text-slate-300">{visitType}</p>
@@ -338,9 +338,9 @@ export default function InsideDashboardPage() {
 
 function InfoBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-3xl bg-slate-50 p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
-      <p className="mt-2 text-sm font-semibold text-slate-950">{value}</p>
+    <div className="rounded-3xl bg-slate-50 dark:bg-slate-700/50 p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{label}</p>
+      <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{value}</p>
     </div>
   )
 }

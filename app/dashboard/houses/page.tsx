@@ -152,20 +152,20 @@ export default function AdminHousesPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-100 px-5 py-6">
+      <main className="min-h-screen bg-slate-100 dark:bg-slate-900 px-5 py-6">
         <div className="mx-auto max-w-sm space-y-5">
-          <div className="h-14 animate-pulse rounded-2xl bg-slate-300" />
-          <div className="h-16 animate-pulse rounded-2xl bg-slate-200" />
-          <div className="h-24 animate-pulse rounded-2xl bg-white" />
-          <div className="h-24 animate-pulse rounded-2xl bg-white" />
-          <div className="h-24 animate-pulse rounded-2xl bg-white" />
+          <div className="h-14 animate-pulse rounded-2xl bg-slate-300 dark:bg-slate-600" />
+          <div className="h-16 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-700" />
+          <div className="h-24 animate-pulse rounded-2xl bg-white dark:bg-slate-800" />
+          <div className="h-24 animate-pulse rounded-2xl bg-white dark:bg-slate-800" />
+          <div className="h-24 animate-pulse rounded-2xl bg-white dark:bg-slate-800" />
         </div>
       </main>
     )
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 px-5 py-6">
+    <main className="min-h-screen bg-slate-100 dark:bg-slate-900 px-5 py-6">
       <div className="mx-auto max-w-sm space-y-5">
         <PageHeader
           title="Casas"
@@ -175,7 +175,7 @@ export default function AdminHousesPage() {
         <button
           type="button"
           onClick={() => setShowForm((v) => !v)}
-          className="min-h-14 w-full rounded-2xl bg-slate-950 px-4 py-4 text-center text-lg font-bold text-white shadow-sm active:scale-[0.99]"
+          className="min-h-14 w-full rounded-2xl bg-slate-950 dark:bg-slate-700 px-4 py-4 text-center text-lg font-bold text-white shadow-sm active:scale-[0.99]"
         >
           {showForm ? 'Cancelar' : '+ Registrar casa'}
         </button>
@@ -183,35 +183,35 @@ export default function AdminHousesPage() {
         {showForm && (
           <form
             onSubmit={handleCreateHouse}
-            className="space-y-4 rounded-2xl bg-white p-6 shadow-sm"
+            className="space-y-4 rounded-2xl bg-white dark:bg-slate-800 p-6 shadow-sm"
           >
-            <p className="text-sm font-bold text-slate-950">Nueva casa</p>
+            <p className="text-sm font-bold text-slate-950 dark:text-white">Nueva casa</p>
 
             <div className="grid grid-cols-2 gap-3">
               <label className="block space-y-1">
-                <span className="text-sm font-semibold text-slate-700">Bloque</span>
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Bloque</span>
                 <input
                   value={formData.block}
                   onChange={(e) => setFormData({ ...formData, block: e.target.value })}
                   placeholder="Ej: A"
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+                  className="w-full rounded-2xl border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white px-4 py-3 text-sm outline-none"
                   required
                 />
               </label>
               <label className="block space-y-1">
-                <span className="text-sm font-semibold text-slate-700">Número</span>
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Número</span>
                 <input
                   value={formData.house_number}
                   onChange={(e) => setFormData({ ...formData, house_number: e.target.value })}
                   placeholder="Ej: 24"
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+                  className="w-full rounded-2xl border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white px-4 py-3 text-sm outline-none"
                   required
                 />
               </label>
             </div>
 
             <label className="block space-y-1">
-              <span className="text-sm font-semibold text-slate-700">Límite de residentes</span>
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Límite de residentes</span>
               <input
                 value={formData.resident_limit}
                 onChange={(e) => setFormData({ ...formData, resident_limit: e.target.value })}
@@ -219,14 +219,14 @@ export default function AdminHousesPage() {
                 min="1"
                 max="20"
                 placeholder="Ej: 3"
-                className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+                className="w-full rounded-2xl border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white px-4 py-3 text-sm outline-none"
               />
-              <p className="text-xs leading-5 text-slate-500">
+              <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
                 Cantidad máxima de residentes aprobados que pueden anunciar visitas desde esta casa.
               </p>
             </label>
 
-            <label className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4">
+            <label className="flex items-center gap-3 rounded-2xl bg-slate-50 dark:bg-slate-700/50 p-4">
               <input
                 type="checkbox"
                 checked={formData.pays_security}
@@ -234,27 +234,27 @@ export default function AdminHousesPage() {
                 className="h-5 w-5 rounded accent-slate-950"
               />
               <div>
-                <p className="text-sm font-semibold text-slate-800">Paga seguridad</p>
-                <p className="text-xs text-slate-500">
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Paga seguridad</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Solo casas activas con seguridad pagada pueden generar QRs.
                 </p>
               </div>
             </label>
 
             <label className="block space-y-1">
-              <span className="text-sm font-semibold text-slate-700">Notas (opcional)</span>
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Notas (opcional)</span>
               <textarea
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 placeholder="Observaciones adicionales"
-                className="min-h-20 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+                className="min-h-20 w-full rounded-2xl border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white px-4 py-3 text-sm outline-none"
               />
             </label>
 
             <button
               type="submit"
               disabled={saving}
-              className="min-h-12 w-full rounded-2xl bg-slate-950 px-4 py-3 font-semibold text-white disabled:opacity-60 active:scale-[0.99]"
+              className="min-h-12 w-full rounded-2xl bg-slate-950 dark:bg-slate-700 px-4 py-3 font-semibold text-white disabled:opacity-60 active:scale-[0.99]"
             >
               {saving ? 'Guardando...' : 'Guardar casa'}
             </button>
@@ -262,28 +262,28 @@ export default function AdminHousesPage() {
         )}
 
         {houses.length === 0 ? (
-          <section className="rounded-2xl bg-white p-6 text-center shadow-sm">
-            <p className="text-lg font-bold text-slate-950">Sin casas registradas</p>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
+          <section className="rounded-2xl bg-white dark:bg-slate-800 p-6 text-center shadow-sm">
+            <p className="text-lg font-bold text-slate-950 dark:text-white">Sin casas registradas</p>
+            <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
               Registra la primera casa para que los residentes puedan generar visitas.
             </p>
           </section>
         ) : (
           <section className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               {houses.length} casa{houses.length !== 1 ? 's' : ''} registrada{houses.length !== 1 ? 's' : ''}
             </p>
             {houses.map((house) => (
               <article
                 key={house.id}
-                className={`rounded-2xl bg-white p-5 shadow-sm ${!house.is_active ? 'opacity-60' : ''}`}
+                className={`rounded-2xl bg-white dark:bg-slate-800 p-5 shadow-sm ${!house.is_active ? 'opacity-60' : ''}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                       Casa
                     </p>
-                    <h2 className="mt-1 text-xl font-black text-slate-950">
+                    <h2 className="mt-1 text-xl font-black text-slate-950 dark:text-white">
                       {house.block}-{house.house_number}
                     </h2>
                   </div>
@@ -291,8 +291,8 @@ export default function AdminHousesPage() {
                     <span
                       className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                         house.is_active
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-slate-100 text-slate-500'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
+                          : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300'
                       }`}
                     >
                       {house.is_active ? 'Activa' : 'Inactiva'}
@@ -300,8 +300,8 @@ export default function AdminHousesPage() {
                     <span
                       className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                         house.pays_security
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'bg-amber-100 text-amber-700'
+                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                          : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
                       }`}
                     >
                       {house.pays_security ? 'Seguridad ✓' : 'Sin seguridad'}
@@ -310,13 +310,13 @@ export default function AdminHousesPage() {
                 </div>
 
                 {house.resident_limit !== null && (
-                  <p className="mt-3 text-sm text-slate-500">
-                    Límite: <span className="font-semibold text-slate-700">{house.resident_limit} residente{house.resident_limit !== 1 ? 's' : ''}</span>
+                  <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
+                    Límite: <span className="font-semibold text-slate-700 dark:text-slate-200">{house.resident_limit} residente{house.resident_limit !== 1 ? 's' : ''}</span>
                   </p>
                 )}
 
                 {house.notes && (
-                  <p className="mt-1 text-sm text-slate-500">{house.notes}</p>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{house.notes}</p>
                 )}
 
                 <button
@@ -324,8 +324,8 @@ export default function AdminHousesPage() {
                   onClick={() => void handleToggleActive(house)}
                   className={`mt-4 min-h-10 w-full rounded-xl px-4 py-2 text-sm font-semibold active:scale-[0.99] ${
                     house.is_active
-                      ? 'border border-slate-200 text-slate-600'
-                      : 'bg-slate-950 text-white'
+                      ? 'border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300'
+                      : 'bg-slate-950 dark:bg-slate-700 text-white'
                   }`}
                 >
                   {house.is_active ? 'Desactivar casa' : 'Activar casa'}

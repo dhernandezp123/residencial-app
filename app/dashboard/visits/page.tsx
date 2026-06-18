@@ -63,10 +63,10 @@ const statusLabels: Record<VisitStatus, string> = {
 }
 
 const statusStyles: Record<VisitStatus, string> = {
-  active: 'bg-green-100 text-green-800',
-  used: 'bg-slate-100 text-slate-700',
-  expired: 'bg-amber-100 text-amber-800',
-  cancelled: 'bg-red-100 text-red-800',
+  active: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+  used: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300',
+  expired: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+  cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
 }
 
 export default function VisitsPage() {
@@ -380,23 +380,23 @@ export default function VisitsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-100 px-5 py-6">
+      <main className="min-h-screen bg-slate-100 dark:bg-slate-900 px-5 py-6">
         <div className="mx-auto max-w-sm space-y-5">
-          <div className="h-5 w-28 animate-pulse rounded-full bg-slate-200" />
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <div className="h-6 w-36 animate-pulse rounded-full bg-slate-200" />
-            <div className="mt-4 h-4 w-full animate-pulse rounded-full bg-slate-200" />
-            <div className="mt-3 h-4 w-3/4 animate-pulse rounded-full bg-slate-200" />
+          <div className="h-5 w-28 animate-pulse rounded-full bg-slate-200 dark:bg-slate-700" />
+          <section className="rounded-2xl bg-white dark:bg-slate-800 p-6 shadow-sm">
+            <div className="h-6 w-36 animate-pulse rounded-full bg-slate-200 dark:bg-slate-700" />
+            <div className="mt-4 h-4 w-full animate-pulse rounded-full bg-slate-200 dark:bg-slate-700" />
+            <div className="mt-3 h-4 w-3/4 animate-pulse rounded-full bg-slate-200 dark:bg-slate-700" />
             <div className="mt-5 grid grid-cols-3 gap-2">
-              <div className="h-12 animate-pulse rounded-2xl bg-slate-200" />
-              <div className="h-12 animate-pulse rounded-2xl bg-slate-200" />
-              <div className="h-12 animate-pulse rounded-2xl bg-slate-200" />
+              <div className="h-12 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-700" />
+              <div className="h-12 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-700" />
+              <div className="h-12 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-700" />
             </div>
           </section>
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <div className="h-6 w-40 animate-pulse rounded-full bg-slate-200" />
-            <div className="mt-4 h-4 w-full animate-pulse rounded-full bg-slate-200" />
-            <div className="mt-3 h-4 w-2/3 animate-pulse rounded-full bg-slate-200" />
+          <section className="rounded-2xl bg-white dark:bg-slate-800 p-6 shadow-sm">
+            <div className="h-6 w-40 animate-pulse rounded-full bg-slate-200 dark:bg-slate-700" />
+            <div className="mt-4 h-4 w-full animate-pulse rounded-full bg-slate-200 dark:bg-slate-700" />
+            <div className="mt-3 h-4 w-2/3 animate-pulse rounded-full bg-slate-200 dark:bg-slate-700" />
           </section>
         </div>
       </main>
@@ -405,19 +405,19 @@ export default function VisitsPage() {
 
   if (!canViewVisits) {
     return (
-      <main className="min-h-screen bg-slate-100 px-5 py-6">
-        <div className="mx-auto max-w-sm rounded-2xl bg-white p-6 shadow-sm">
-          <p className="text-sm font-semibold text-slate-500">Mis visitas</p>
-          <h1 className="mt-2 text-2xl font-bold text-slate-950">
+      <main className="min-h-screen bg-slate-100 dark:bg-slate-900 px-5 py-6">
+        <div className="mx-auto max-w-sm rounded-2xl bg-white dark:bg-slate-800 p-6 shadow-sm">
+          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Mis visitas</p>
+          <h1 className="mt-2 text-2xl font-bold text-slate-950 dark:text-white">
             Acceso no disponible
           </h1>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
+          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
             Tu perfil debe estar aprobado como residente para ver el historial
             de visitas.
           </p>
           <Link
             href="/dashboard"
-            className="mt-6 block min-h-12 rounded-2xl bg-slate-950 px-4 py-3 text-center font-semibold text-white active:scale-[0.99]"
+            className="mt-6 block min-h-12 rounded-2xl bg-slate-950 dark:bg-slate-700 px-4 py-3 text-center font-semibold text-white active:scale-[0.99]"
           >
             Volver al dashboard
           </Link>
@@ -427,23 +427,23 @@ export default function VisitsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 px-5 py-6">
+    <main className="min-h-screen bg-slate-100 dark:bg-slate-900 px-5 py-6">
       <div className="mx-auto max-w-sm space-y-5">
         <PageHeader title="Mis visitas" subtitle="Visitas activas e historial" />
 
         <Link
           href="/dashboard/visits/new"
-          className="block min-h-14 w-full rounded-2xl bg-slate-950 px-4 py-4 text-center text-lg font-bold text-white shadow-sm active:scale-[0.99]"
+          className="block min-h-14 w-full rounded-2xl bg-slate-950 dark:bg-slate-700 px-4 py-4 text-center text-lg font-bold text-white shadow-sm active:scale-[0.99]"
         >
           + Nueva visita
         </Link>
 
         {visits.length === 0 ? (
-          <section className="rounded-2xl bg-white p-6 text-center shadow-sm">
-            <h2 className="text-xl font-bold text-slate-950">
+          <section className="rounded-2xl bg-white dark:bg-slate-800 p-6 text-center shadow-sm">
+            <h2 className="text-xl font-bold text-slate-950 dark:text-white">
               Aún no tienes visitas
             </h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
+            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
               Crea tu primera visita para generar un código QR de ingreso.
             </p>
           </section>
@@ -465,14 +465,14 @@ export default function VisitsPage() {
               return (
                 <article
                   key={visit.id}
-                  className="space-y-4 rounded-2xl bg-white p-6 shadow-sm"
+                  className="space-y-4 rounded-2xl bg-white dark:bg-slate-800 p-6 shadow-sm"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-slate-500">
+                      <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
                         Visitante
                       </p>
-                      <h2 className="mt-1 text-xl font-bold text-slate-950">
+                      <h2 className="mt-1 text-xl font-bold text-slate-950 dark:text-white">
                         {visit.visitor_name}
                       </h2>
                     </div>
@@ -484,28 +484,28 @@ export default function VisitsPage() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-2xl bg-slate-50 p-4">
-                      <p className="text-xs font-semibold uppercase text-slate-500">
+                    <div className="rounded-2xl bg-slate-50 dark:bg-slate-700/50 p-4">
+                      <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
                         Tipo
                       </p>
-                      <p className="mt-1 text-sm font-semibold text-slate-900">
+                      <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
                         {visitTypeLabels[visit.visit_type]}
                       </p>
                     </div>
-                    <div className="rounded-2xl bg-slate-50 p-4">
-                      <p className="text-xs font-semibold uppercase text-slate-500">
+                    <div className="rounded-2xl bg-slate-50 dark:bg-slate-700/50 p-4">
+                      <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
                         Acceso
                       </p>
-                      <p className="mt-1 text-sm font-semibold text-slate-900">
+                      <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
                         {visit.access_mode === 'single_use' ? 'Uso único' : 'Múltiple'}
                       </p>
                     </div>
                   </div>
-                  <div className="rounded-2xl bg-slate-50 p-4">
-                    <p className="text-xs font-semibold uppercase text-slate-500">
+                  <div className="rounded-2xl bg-slate-50 dark:bg-slate-700/50 p-4">
+                    <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
                       Expira
                     </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                    <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
                       {expiresLabel}
                     </p>
                   </div>
@@ -515,7 +515,7 @@ export default function VisitsPage() {
                       type="button"
                       onClick={() => void handleViewQr(visit)}
                       disabled={!isActive || !visit.qrToken}
-                      className="min-h-12 w-full rounded-2xl bg-slate-950 px-4 py-3 font-semibold text-white disabled:opacity-50 active:scale-[0.99]"
+                      className="min-h-12 w-full rounded-2xl bg-slate-950 dark:bg-slate-700 px-4 py-3 font-semibold text-white disabled:opacity-50 active:scale-[0.99]"
                     >
                       {isExpanded ? 'Ocultar QR' : 'Ver QR'}
                     </button>
@@ -523,7 +523,7 @@ export default function VisitsPage() {
                       type="button"
                       onClick={() => void handleShare(visit)}
                       disabled={!visit.qrToken}
-                      className="min-h-12 w-full rounded-2xl border border-slate-200 px-4 py-3 font-semibold text-slate-800 disabled:opacity-50 active:scale-[0.99]"
+                      className="min-h-12 w-full rounded-2xl border border-slate-200 dark:border-slate-600 px-4 py-3 font-semibold text-slate-800 dark:text-slate-200 disabled:opacity-50 active:scale-[0.99]"
                     >
                       Compartir
                     </button>
@@ -534,7 +534,7 @@ export default function VisitsPage() {
                       className={`min-h-12 w-full rounded-2xl px-4 py-3 font-semibold disabled:opacity-50 active:scale-[0.99] ${
                         cancelConfirmId === visit.id
                           ? 'bg-red-600 text-white'
-                          : 'border border-red-200 text-red-700'
+                          : 'border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'
                       }`}
                     >
                       {actionLoadingId === visit.id
@@ -571,7 +571,7 @@ export default function VisitsPage() {
                 type="button"
                 onClick={() => void handleLoadMore()}
                 disabled={loadingMore}
-                className="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-700 shadow-sm disabled:opacity-60 active:scale-[0.99]"
+                className="min-h-12 w-full rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-3 font-semibold text-slate-700 dark:text-slate-200 shadow-sm disabled:opacity-60 active:scale-[0.99]"
               >
                 {loadingMore ? 'Cargando...' : 'Cargar más visitas'}
               </button>

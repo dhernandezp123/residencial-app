@@ -174,20 +174,20 @@ export default function MyHousePage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-100 px-5 py-6">
+      <main className="min-h-screen bg-slate-100 dark:bg-slate-900 px-5 py-6">
         <div className="mx-auto max-w-sm space-y-5">
-          <div className="h-5 w-28 rounded-full bg-slate-200" />
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <div className="h-4 w-24 rounded-full bg-slate-200" />
-            <div className="mt-3 h-8 w-32 rounded-full bg-slate-200" />
-            <div className="mt-4 h-4 w-48 rounded-full bg-slate-200" />
-            <div className="mt-2 h-4 w-40 rounded-full bg-slate-200" />
+          <div className="h-5 w-28 rounded-full bg-slate-200 dark:bg-slate-700" />
+          <section className="rounded-2xl bg-white dark:bg-slate-800 p-6 shadow-sm">
+            <div className="h-4 w-24 rounded-full bg-slate-200 dark:bg-slate-700" />
+            <div className="mt-3 h-8 w-32 rounded-full bg-slate-200 dark:bg-slate-700" />
+            <div className="mt-4 h-4 w-48 rounded-full bg-slate-200 dark:bg-slate-700" />
+            <div className="mt-2 h-4 w-40 rounded-full bg-slate-200 dark:bg-slate-700" />
           </section>
           <section className="grid gap-3">
             {[0, 1].map((item) => (
-              <div key={item} className="rounded-2xl bg-white p-5 shadow-sm">
-                <div className="h-4 w-32 rounded-full bg-slate-200" />
-                <div className="mt-3 h-7 w-12 rounded-full bg-slate-200" />
+              <div key={item} className="rounded-2xl bg-white dark:bg-slate-800 p-5 shadow-sm">
+                <div className="h-4 w-32 rounded-full bg-slate-200 dark:bg-slate-700" />
+                <div className="mt-3 h-7 w-12 rounded-full bg-slate-200 dark:bg-slate-700" />
               </div>
             ))}
           </section>
@@ -204,19 +204,19 @@ export default function MyHousePage() {
     !house
   ) {
     return (
-      <main className="min-h-screen bg-slate-100 px-5 py-6">
-        <div className="mx-auto max-w-sm rounded-2xl bg-white p-6 shadow-sm">
-          <p className="text-sm font-semibold text-slate-500">Mi casa</p>
-          <h1 className="mt-2 text-2xl font-bold text-slate-950">
+      <main className="min-h-screen bg-slate-100 dark:bg-slate-900 px-5 py-6">
+        <div className="mx-auto max-w-sm rounded-2xl bg-white dark:bg-slate-800 p-6 shadow-sm">
+          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Mi casa</p>
+          <h1 className="mt-2 text-2xl font-bold text-slate-950 dark:text-white">
             Acceso no disponible
           </h1>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
+          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
             Tu perfil debe estar aprobado como residente y tener una casa
             asignada.
           </p>
           <Link
             href="/dashboard"
-            className="mt-6 block min-h-12 rounded-2xl bg-slate-950 px-4 py-3 text-center font-semibold text-white active:scale-[0.99]"
+            className="mt-6 block min-h-12 rounded-2xl bg-slate-950 dark:bg-slate-700 px-4 py-3 text-center font-semibold text-white active:scale-[0.99]"
           >
             Volver al dashboard
           </Link>
@@ -228,16 +228,16 @@ export default function MyHousePage() {
   const residentLimit = house.resident_limit || 3
 
   return (
-    <main className="min-h-screen bg-slate-100 px-5 py-6">
+    <main className="min-h-screen bg-slate-100 dark:bg-slate-900 px-5 py-6">
       <div className="mx-auto max-w-sm space-y-5">
         <Link
           href="/dashboard"
-          className="block text-sm font-semibold text-slate-600"
+          className="block text-sm font-semibold text-slate-600 dark:text-slate-300"
         >
           ← Volver al dashboard
         </Link>
 
-        <header className="rounded-2xl bg-slate-950 p-6 text-white shadow-lg">
+        <header className="rounded-2xl bg-slate-950 dark:bg-slate-800 p-6 text-white shadow-lg">
           <p className="text-sm text-slate-300">Mi casa</p>
           <h1 className="mt-1 text-3xl font-bold">
             {house.block}-{house.house_number}
@@ -267,7 +267,7 @@ export default function MyHousePage() {
 
         <Link
           href="/dashboard/visits/new"
-          className="block min-h-12 w-full rounded-2xl bg-slate-950 px-4 py-3 text-center font-semibold text-white shadow-sm active:scale-[0.99]"
+          className="block min-h-12 w-full rounded-2xl bg-slate-950 dark:bg-slate-700 px-4 py-3 text-center font-semibold text-white shadow-sm active:scale-[0.99]"
         >
           Nueva visita
         </Link>
@@ -277,18 +277,18 @@ export default function MyHousePage() {
           <KpiCard label="Visitas este mes" value={monthlyVisitsCount} />
         </section>
 
-        <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm">
+        <section className="space-y-3 rounded-2xl bg-white dark:bg-slate-800 p-5 shadow-sm">
           <div>
-            <p className="text-sm font-semibold text-slate-500">
+            <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
               Residentes
             </p>
-            <h2 className="mt-1 text-xl font-bold text-slate-950">
+            <h2 className="mt-1 text-xl font-bold text-slate-950 dark:text-white">
               Usuarios aprobados
             </h2>
           </div>
 
           {approvedResidents.length === 0 ? (
-            <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">
+            <div className="rounded-2xl bg-slate-50 dark:bg-slate-700/50 p-4 text-sm text-slate-500 dark:text-slate-400">
               No hay residentes aprobados en esta casa.
             </div>
           ) : (
@@ -296,12 +296,12 @@ export default function MyHousePage() {
               {approvedResidents.map((resident) => (
                 <article
                   key={resident.id}
-                  className="rounded-2xl border border-slate-100 p-4"
+                  className="rounded-2xl border border-slate-100 dark:border-slate-700 p-4"
                 >
-                  <p className="font-bold text-slate-900">
+                  <p className="font-bold text-slate-900 dark:text-white">
                     {resident.first_name} {resident.last_name}
                   </p>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     {resident.phone || 'Sin teléfono'}
                   </p>
                 </article>
@@ -316,9 +316,9 @@ export default function MyHousePage() {
 
 function KpiCard({ label, value }: { label: string; value: number }) {
   return (
-    <article className="rounded-2xl bg-white p-5 shadow-sm">
-      <p className="text-sm font-semibold text-slate-500">{label}</p>
-      <p className="mt-2 text-3xl font-bold text-slate-950">{value}</p>
+    <article className="rounded-2xl bg-white dark:bg-slate-800 p-5 shadow-sm">
+      <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">{label}</p>
+      <p className="mt-2 text-3xl font-bold text-slate-950 dark:text-white">{value}</p>
     </article>
   )
 }

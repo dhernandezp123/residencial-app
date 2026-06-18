@@ -213,16 +213,16 @@ export default function ResidentsPage() {
   )
 
   return (
-    <main className="min-h-screen bg-slate-100 px-5 py-6">
+    <main className="min-h-screen bg-slate-100 dark:bg-slate-900 px-5 py-6">
       <div className="mx-auto max-w-sm space-y-5">
         <Link
           href="/dashboard"
-          className="block text-sm font-semibold text-slate-600"
+          className="block text-sm font-semibold text-slate-600 dark:text-slate-300"
         >
           ← Volver al dashboard
         </Link>
 
-        <header className="rounded-2xl bg-slate-950 p-6 text-white shadow-lg">
+        <header className="rounded-2xl bg-slate-950 dark:bg-slate-800 p-6 text-white shadow-lg">
           <p className="text-sm text-slate-300">Administración</p>
           <h1 className="mt-1 text-2xl font-bold">Residentes</h1>
           <p className="mt-2 text-sm leading-6 text-slate-300">
@@ -231,7 +231,7 @@ export default function ResidentsPage() {
           </p>
         </header>
 
-        <section className="grid grid-cols-3 gap-2 rounded-2xl bg-white p-2 shadow-sm">
+        <section className="grid grid-cols-3 gap-2 rounded-2xl bg-white dark:bg-slate-800 p-2 shadow-sm">
           {filters.map((filter) => (
             <button
               key={filter.value}
@@ -239,8 +239,8 @@ export default function ResidentsPage() {
               onClick={() => setSelectedStatus(filter.value)}
               className={`min-h-12 rounded-xl px-3 text-sm font-semibold active:scale-[0.99] ${
                 selectedStatus === filter.value
-                  ? 'bg-slate-950 text-white'
-                  : 'bg-slate-100 text-slate-600'
+                  ? 'bg-slate-950 dark:bg-slate-600 text-white'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
               }`}
             >
               {filter.label}
@@ -251,7 +251,7 @@ export default function ResidentsPage() {
         {loading ? (
           <ResidentsSkeleton />
         ) : filteredResidents.length === 0 ? (
-          <section className="rounded-2xl bg-white p-6 text-sm leading-6 text-slate-500 shadow-sm">
+          <section className="rounded-2xl bg-white dark:bg-slate-800 p-6 text-sm leading-6 text-slate-500 dark:text-slate-400 shadow-sm">
             No hay residentes en este estado.
           </section>
         ) : (
@@ -289,13 +289,13 @@ function ResidentCard({
     : 'Sin casa'
 
   return (
-    <article className="rounded-2xl bg-white p-5 shadow-sm">
+    <article className="rounded-2xl bg-white dark:bg-slate-800 p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">
             {fullName || 'Sin nombre'}
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             {resident.phone || 'Sin teléfono'}
           </p>
         </div>
@@ -303,31 +303,31 @@ function ResidentCard({
         <span
           className={`rounded-full px-3 py-1 text-xs font-semibold ${
             resident.status === 'approved'
-              ? 'bg-green-100 text-green-700'
+              ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
               : resident.status === 'rejected'
-                ? 'bg-red-100 text-red-700'
-                : 'bg-amber-100 text-amber-700'
+                ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
           }`}
         >
           {getStatusLabel(resident.status)}
         </span>
       </div>
 
-      <div className="mt-4 space-y-2 text-sm text-slate-600">
+      <div className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
         <p>
-          <span className="font-semibold text-slate-800">Residencial:</span>{' '}
+          <span className="font-semibold text-slate-800 dark:text-slate-200">Residencial:</span>{' '}
           {resident.residential?.name || 'Sin residencial'}
         </p>
         <p>
-          <span className="font-semibold text-slate-800">Casa:</span>{' '}
+          <span className="font-semibold text-slate-800 dark:text-slate-200">Casa:</span>{' '}
           {houseLabel}
         </p>
         <p>
-          <span className="font-semibold text-slate-800">Paga seguridad:</span>{' '}
+          <span className="font-semibold text-slate-800 dark:text-slate-200">Paga seguridad:</span>{' '}
           {resident.house?.pays_security ? 'Sí' : 'No'}
         </p>
         <p>
-          <span className="font-semibold text-slate-800">
+          <span className="font-semibold text-slate-800 dark:text-slate-200">
             Usuarios app permitidos:
           </span>{' '}
           {resident.house?.resident_limit || 3}
@@ -340,7 +340,7 @@ function ResidentCard({
             type="button"
             onClick={onReject}
             disabled={saving}
-            className="min-h-12 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 disabled:opacity-60 active:scale-[0.99]"
+            className="min-h-12 rounded-xl bg-red-50 dark:bg-red-900/40 px-4 py-3 text-sm font-semibold text-red-700 dark:text-red-300 disabled:opacity-60 active:scale-[0.99]"
           >
             Rechazar
           </button>
@@ -362,18 +362,18 @@ function ResidentsSkeleton() {
   return (
     <section className="space-y-3">
       {[0, 1, 2].map((item) => (
-        <article key={item} className="rounded-2xl bg-white p-5 shadow-sm">
+        <article key={item} className="rounded-2xl bg-white dark:bg-slate-800 p-5 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-3">
-              <div className="h-5 w-36 rounded-full bg-slate-200" />
-              <div className="h-4 w-24 rounded-full bg-slate-200" />
+              <div className="h-5 w-36 rounded-full bg-slate-200 dark:bg-slate-700" />
+              <div className="h-4 w-24 rounded-full bg-slate-200 dark:bg-slate-700" />
             </div>
-            <div className="h-7 w-20 rounded-full bg-slate-200" />
+            <div className="h-7 w-20 rounded-full bg-slate-200 dark:bg-slate-700" />
           </div>
           <div className="mt-5 space-y-3">
-            <div className="h-4 w-44 rounded-full bg-slate-200" />
-            <div className="h-4 w-32 rounded-full bg-slate-200" />
-            <div className="h-4 w-40 rounded-full bg-slate-200" />
+            <div className="h-4 w-44 rounded-full bg-slate-200 dark:bg-slate-700" />
+            <div className="h-4 w-32 rounded-full bg-slate-200 dark:bg-slate-700" />
+            <div className="h-4 w-40 rounded-full bg-slate-200 dark:bg-slate-700" />
           </div>
         </article>
       ))}

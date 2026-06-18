@@ -11,7 +11,7 @@ export function PageHeader({
   backHref?: string
 }) {
   return (
-    <header className="flex items-center gap-3 rounded-2xl bg-slate-950 px-5 py-4 text-white shadow-sm">
+    <header className="flex items-center gap-3 rounded-2xl bg-slate-950 dark:bg-slate-800 px-5 py-4 text-white shadow-sm">
       <Link
         href={backHref}
         className="flex-shrink-0 rounded-xl bg-white/10 p-2 active:scale-95"

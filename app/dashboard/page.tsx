@@ -74,12 +74,12 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-100 px-5 py-6">
+      <main className="min-h-screen bg-slate-100 dark:bg-slate-900 px-5 py-6">
         <div className="mx-auto max-w-sm space-y-3">
-          <div className="h-28 animate-pulse rounded-2xl bg-slate-300" />
-          <div className="h-20 animate-pulse rounded-2xl bg-slate-200" />
-          <div className="h-20 animate-pulse rounded-2xl bg-slate-200" />
-          <div className="h-20 animate-pulse rounded-2xl bg-slate-200" />
+          <div className="h-28 animate-pulse rounded-2xl bg-slate-300 dark:bg-slate-600" />
+          <div className="h-20 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-700" />
+          <div className="h-20 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-700" />
+          <div className="h-20 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-700" />
         </div>
       </main>
     )
@@ -87,18 +87,18 @@ export default function HomePage() {
 
   if (!profile || profile.status !== 'approved') {
     return (
-      <main className="min-h-screen bg-slate-100 px-5 py-6 flex items-center justify-center">
-        <div className="mx-auto max-w-sm w-full rounded-2xl bg-white p-6 shadow-sm text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-2xl">
+      <main className="min-h-screen bg-slate-100 dark:bg-slate-900 px-5 py-6 flex items-center justify-center">
+        <div className="mx-auto max-w-sm w-full rounded-2xl bg-white dark:bg-slate-800 p-6 shadow-sm text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40 text-2xl">
             ⏳
           </div>
-          <h1 className="text-xl font-bold text-slate-900">Acceso pendiente</h1>
-          <p className="mt-2 text-sm text-slate-500">
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white">Acceso pendiente</h1>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
             Tu usuario aún no ha sido aprobado por administración.
           </p>
           <button
             onClick={handleLogout}
-            className="mt-6 w-full rounded-2xl bg-slate-950 py-3 font-semibold text-white active:scale-[0.99]"
+            className="mt-6 w-full rounded-2xl bg-slate-950 dark:bg-slate-700 py-3 font-semibold text-white active:scale-[0.99]"
           >
             Cerrar sesión
           </button>
@@ -108,11 +108,11 @@ export default function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 px-5 py-6">
+    <main className="min-h-screen bg-slate-100 dark:bg-slate-900 px-5 py-6">
       <div className="mx-auto max-w-sm space-y-3">
 
         {/* Profile card */}
-        <div className="rounded-2xl bg-slate-950 p-5 text-white shadow-sm">
+        <div className="rounded-2xl bg-slate-950 dark:bg-slate-800 p-5 text-white shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
@@ -267,33 +267,33 @@ function DashboardButton({
 }) {
   const content = (
     <div className="flex items-center gap-4">
-      <span className={`flex-shrink-0 rounded-xl p-2 ${comingSoon ? 'bg-slate-300 text-slate-400' : highlight ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-600'}`}>
+      <span className={`flex-shrink-0 rounded-xl p-2 ${comingSoon ? 'bg-slate-300 dark:bg-slate-600 text-slate-400' : highlight ? 'bg-white/15 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
         <Icon className="h-5 w-5" />
       </span>
       <div className="min-w-0 flex-1 text-left">
-        <p className={`font-semibold leading-tight ${comingSoon ? 'text-slate-400' : highlight ? 'text-white' : 'text-slate-900'}`}>
+        <p className={`font-semibold leading-tight ${comingSoon ? 'text-slate-400 dark:text-slate-500' : highlight ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
           {title}
         </p>
-        <p className={`mt-0.5 text-sm ${comingSoon ? 'text-slate-400' : highlight ? 'text-white/70' : 'text-slate-500'}`}>
+        <p className={`mt-0.5 text-sm ${comingSoon ? 'text-slate-400 dark:text-slate-500' : highlight ? 'text-white/70' : 'text-slate-500 dark:text-slate-400'}`}>
           {subtitle}
         </p>
       </div>
       {comingSoon ? (
-        <span className="flex-shrink-0 rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-400">
+        <span className="flex-shrink-0 rounded-full bg-slate-200 dark:bg-slate-600 px-2 py-0.5 text-xs font-semibold text-slate-400 dark:text-slate-300">
           Pronto
         </span>
       ) : (
-        <span className={`flex-shrink-0 text-lg ${highlight ? 'text-white/60' : 'text-slate-300'}`}>›</span>
+        <span className={`flex-shrink-0 text-lg ${highlight ? 'text-white/60' : 'text-slate-300 dark:text-slate-500'}`}>›</span>
       )}
     </div>
   )
 
   const baseClass = `w-full rounded-2xl p-4 shadow-sm active:scale-[0.99] transition-transform min-h-[4.5rem] ${
     comingSoon
-      ? 'bg-slate-200 cursor-default opacity-60'
+      ? 'bg-slate-200 dark:bg-slate-700 cursor-default opacity-60'
       : highlight
-        ? 'bg-slate-950'
-        : 'bg-white'
+        ? 'bg-slate-950 dark:bg-slate-700'
+        : 'bg-white dark:bg-slate-800'
   }`
 
   if (href && !comingSoon) {
