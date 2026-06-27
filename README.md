@@ -10,6 +10,15 @@ Digitalizar el proceso de autorización y registro de visitas dentro de residenc
 
 ## Características Principales
 
+### PRINCIPIO ARQUITECTÓNICO #1
+
+Este sistema debe diseñarse desde el inicio como una plataforma
+multi-residencial (multi-tenant).
+
+Aunque inicialmente opere para un solo residencial,
+ninguna decisión técnica debe asumir que existirá
+un único residencial.
+
 ### Residentes
 
 * Registro de visitantes
