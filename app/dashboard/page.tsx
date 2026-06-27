@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   BarChart3,
+  Bell,
   Camera,
   ClipboardList,
   Home,
@@ -152,6 +153,12 @@ function SuperAdminDashboard() {
   return (
     <div className="space-y-3">
       <DashboardButton
+        icon={BarChart3}
+        title="Dashboard administración"
+        subtitle="KPIs y resumen global del sistema"
+        href="/dashboard/admin"
+      />
+      <DashboardButton
         icon={Building2}
         title="Residenciales"
         subtitle="Crear y administrar residenciales"
@@ -163,12 +170,6 @@ function SuperAdminDashboard() {
         subtitle="Asignar admins por residencial"
         comingSoon
       />
-      <DashboardButton
-        icon={BarChart3}
-        title="Estado SaaS"
-        subtitle="Ver residenciales activos e inactivos"
-        comingSoon
-      />
     </div>
   )
 }
@@ -176,6 +177,12 @@ function SuperAdminDashboard() {
 function AdminDashboard() {
   return (
     <div className="space-y-3">
+      <DashboardButton
+        icon={BarChart3}
+        title="Dashboard administración"
+        subtitle="KPIs y resumen del residencial"
+        href="/dashboard/admin"
+      />
       <DashboardButton
         icon={Home}
         title="Casas"
@@ -219,6 +226,12 @@ function ResidentDashboard() {
         title="Mi casa"
         subtitle="Ver datos de mi vivienda"
         href="/dashboard/my-house"
+      />
+      <DashboardButton
+        icon={Bell}
+        title="Notificaciones"
+        subtitle="Ver avisos de entradas y salidas"
+        href="/dashboard/notifications"
       />
     </div>
   )

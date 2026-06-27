@@ -80,6 +80,56 @@ type EntryPhotoUpload = {
 
 const maxEntryPhotoSizeBytes = 8 * 1024 * 1024
 
+async function notifyHouseResidents(params: {
+  residentialId: string
+  houseId: string
+  actorProfileId: string
+  visitId: string
+  visitorEntryId: string
+  type: 'visitor_entered' | 'visitor_exited'
+  title: string
+  message: string
+}): Promise<boolean> {
+  const { data: residents, error: residentsError } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('role', 'resident')
+    .eq('status', 'approved')
+    .eq('house_id', params.houseId)
+
+  if (residentsError) {
+    console.error('Notification error:', residentsError)
+    return false
+  }
+
+  if (!residents || residents.length === 0) {
+    return true
+  }
+
+  const notifications = residents.map((resident) => ({
+    residential_id: params.residentialId,
+    house_id: params.houseId,
+    recipient_profile_id: resident.id,
+    actor_profile_id: params.actorProfileId,
+    visit_id: params.visitId,
+    visitor_entry_id: params.visitorEntryId,
+    type: params.type,
+    title: params.title,
+    message: params.message,
+  }))
+
+  const { error: insertError } = await supabase
+    .from('notifications')
+    .insert(notifications)
+
+  if (insertError) {
+    console.error('Notification error:', insertError)
+    return false
+  }
+
+  return true
+}
+
 type ScanResult =
   | {
       status: 'loading'
@@ -597,6 +647,20 @@ function GateScanContent() {
         return
       }
 
+      const exitNotified = await notifyHouseResidents({
+        residentialId: result.visit.residential_id,
+        houseId: result.visit.house_id,
+        actorProfileId: guardProfile.id,
+        visitId: result.visit.id,
+        visitorEntryId: currentOpenEntry.id,
+        type: 'visitor_exited',
+        title: 'Visitante salió',
+        message: `${result.visit.visitor_name} salió de tu casa ${result.house.block}-${result.house.house_number}.`,
+      })
+      if (!exitNotified) {
+        toast.warning('Salida registrada, pero no se pudo notificar al residente')
+      }
+
       setRegisteredEntry({
         action: 'exit',
         visitor_name: result.visit.visitor_name,
@@ -659,9 +723,11 @@ function GateScanContent() {
       plate_photo_url: platePhotoUrl,
     }
 
-    const { error: entryError } = await supabase
+    const { data: entryInsertData, error: entryError } = await supabase
       .from('visitor_entries')
       .insert(entryPayload)
+      .select('id')
+      .single()
 
     if (entryError) {
       console.error('Error registering visitor entry:', entryError)
@@ -696,6 +762,23 @@ function GateScanContent() {
         toast.error(visitUpdateError.message)
         setSavingEntry(false)
         return
+      }
+    }
+
+    const entryId = (entryInsertData as { id: string } | null)?.id
+    if (entryId) {
+      const entryNotified = await notifyHouseResidents({
+        residentialId: result.visit.residential_id,
+        houseId: result.visit.house_id,
+        actorProfileId: guardProfile.id,
+        visitId: result.visit.id,
+        visitorEntryId: entryId,
+        type: 'visitor_entered',
+        title: 'Visitante ingresó',
+        message: `${result.visit.visitor_name} ingresó a tu casa ${result.house.block}-${result.house.house_number}.`,
+      })
+      if (!entryNotified) {
+        toast.warning('Ingreso registrado, pero no se pudo notificar al residente')
       }
     }
 
