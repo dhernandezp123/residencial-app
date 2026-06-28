@@ -47,13 +47,6 @@ type AnnouncedBy = {
   phone: string | null
 }
 
-type GuardProfile = {
-  id: string
-  user_id: string
-  role: 'super_admin' | 'admin' | 'resident' | 'guard'
-  status: 'pending' | 'approved' | 'rejected' | 'inactive'
-}
-
 type RegisteredEntry = {
   action: 'entry' | 'exit'
   visitor_name: string
@@ -79,56 +72,6 @@ type EntryPhotoUpload = {
 }
 
 const maxEntryPhotoSizeBytes = 8 * 1024 * 1024
-
-async function notifyHouseResidents(params: {
-  residentialId: string
-  houseId: string
-  actorProfileId: string
-  visitId: string
-  visitorEntryId: string
-  type: 'visitor_entered' | 'visitor_exited'
-  title: string
-  message: string
-}): Promise<boolean> {
-  const { data: residents, error: residentsError } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('role', 'resident')
-    .eq('status', 'approved')
-    .eq('house_id', params.houseId)
-
-  if (residentsError) {
-    console.error('Notification error:', residentsError)
-    return false
-  }
-
-  if (!residents || residents.length === 0) {
-    return true
-  }
-
-  const notifications = residents.map((resident) => ({
-    residential_id: params.residentialId,
-    house_id: params.houseId,
-    recipient_profile_id: resident.id,
-    actor_profile_id: params.actorProfileId,
-    visit_id: params.visitId,
-    visitor_entry_id: params.visitorEntryId,
-    type: params.type,
-    title: params.title,
-    message: params.message,
-  }))
-
-  const { error: insertError } = await supabase
-    .from('notifications')
-    .insert(notifications)
-
-  if (insertError) {
-    console.error('Notification error:', insertError)
-    return false
-  }
-
-  return true
-}
 
 type ScanResult =
   | {
@@ -600,77 +543,9 @@ function GateScanContent() {
     setSavingEntry(true)
 
     const { data: sessionData } = await supabase.auth.getSession()
-
     if (!sessionData.session) {
-      toast.error('No tienes permisos para registrar ingresos')
+      toast.error('Sesión no disponible')
       setSavingEntry(false)
-      return
-    }
-
-    const { data: guardProfileData, error: guardProfileError } = await supabase
-      .from('profiles')
-      .select('id,user_id,role,status')
-      .eq('user_id', sessionData.session.user.id)
-      .single()
-
-    if (guardProfileError || !guardProfileData) {
-      console.error('Error loading guard profile:', guardProfileError)
-      toast.error('No tienes permisos para registrar ingresos')
-      setSavingEntry(false)
-      return
-    }
-
-    const guardProfile = guardProfileData as GuardProfile
-
-    const canRegister =
-      guardProfile.status === 'approved' &&
-      ['guard', 'admin', 'super_admin'].includes(guardProfile.role)
-
-    if (!canRegister) {
-      toast.error('No tienes permisos para registrar ingresos')
-      setSavingEntry(false)
-      return
-    }
-
-    const registeredAt = new Date().toISOString()
-
-    if (currentOpenEntry) {
-      const { error: exitError } = await supabase
-        .from('visitor_entries')
-        .update({ exit_time: registeredAt })
-        .eq('id', currentOpenEntry.id)
-
-      if (exitError) {
-        console.error('Error registering visitor exit:', exitError)
-        toast.error(exitError.message)
-        setSavingEntry(false)
-        return
-      }
-
-      const exitNotified = await notifyHouseResidents({
-        residentialId: result.visit.residential_id,
-        houseId: result.visit.house_id,
-        actorProfileId: guardProfile.id,
-        visitId: result.visit.id,
-        visitorEntryId: currentOpenEntry.id,
-        type: 'visitor_exited',
-        title: 'Visitante salió',
-        message: `${result.visit.visitor_name} salió de tu casa ${result.house.block}-${result.house.house_number}.`,
-      })
-      if (!exitNotified) {
-        toast.warning('Salida registrada, pero no se pudo notificar al residente')
-      }
-
-      setRegisteredEntry({
-        action: 'exit',
-        visitor_name: result.visit.visitor_name,
-        house_label: `${result.house.block}-${result.house.house_number}`,
-        registered_time: registeredAt,
-        entry_time: currentOpenEntry.entry_time,
-      })
-      setSavingEntry(false)
-      toast.success('Salida registrada correctamente')
-      signal('exit_success')
       return
     }
 
@@ -678,115 +553,105 @@ function GateScanContent() {
     let vehiclePhotoUrl: string | null = null
     let platePhotoUrl: string | null = null
 
-    try {
-      setUploadStatus('Subiendo identidad (1/3)...')
-      identityPhotoUrl = await uploadEntryPhoto({
-        kind: 'identity',
-        bucket: 'visitor-identities',
-        file: entryPhotoFiles.identity,
-      })
-      setUploadStatus('Subiendo vehículo (2/3)...')
-      vehiclePhotoUrl = await uploadEntryPhoto({
-        kind: 'vehicle',
-        bucket: 'visitor-vehicles',
-        file: entryPhotoFiles.vehicle,
-      })
-      setUploadStatus('Subiendo placa (3/3)...')
-      platePhotoUrl = await uploadEntryPhoto({
-        kind: 'plate',
-        bucket: 'visitor-plates',
-        file: entryPhotoFiles.plate,
-      })
-      setUploadStatus(null)
-    } catch (error) {
-      console.error('Error uploading entry photo:', error)
-      setUploadStatus(null)
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'No se pudo subir la evidencia fotográfica',
-      )
-      setSavingEntry(false)
-      return
-    }
-
-    const entryPayload = {
-      residential_id: result.visit.residential_id,
-      visit_id: result.visit.id,
-      qr_token_id: result.qrToken.id,
-      house_id: result.visit.house_id,
-      guard_id: guardProfile.id,
-      entry_status: 'allowed',
-      notes: null,
-      identity_photo_url: identityPhotoUrl,
-      vehicle_photo_url: vehiclePhotoUrl,
-      plate_photo_url: platePhotoUrl,
-    }
-
-    const { data: entryInsertData, error: entryError } = await supabase
-      .from('visitor_entries')
-      .insert(entryPayload)
-      .select('id')
-      .single()
-
-    if (entryError) {
-      console.error('Error registering visitor entry:', entryError)
-      toast.error(entryError.message)
-      setSavingEntry(false)
-      return
-    }
-
-    if (result.visit.access_mode === 'single_use') {
-      const { error: qrTokenUpdateError } = await supabase
-        .from('qr_tokens')
-        .update({
-          status: 'used',
-          used_at: registeredAt,
+    if (!currentOpenEntry) {
+      try {
+        setUploadStatus('Subiendo identidad (1/3)...')
+        identityPhotoUrl = await uploadEntryPhoto({
+          kind: 'identity',
+          bucket: 'visitor-identities',
+          file: entryPhotoFiles.identity,
         })
-        .eq('id', result.qrToken.id)
-
-      if (qrTokenUpdateError) {
-        console.error('Error updating QR token:', qrTokenUpdateError)
-        toast.error(qrTokenUpdateError.message)
-        setSavingEntry(false)
-        return
-      }
-
-      const { error: visitUpdateError } = await supabase
-        .from('visits')
-        .update({ status: 'used' })
-        .eq('id', result.visit.id)
-
-      if (visitUpdateError) {
-        console.error('Error updating visit:', visitUpdateError)
-        toast.error(visitUpdateError.message)
+        setUploadStatus('Subiendo vehículo (2/3)...')
+        vehiclePhotoUrl = await uploadEntryPhoto({
+          kind: 'vehicle',
+          bucket: 'visitor-vehicles',
+          file: entryPhotoFiles.vehicle,
+        })
+        setUploadStatus('Subiendo placa (3/3)...')
+        platePhotoUrl = await uploadEntryPhoto({
+          kind: 'plate',
+          bucket: 'visitor-plates',
+          file: entryPhotoFiles.plate,
+        })
+        setUploadStatus(null)
+      } catch (error) {
+        console.error('Error uploading entry photo:', error)
+        setUploadStatus(null)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'No se pudo subir la evidencia fotográfica',
+        )
         setSavingEntry(false)
         return
       }
     }
 
-    const entryId = (entryInsertData as { id: string } | null)?.id
-    if (entryId) {
-      const entryNotified = await notifyHouseResidents({
-        residentialId: result.visit.residential_id,
-        houseId: result.visit.house_id,
-        actorProfileId: guardProfile.id,
-        visitId: result.visit.id,
-        visitorEntryId: entryId,
-        type: 'visitor_entered',
-        title: 'Visitante ingresó',
-        message: `${result.visit.visitor_name} ingresó a tu casa ${result.house.block}-${result.house.house_number}.`,
+    let apiResponse: {
+      action: 'entry' | 'exit'
+      entry: { id: string; entry_time: string; exit_time: string | null }
+    }
+
+    try {
+      const response = await fetch('/api/gate/register-access', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${sessionData.session.access_token}`,
+        },
+        body: JSON.stringify({
+          token,
+          identity_photo_url: identityPhotoUrl,
+          vehicle_photo_url: vehiclePhotoUrl,
+          plate_photo_url: platePhotoUrl,
+        }),
       })
-      if (!entryNotified) {
-        toast.warning('Ingreso registrado, pero no se pudo notificar al residente')
+
+      const data = (await response.json()) as {
+        action?: 'entry' | 'exit'
+        entry?: { id: string; entry_time: string; exit_time: string | null }
+        error?: string
       }
+
+      if (!response.ok) {
+        toast.error(data.error ?? 'Error al registrar acceso')
+        setSavingEntry(false)
+        return
+      }
+
+      if (!data.action || !data.entry) {
+        toast.error('Respuesta inesperada del servidor')
+        setSavingEntry(false)
+        return
+      }
+
+      apiResponse = { action: data.action, entry: data.entry }
+    } catch (error) {
+      console.error('Error calling register-access:', error)
+      toast.error('No se pudo conectar con el servidor')
+      setSavingEntry(false)
+      return
+    }
+
+    if (apiResponse.action === 'exit') {
+      setRegisteredEntry({
+        action: 'exit',
+        visitor_name: result.visit.visitor_name,
+        house_label: `${result.house.block}-${result.house.house_number}`,
+        registered_time: apiResponse.entry.exit_time ?? new Date().toISOString(),
+        entry_time: currentOpenEntry?.entry_time ?? null,
+      })
+      setSavingEntry(false)
+      toast.success('Salida registrada correctamente')
+      signal('exit_success')
+      return
     }
 
     setRegisteredEntry({
       action: 'entry',
       visitor_name: result.visit.visitor_name,
       house_label: `${result.house.block}-${result.house.house_number}`,
-      registered_time: registeredAt,
+      registered_time: apiResponse.entry.entry_time,
       entry_time: null,
     })
     setSavingEntry(false)
