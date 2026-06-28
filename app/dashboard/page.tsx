@@ -7,12 +7,14 @@ import { toast } from 'sonner'
 import {
   BarChart3,
   Bell,
+  BellOff,
   Camera,
   ClipboardList,
   Home,
   Plus,
   Shield,
   Building2,
+  Smartphone,
   UserCheck,
   UserCog,
   Users,
@@ -294,27 +296,46 @@ function PushNotificationButton({
 }) {
   const [checking, setChecking] = useState(true)
   const [supported, setSupported] = useState(false)
+  const [isIOS, setIsIOS] = useState(false)
+  const [isStandalone, setIsStandalone] = useState(false)
   const [permissionDenied, setPermissionDenied] = useState(false)
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [activating, setActivating] = useState(false)
 
   useEffect(() => {
     const checkSubscription = async () => {
-      if (
-        typeof window === 'undefined' ||
-        !('Notification' in window) ||
-        !('serviceWorker' in navigator) ||
-        !('PushManager' in window)
-      ) {
+      const hasNotification = 'Notification' in window
+      const hasSW = 'serviceWorker' in navigator
+      const hasPush = 'PushManager' in window
+      const pushSupported = hasNotification && hasSW && hasPush
+
+      const iosDevice = /iphone|ipad|ipod/i.test(navigator.userAgent)
+      const standalone =
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (navigator as Navigator & { standalone?: boolean }).standalone === true
+
+      console.log('[Push] support → Notification:', hasNotification, '| serviceWorker:', hasSW, '| PushManager:', hasPush)
+      console.log('[Push] Notification.permission:', hasNotification ? Notification.permission : 'N/A')
+      console.log('[Push] isIOS:', iosDevice, '| isStandalone:', standalone)
+
+      setIsIOS(iosDevice)
+      setIsStandalone(standalone)
+
+      if (!pushSupported) {
         setChecking(false)
         return
       }
+
       setSupported(true)
       setPermissionDenied(Notification.permission === 'denied')
+
+      let sub: PushSubscription | null = null
       if (Notification.permission !== 'denied') {
-        const sub = await getPushSubscription()
+        sub = await getPushSubscription()
         setIsSubscribed(Boolean(sub))
       }
+
+      console.log('[Push] current subscription:', sub)
       setChecking(false)
     }
     void checkSubscription()
@@ -379,26 +400,69 @@ function PushNotificationButton({
     setActivating(false)
   }
 
-  if (checking || !supported) return null
+  // Still checking browser capabilities — don't flash anything
+  if (checking) return null
 
-  if (permissionDenied) {
+  // iOS detected but not installed as PWA → push requires standalone mode
+  if (isIOS && !isStandalone) {
+    return (
+      <div className="rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 p-4 shadow-sm">
+        <div className="flex gap-3">
+          <span className="flex-shrink-0 rounded-xl bg-blue-100 dark:bg-blue-800/50 p-2 text-blue-600 dark:text-blue-400">
+            <Smartphone className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="font-semibold leading-tight text-blue-900 dark:text-blue-100">
+              Activa notificaciones en iPhone
+            </p>
+            <p className="mt-1 text-sm text-blue-700 dark:text-blue-300">
+              Para activar notificaciones en iPhone, agrega esta app a la pantalla de inicio y ábrela desde ahí.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Push API not available in this browser
+  if (!supported) {
     return (
       <div className="flex min-h-[4.5rem] w-full items-center gap-4 rounded-2xl bg-slate-200 dark:bg-slate-700 p-4 opacity-60 shadow-sm">
         <span className="flex-shrink-0 rounded-xl bg-slate-300 dark:bg-slate-600 p-2 text-slate-400">
-          <Bell className="h-5 w-5" />
+          <BellOff className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-semibold leading-tight text-slate-400 dark:text-slate-500">
-            Notificaciones bloqueadas
+          <p className="font-semibold leading-tight text-slate-500 dark:text-slate-400">
+            Notificaciones no disponibles
           </p>
           <p className="mt-0.5 text-sm text-slate-400 dark:text-slate-500">
-            Permite notificaciones en tu navegador
+            Notificaciones no disponibles en este navegador
           </p>
         </div>
       </div>
     )
   }
 
+  // User previously blocked notifications
+  if (permissionDenied) {
+    return (
+      <div className="flex min-h-[4.5rem] w-full items-center gap-4 rounded-2xl bg-slate-200 dark:bg-slate-700 p-4 shadow-sm">
+        <span className="flex-shrink-0 rounded-xl bg-slate-300 dark:bg-slate-600 p-2 text-slate-400">
+          <BellOff className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold leading-tight text-slate-600 dark:text-slate-300">
+            Notificaciones bloqueadas
+          </p>
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+            Actívalas desde la configuración del navegador
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Already subscribed
   if (isSubscribed) {
     return (
       <div className="flex min-h-[4.5rem] w-full items-center gap-4 rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm">
@@ -418,6 +482,7 @@ function PushNotificationButton({
     )
   }
 
+  // Default: permission not yet requested
   return (
     <button
       type="button"
