@@ -99,8 +99,6 @@ function RegisterContent() {
     Boolean(matchedHouse?.pays_security)
 
   const loadResidential = useCallback(async () => {
-    console.log('[Register] residential_id recibido:', residentialId)
-
     if (!residentialId) {
       setLoadingResidential(false)
       return
@@ -115,10 +113,7 @@ function RegisterContent() {
       .eq('is_active', true)
       .single()
 
-    console.log('[Register] resultado query residentials:', { data, error })
-
     if (error) {
-      console.error('[Register] error cargando residencial:', error)
       setResidentialError('No se pudo validar la residencial')
       setResidential(null)
       setLoadingResidential(false)
@@ -145,7 +140,6 @@ function RegisterContent() {
       .eq('is_active', true)
 
     if (error) {
-      console.error('Error loading houses:', error)
       setHouses([])
       setLoadingHouses(false)
       return
@@ -396,7 +390,7 @@ function RegisterContent() {
                 onChange={(e) =>
                   setFormData({ ...formData, block: e.target.value })
                 }
-                placeholder="Ej: D"
+                placeholder="Ej: X"
                 className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm uppercase outline-none"
                 required
                 disabled={!residential || loadingHouses}
@@ -412,7 +406,7 @@ function RegisterContent() {
                 onChange={(e) =>
                   setFormData({ ...formData, houseNumber: e.target.value })
                 }
-                placeholder="Ej: 84"
+                placeholder="Ej: XX"
                 inputMode="numeric"
                 className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
                 required
