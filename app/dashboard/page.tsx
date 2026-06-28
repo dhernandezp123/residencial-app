@@ -586,13 +586,33 @@ function DashboardButton({
 }
 
 function LogoutButton({ onLogout }: { onLogout: () => void }) {
+  const [confirming, setConfirming] = useState(false)
+
+  useEffect(() => {
+    if (!confirming) return
+    const timer = setTimeout(() => setConfirming(false), 4000)
+    return () => clearTimeout(timer)
+  }, [confirming])
+
+  const handleClick = () => {
+    if (!confirming) {
+      setConfirming(true)
+      return
+    }
+    onLogout()
+  }
+
   return (
     <button
       type="button"
-      onClick={onLogout}
-      className="min-h-12 w-full rounded-2xl bg-red-600 px-4 py-3 font-semibold text-white hover:bg-red-700 active:scale-[0.99] transition-colors"
+      onClick={handleClick}
+      className={`min-h-12 w-full rounded-2xl px-4 py-3 font-semibold text-white active:scale-[0.99] transition-colors ${
+        confirming
+          ? 'bg-red-700 hover:bg-red-800'
+          : 'bg-red-600 hover:bg-red-700'
+      }`}
     >
-      Cerrar sesión
+      {confirming ? '¿Confirmar cierre de sesión?' : 'Cerrar sesión'}
     </button>
   )
 }
