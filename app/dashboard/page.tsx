@@ -25,6 +25,7 @@ import {
   getPushSubscription,
   subscribeToPushNotifications,
 } from '@/lib/push'
+import { PwaInstallHint } from '@/app/components/PwaInstallHint'
 
 type Profile = {
   id: string
@@ -146,6 +147,8 @@ export default function HomePage() {
             </button>
           </div>
         </div>
+
+        <PwaInstallHint />
 
         {/* Role dashboards */}
         {profile.role === 'super_admin' && <SuperAdminDashboard />}

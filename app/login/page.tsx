@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import Image from 'next/image'
+import { PwaInstallHint } from '@/app/components/PwaInstallHint'
 import { supabase } from '@/lib/supabase'
 
 export default function LoginPage() {
@@ -131,6 +132,13 @@ export default function LoginPage() {
             {loading ? 'Ingresando...' : 'Ingresar'}
           </button>
         </form>
+
+        <div className="mt-5 space-y-3 border-t border-slate-100 dark:border-slate-700 pt-4">
+          <p className="text-center text-xs text-slate-400 dark:text-slate-500">
+            ¿Eres residente nuevo? Solicita tu enlace de registro a la administración de tu residencial.
+          </p>
+          <PwaInstallHint />
+        </div>
       </div>
     </main>
   )
