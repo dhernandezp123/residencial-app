@@ -1,0 +1,17 @@
+{
+  "name": "Residencial Access",
+  "short_name": "Access",
+  "description": "Sistema multi-residencial de control de accesos con QR.",
+  "display": "standalone",
+  "start_url": "/dashboard",
+  "theme_color": "#020617",
+  "background_color": "#f1f5f9",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

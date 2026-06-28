@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import {
   BarChart3,
   Bell,
@@ -18,13 +19,19 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import {
+  getPushSubscription,
+  subscribeToPushNotifications,
+} from '@/lib/push'
 
 type Profile = {
+  id: string
   first_name: string
   last_name: string
   role: 'super_admin' | 'admin' | 'resident' | 'guard'
   status: 'pending' | 'approved' | 'rejected' | 'inactive'
   user_id: string
+  residential_id: string | null
 }
 
 const roleLabels: Record<Profile['role'], string> = {
@@ -57,7 +64,7 @@ export default function HomePage() {
 
       const { data } = await supabase
         .from('profiles')
-        .select('first_name,last_name,role,status,user_id')
+        .select('id,first_name,last_name,role,status,user_id,residential_id')
         .eq('user_id', sessionData.session.user.id)
         .single()
 
@@ -141,7 +148,12 @@ export default function HomePage() {
         {/* Role dashboards */}
         {profile.role === 'super_admin' && <SuperAdminDashboard />}
         {profile.role === 'admin' && <AdminDashboard />}
-        {profile.role === 'resident' && <ResidentDashboard />}
+        {profile.role === 'resident' && (
+          <ResidentDashboard
+            profileId={profile.id}
+            residentialId={profile.residential_id}
+          />
+        )}
         {profile.role === 'guard' && <GuardDashboard />}
 
       </div>
@@ -205,7 +217,13 @@ function AdminDashboard() {
   )
 }
 
-function ResidentDashboard() {
+function ResidentDashboard({
+  profileId,
+  residentialId,
+}: {
+  profileId: string
+  residentialId: string | null
+}) {
   return (
     <div className="space-y-3">
       <DashboardButton
@@ -232,6 +250,10 @@ function ResidentDashboard() {
         title="Notificaciones"
         subtitle="Ver avisos de entradas y salidas"
         href="/dashboard/notifications"
+      />
+      <PushNotificationButton
+        profileId={profileId}
+        residentialId={residentialId}
       />
     </div>
   )
@@ -260,6 +282,162 @@ function GuardDashboard() {
         href="/dashboard/inside"
       />
     </div>
+  )
+}
+
+function PushNotificationButton({
+  profileId,
+  residentialId,
+}: {
+  profileId: string
+  residentialId: string | null
+}) {
+  const [checking, setChecking] = useState(true)
+  const [supported, setSupported] = useState(false)
+  const [permissionDenied, setPermissionDenied] = useState(false)
+  const [isSubscribed, setIsSubscribed] = useState(false)
+  const [activating, setActivating] = useState(false)
+
+  useEffect(() => {
+    const checkSubscription = async () => {
+      if (
+        typeof window === 'undefined' ||
+        !('Notification' in window) ||
+        !('serviceWorker' in navigator) ||
+        !('PushManager' in window)
+      ) {
+        setChecking(false)
+        return
+      }
+      setSupported(true)
+      setPermissionDenied(Notification.permission === 'denied')
+      if (Notification.permission !== 'denied') {
+        const sub = await getPushSubscription()
+        setIsSubscribed(Boolean(sub))
+      }
+      setChecking(false)
+    }
+    void checkSubscription()
+  }, [])
+
+  const handleActivate = async () => {
+    if (!('Notification' in window)) {
+      toast.error('Tu navegador no soporta notificaciones push')
+      return
+    }
+    setActivating(true)
+
+    const permission = await Notification.requestPermission()
+    if (permission !== 'granted') {
+      setPermissionDenied(permission === 'denied')
+      toast.error('Permiso de notificaciones no otorgado')
+      setActivating(false)
+      return
+    }
+
+    let subscription: PushSubscription
+    try {
+      subscription = await subscribeToPushNotifications()
+    } catch (err) {
+      console.error('Error subscribing to push notifications:', err)
+      toast.error('No se pudieron activar las notificaciones')
+      setActivating(false)
+      return
+    }
+
+    const json = subscription.toJSON()
+    const p256dh = json.keys?.['p256dh']
+    const auth = json.keys?.['auth']
+
+    if (!p256dh || !auth) {
+      toast.error('No se pudo obtener las claves de la suscripción')
+      setActivating(false)
+      return
+    }
+
+    const { error } = await supabase.from('push_subscriptions').upsert(
+      {
+        profile_id: profileId,
+        residential_id: residentialId,
+        endpoint: subscription.endpoint,
+        p256dh,
+        auth,
+        user_agent: navigator.userAgent,
+      },
+      { onConflict: 'endpoint', ignoreDuplicates: true },
+    )
+
+    if (error) {
+      console.error('Error saving push subscription:', error)
+      toast.error('No se pudo guardar la suscripción')
+      setActivating(false)
+      return
+    }
+
+    setIsSubscribed(true)
+    toast.success('Notificaciones activadas correctamente')
+    setActivating(false)
+  }
+
+  if (checking || !supported) return null
+
+  if (permissionDenied) {
+    return (
+      <div className="flex min-h-[4.5rem] w-full items-center gap-4 rounded-2xl bg-slate-200 dark:bg-slate-700 p-4 opacity-60 shadow-sm">
+        <span className="flex-shrink-0 rounded-xl bg-slate-300 dark:bg-slate-600 p-2 text-slate-400">
+          <Bell className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold leading-tight text-slate-400 dark:text-slate-500">
+            Notificaciones bloqueadas
+          </p>
+          <p className="mt-0.5 text-sm text-slate-400 dark:text-slate-500">
+            Permite notificaciones en tu navegador
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (isSubscribed) {
+    return (
+      <div className="flex min-h-[4.5rem] w-full items-center gap-4 rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm">
+        <span className="flex-shrink-0 rounded-xl bg-green-100 dark:bg-green-900/30 p-2 text-green-600 dark:text-green-400">
+          <Bell className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold leading-tight text-slate-900 dark:text-white">
+            Notificaciones activas
+          </p>
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+            Recibirás avisos de entradas y salidas
+          </p>
+        </div>
+        <span className="flex-shrink-0 text-lg text-green-500">✓</span>
+      </div>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleActivate}
+      disabled={activating}
+      className="flex min-h-[4.5rem] w-full items-center gap-4 rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm disabled:opacity-60 active:scale-[0.99] transition-transform"
+    >
+      <span className="flex-shrink-0 rounded-xl bg-slate-100 dark:bg-slate-700 p-2 text-slate-600 dark:text-slate-300">
+        <Bell className="h-5 w-5" />
+      </span>
+      <div className="min-w-0 flex-1 text-left">
+        <p className="font-semibold leading-tight text-slate-900 dark:text-white">
+          {activating ? 'Activando...' : 'Activar notificaciones'}
+        </p>
+        <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+          Recibe avisos cuando tus visitas entren o salgan
+        </p>
+      </div>
+      <span className="flex-shrink-0 text-lg text-slate-300 dark:text-slate-500">›</span>
+    </button>
   )
 }
 
