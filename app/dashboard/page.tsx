@@ -151,22 +151,29 @@ export default function HomePage() {
         <PwaInstallHint />
 
         {/* Role dashboards */}
-        {profile.role === 'super_admin' && <SuperAdminDashboard />}
-        {profile.role === 'admin' && <AdminDashboard />}
+        {profile.role === 'super_admin' && (
+          <SuperAdminDashboard onLogout={handleLogout} />
+        )}
+        {profile.role === 'admin' && (
+          <AdminDashboard onLogout={handleLogout} />
+        )}
         {profile.role === 'resident' && (
           <ResidentDashboard
             profileId={profile.id}
             residentialId={profile.residential_id}
+            onLogout={handleLogout}
           />
         )}
-        {profile.role === 'guard' && <GuardDashboard />}
+        {profile.role === 'guard' && (
+          <GuardDashboard onLogout={handleLogout} />
+        )}
 
       </div>
     </main>
   )
 }
 
-function SuperAdminDashboard() {
+function SuperAdminDashboard({ onLogout }: { onLogout: () => void }) {
   return (
     <div className="space-y-3">
       <DashboardButton
@@ -187,11 +194,12 @@ function SuperAdminDashboard() {
         subtitle="Asignar admins por residencial"
         comingSoon
       />
+      <LogoutButton onLogout={onLogout} />
     </div>
   )
 }
 
-function AdminDashboard() {
+function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   return (
     <div className="space-y-3">
       <DashboardButton
@@ -218,6 +226,7 @@ function AdminDashboard() {
         subtitle="Crear usuarios de seguridad"
         href="/dashboard/guards"
       />
+      <LogoutButton onLogout={onLogout} />
     </div>
   )
 }
@@ -225,9 +234,11 @@ function AdminDashboard() {
 function ResidentDashboard({
   profileId,
   residentialId,
+  onLogout,
 }: {
   profileId: string
   residentialId: string | null
+  onLogout: () => void
 }) {
   return (
     <div className="space-y-3">
@@ -260,11 +271,12 @@ function ResidentDashboard({
         profileId={profileId}
         residentialId={residentialId}
       />
+      <LogoutButton onLogout={onLogout} />
     </div>
   )
 }
 
-function GuardDashboard() {
+function GuardDashboard({ onLogout }: { onLogout: () => void }) {
   return (
     <div className="space-y-3">
       <DashboardButton
@@ -286,6 +298,7 @@ function GuardDashboard() {
         subtitle="Ver visitantes actualmente dentro"
         href="/dashboard/inside"
       />
+      <LogoutButton onLogout={onLogout} />
     </div>
   )
 }
@@ -567,5 +580,17 @@ function DashboardButton({
     <div className={baseClass}>
       {content}
     </div>
+  )
+}
+
+function LogoutButton({ onLogout }: { onLogout: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onLogout}
+      className="min-h-12 w-full rounded-2xl bg-red-600 px-4 py-3 font-semibold text-white hover:bg-red-700 active:scale-[0.99] transition-colors"
+    >
+      Cerrar sesión
+    </button>
   )
 }
