@@ -178,10 +178,10 @@ export function VisitQrCard({
 
     context.textAlign = 'center'
     context.font = '700 22px Arial'
-    context.fillStyle = '#ed6216'
+    context.fillStyle = '#15936A'
     context.fillText('VISITANTE', cardWidth / 2, 805)
 
-    context.fillStyle = '#05234c'
+    context.fillStyle = '#14231C'
     setResponsiveFont(context, displayVisitorName, 720, 700, 44, 31)
     drawWrappedText(context, displayVisitorName, cardWidth / 2, 855, 720, 50, 2)
 
@@ -190,7 +190,7 @@ export function VisitQrCard({
     const badgeWidth = Math.max(275, context.measureText(badgeText).width + 58)
     const badgeX = (cardWidth - badgeWidth) / 2
     const badgeY = 895
-    context.fillStyle = '#ed6216'
+    context.fillStyle = '#15936A'
     context.beginPath()
     context.roundRect(badgeX, badgeY, badgeWidth, 50, 25)
     context.fill()
@@ -198,7 +198,7 @@ export function VisitQrCard({
     context.fillText(badgeText, cardWidth / 2, badgeY + 34)
 
     context.font = '700 22px Arial'
-    context.fillStyle = '#05234c'
+    context.fillStyle = '#14231C'
     context.fillText(
       'Presentar este código al ingresar y salir.',
       cardWidth / 2,
@@ -226,9 +226,9 @@ export function VisitQrCard({
       const rowY = firstRowY + Math.floor(index / 2) * rowGap
 
       context.font = '700 18px Arial'
-      context.fillStyle = '#ed6216'
+      context.fillStyle = '#15936A'
       context.fillText(line.label.toUpperCase(), columnX, rowY)
-      context.fillStyle = '#05234c'
+      context.fillStyle = '#14231C'
       setResponsiveFont(context, line.value, columnWidth, 700, 22, 17)
       drawWrappedText(context, line.value, columnX, rowY + 28, columnWidth, 26, 2)
     })
@@ -253,7 +253,7 @@ export function VisitQrCard({
       const fileName = `visita-${visitorName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`
       const file = new File([blob], fileName, { type: 'image/png' })
       const shareData = {
-        title: 'Acceso residencial',
+        title: 'ResidentPass',
         text: `QR de acceso para ${visitorName}`,
         files: [file],
       }
@@ -275,7 +275,7 @@ export function VisitQrCard({
       try {
         if (navigator.share) {
           await navigator.share({
-            title: 'Acceso residencial',
+            title: 'ResidentPass',
             text: `Visita para ${visitorName}: ${qrScanUrl}`,
             url: qrScanUrl,
           })
@@ -319,7 +319,7 @@ export function VisitQrCard({
         type="button"
         onClick={() => void handleShareImage()}
         disabled={sharingImage}
-        className="min-h-12 w-full rounded-2xl bg-green-600 px-4 py-3 font-semibold text-white disabled:opacity-60 active:scale-[0.99]"
+        className="min-h-12 w-full rounded-2xl bg-[#15936A] px-4 py-3 font-semibold text-white disabled:opacity-60 active:scale-[0.99] hover:bg-[#0E6B4E] transition-colors"
       >
         {sharingImage ? 'Preparando imagen...' : 'Compartir imagen QR'}
       </button>

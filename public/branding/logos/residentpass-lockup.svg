@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 150" width="560" height="150">
+  <defs>
+    
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1FA06E"></stop>
+      <stop offset="1" stop-color="#0E6B4E"></stop>
+    </linearGradient>
+  </defs>
+  <g transform="translate(8 16)">
+    <path fill-rule="evenodd" fill="url(#g)" d="M50 5 L91 21 V59 C91 90 72 108 50 116 C28 108 9 90 9 59 V21 Z M35 91 V57 a15 15 0 0 1 30 0 V91 Z"></path>
+    <circle cx="57" cy="73" r="3" fill="#1FA06E"></circle>
+  </g>
+  <text x="140" y="90" font-family="&#39;Plus Jakarta Sans&#39;,sans-serif" font-weight="800" font-size="58" letter-spacing="-1">
+    <tspan fill="#14231C">Resident</tspan><tspan fill="#15936A">Pass</tspan>
+  </text>
+</svg>

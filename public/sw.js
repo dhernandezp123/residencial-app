@@ -4,16 +4,16 @@ self.addEventListener('push', function (event) {
     data = event.data ? event.data.json() : {}
   } catch {
     data = {
-      title: 'Residencial Access',
+      title: 'ResidentPass',
       body: event.data ? event.data.text() : '',
     }
   }
 
-  const title = data.title || 'Residencial Access'
+  const title = data.title || 'ResidentPass'
   const options = {
     body: data.body || '',
-    icon: '/icon.svg',
-    badge: '/icon.svg',
+    icon: '/branding/icons/icon-192.png',
+    badge: '/branding/icons/icon-192.png',
     data: { url: data.url || '/dashboard/notifications' },
   }
 

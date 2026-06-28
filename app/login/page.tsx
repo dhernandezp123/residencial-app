@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
+import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
 
 export default function LoginPage() {
@@ -54,7 +55,15 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-slate-950 flex items-center justify-center px-5">
       <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-800 p-6 shadow-xl">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Acceso Residencial</h1>
+        <Image
+          src="/branding/logos/residentpass-lockup.svg"
+          alt="ResidentPass"
+          width={180}
+          height={28}
+          className="h-7 w-auto"
+          unoptimized
+        />
+        <h1 className="mt-3 text-2xl font-bold text-slate-900 dark:text-white">Iniciar sesión</h1>
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
           Ingresa para anunciar visitas o validar accesos.
         </p>
@@ -117,7 +126,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-2xl bg-slate-950 dark:bg-slate-700 py-3 font-semibold text-white disabled:opacity-60"
+            className="w-full rounded-2xl bg-[#15936A] py-3 font-semibold text-white disabled:opacity-60 hover:bg-[#0E6B4E] transition-colors"
           >
             {loading ? 'Ingresando...' : 'Ingresar'}
           </button>
