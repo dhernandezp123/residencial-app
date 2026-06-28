@@ -68,6 +68,7 @@ const accessModeOptions: { value: AccessMode; label: string }[] = [
 
 export default function NewVisitPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [housePaysecurity, setHousePaysecurity] = useState<boolean | null>(null)
   const [formData, setFormData] = useState<VisitFormData>(initialFormData)
   const [createdVisit, setCreatedVisit] = useState<CreatedVisit | null>(null)
   const [accessLabel, setAccessLabel] = useState('tu residencial/casa')
@@ -106,13 +107,14 @@ export default function NewVisitPage() {
     if (data.house_id) {
       const { data: houseData, error: houseError } = await supabase
         .from('houses')
-        .select('residential_id,block,house_number')
+        .select('residential_id,block,house_number,pays_security')
         .eq('id', data.house_id)
         .single()
 
       if (houseError || !houseData) {
         console.error('Error loading house for share label:', houseError)
       } else {
+        setHousePaysecurity(houseData.pays_security ?? false)
         const { data: residentialData, error: residentialError } =
           await supabase
             .from('residentials')
@@ -148,7 +150,8 @@ export default function NewVisitPage() {
     profile?.status === 'approved' &&
     profile.role === 'resident' &&
     Boolean(profile.residential_id) &&
-    Boolean(profile.house_id)
+    Boolean(profile.house_id) &&
+    housePaysecurity === true
 
   const handleCreateVisit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -315,8 +318,12 @@ export default function NewVisitPage() {
             Acceso no disponible
           </h1>
           <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Tu perfil debe estar aprobado como residente y tener una casa
-            asignada para generar visitas.
+            {profile?.status === 'approved' &&
+            profile.role === 'resident' &&
+            profile.house_id &&
+            housePaysecurity === false
+              ? 'Tu casa no tiene seguridad activa. Contacta a la administración de tu residencial.'
+              : 'Tu perfil debe estar aprobado como residente y tener una casa asignada para generar visitas.'}
           </p>
           <Link
             href="/dashboard"

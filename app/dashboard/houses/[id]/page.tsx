@@ -29,10 +29,16 @@ type HouseRow = Omit<HouseDetail, 'residentials'> & {
     | null
 }
 
+type ResidentProfile = {
+  id: string
+  first_name: string
+  last_name: string
+  phone: string | null
+  status: 'pending' | 'approved' | 'rejected' | 'inactive'
+}
+
 type HousePageProps = {
-  params: Promise<{
-    id: string
-  }>
+  params: Promise<{ id: string }>
 }
 
 export default function HouseDetailPage({ params }: HousePageProps) {
@@ -40,6 +46,18 @@ export default function HouseDetailPage({ params }: HousePageProps) {
 
   const [house, setHouse] = useState<HouseDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [residents, setResidents] = useState<ResidentProfile[]>([])
+  const [loadingResidents, setLoadingResidents] = useState(true)
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
+  const [togglingSecurity, setTogglingSecurity] = useState(false)
+  const [confirmingDeactivate, setConfirmingDeactivate] = useState(false)
+
+  // Auto-cancel the confirmation state after 5 s if user doesn't confirm
+  useEffect(() => {
+    if (!confirmingDeactivate) return
+    const timer = setTimeout(() => setConfirmingDeactivate(false), 5000)
+    return () => clearTimeout(timer)
+  }, [confirmingDeactivate])
 
   const loadHouse = async () => {
     setLoading(true)
@@ -61,7 +79,6 @@ export default function HouseDetailPage({ params }: HousePageProps) {
     }
 
     const houseRow = data as HouseRow
-
     setHouse({
       ...houseRow,
       residentials: houseRow.residentials?.[0] || null,
@@ -69,30 +86,102 @@ export default function HouseDetailPage({ params }: HousePageProps) {
     setLoading(false)
   }
 
+  const loadResidents = async () => {
+    setLoadingResidents(true)
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id,first_name,last_name,phone,status')
+      .eq('house_id', id)
+      .eq('role', 'resident')
+      .order('last_name', { ascending: true })
+
+    if (error) {
+      console.error('Error loading residents for house:', error)
+      toast.error('No se pudieron cargar los residentes')
+      setLoadingResidents(false)
+      return
+    }
+
+    setResidents(data || [])
+    setLoadingResidents(false)
+  }
+
+  const loadCurrentUser = async () => {
+    const { data: sessionData } = await supabase.auth.getSession()
+    if (!sessionData.session) return
+
+    const { data } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('user_id', sessionData.session.user.id)
+      .single()
+
+    if (data) setCurrentUserRole(data.role)
+  }
+
   useEffect(() => {
     void Promise.resolve().then(loadHouse)
+    void Promise.resolve().then(loadResidents)
+    void Promise.resolve().then(loadCurrentUser)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
+
+  const handleToggleSecurity = async () => {
+    if (!house) return
+
+    const newValue = !house.pays_security
+
+    if (!newValue) {
+      // Deactivating — require a second tap to confirm
+      if (!confirmingDeactivate) {
+        setConfirmingDeactivate(true)
+        toast.warning(
+          `¿Desactivar acceso en ${house.block}-${house.house_number}? Toca de nuevo para confirmar.`,
+        )
+        return
+      }
+      setConfirmingDeactivate(false)
+    }
+
+    setTogglingSecurity(true)
+
+    const { error } = await supabase
+      .from('houses')
+      .update({ pays_security: newValue })
+      .eq('id', id)
+
+    if (error) {
+      console.error('Error updating pays_security:', error)
+      toast.error('No se pudo actualizar el estado de seguridad')
+      setTogglingSecurity(false)
+      return
+    }
+
+    setHouse({ ...house, pays_security: newValue })
+    toast.success(newValue ? 'Acceso activado' : 'Acceso desactivado')
+    setTogglingSecurity(false)
+  }
+
+  const approvedCount = residents.filter((r) => r.status === 'approved').length
+  const pendingCount = residents.filter((r) => r.status === 'pending').length
+  const canManageSecurity =
+    currentUserRole === 'admin' || currentUserRole === 'super_admin'
 
   if (loading) {
     return (
       <main className="min-h-screen bg-slate-100 px-5 py-6">
         <div className="mx-auto max-w-sm space-y-5">
           <div className="h-5 w-28 rounded-full bg-slate-200" />
-
           <section className="rounded-2xl bg-white p-6 shadow-sm">
             <div className="h-4 w-24 rounded-full bg-slate-200" />
             <div className="mt-3 h-8 w-36 rounded-full bg-slate-200" />
             <div className="mt-4 h-4 w-48 rounded-full bg-slate-200" />
             <div className="mt-2 h-4 w-40 rounded-full bg-slate-200" />
           </section>
-
           <section className="grid gap-3">
             {[0, 1, 2].map((item) => (
-              <div
-                key={item}
-                className="rounded-2xl bg-white p-5 shadow-sm"
-              >
+              <div key={item} className="rounded-2xl bg-white p-5 shadow-sm">
                 <div className="h-4 w-32 rounded-full bg-slate-200" />
                 <div className="mt-3 h-7 w-16 rounded-full bg-slate-200" />
               </div>
@@ -142,12 +231,6 @@ export default function HouseDetailPage({ params }: HousePageProps) {
           </p>
           <div className="mt-5 grid gap-2 text-sm text-slate-200">
             <p>
-              Paga seguridad:{' '}
-              <span className="font-semibold text-white">
-                {house.pays_security ? 'Sí' : 'No'}
-              </span>
-            </p>
-            <p>
               Usuarios app permitidos:{' '}
               <span className="font-semibold text-white">
                 {house.resident_limit || 3}
@@ -156,6 +239,7 @@ export default function HouseDetailPage({ params }: HousePageProps) {
           </div>
         </header>
 
+        {/* Estado general */}
         <section className="rounded-2xl bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -182,14 +266,117 @@ export default function HouseDetailPage({ params }: HousePageProps) {
           )}
         </section>
 
-        <section className="grid gap-3">
-          <KpiCard label="Residentes aprobados" value="0" />
-          <KpiCard label="Residentes pendientes" value="0" />
-          <KpiCard label="Visitas activas" value="0" />
+        {/* Control de seguridad */}
+        <section className="rounded-2xl bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-500">
+                Seguridad activa
+              </p>
+              <p className="mt-1 text-xl font-bold text-slate-950">
+                {house.pays_security ? 'Sí' : 'No'}
+              </p>
+            </div>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                house.pays_security
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-red-100 text-red-700'
+              }`}
+            >
+              {house.pays_security ? 'Activa' : 'Inactiva'}
+            </span>
+          </div>
+
+          {!house.pays_security && (
+            <p className="mt-3 text-sm leading-5 text-slate-500">
+              Los residentes de esta casa no pueden crear visitas mientras la seguridad esté desactivada.
+            </p>
+          )}
+
+          {canManageSecurity && (
+            <button
+              type="button"
+              onClick={handleToggleSecurity}
+              disabled={togglingSecurity}
+              className={`mt-4 min-h-12 w-full rounded-2xl px-4 py-3 font-semibold text-white disabled:opacity-60 active:scale-[0.99] transition-colors ${
+                house.pays_security
+                  ? confirmingDeactivate
+                    ? 'bg-red-700 hover:bg-red-800'
+                    : 'bg-red-500 hover:bg-red-600'
+                  : 'bg-[#15936A] hover:bg-[#0E6B4E]'
+              }`}
+            >
+              {togglingSecurity
+                ? 'Actualizando...'
+                : house.pays_security
+                  ? confirmingDeactivate
+                    ? '¿Confirmar desactivación?'
+                    : 'Desactivar acceso'
+                  : 'Activar acceso'}
+            </button>
+          )}
         </section>
 
         <section className="grid gap-3">
-          <PlaceholderAction title="Residentes" />
+          <KpiCard
+            label="Residentes aprobados"
+            value={loadingResidents ? '–' : String(approvedCount)}
+          />
+          <KpiCard
+            label="Residentes pendientes"
+            value={loadingResidents ? '–' : String(pendingCount)}
+          />
+          <KpiCard label="Visitas activas" value="0" />
+        </section>
+
+        <section className="rounded-2xl bg-white p-5 shadow-sm">
+          <p className="text-sm font-semibold text-slate-500">Residentes</p>
+          {loadingResidents ? (
+            <p className="mt-3 text-sm text-slate-400">Cargando residentes...</p>
+          ) : residents.length === 0 ? (
+            <p className="mt-3 text-sm text-slate-400">
+              No hay residentes registrados en esta casa.
+            </p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {residents.map((resident) => (
+                <li
+                  key={resident.id}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-slate-900">
+                      {resident.first_name} {resident.last_name}
+                    </p>
+                    {resident.phone && (
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {resident.phone}
+                      </p>
+                    )}
+                  </div>
+                  <span
+                    className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      resident.status === 'approved'
+                        ? 'bg-green-100 text-green-700'
+                        : resident.status === 'pending'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    {resident.status === 'approved'
+                      ? 'Aprobado'
+                      : resident.status === 'pending'
+                        ? 'Pendiente'
+                        : resident.status}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="grid gap-3">
           <PlaceholderAction title="Visitas" />
           <PlaceholderAction title="Historial" />
         </section>

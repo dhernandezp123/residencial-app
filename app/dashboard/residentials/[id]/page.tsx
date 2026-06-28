@@ -226,7 +226,7 @@ export default function ResidentialDetailPage({
           onClick={handleCopyRegisterLink}
           className="min-h-12 w-full rounded-2xl bg-white px-4 py-3 font-semibold text-slate-900 shadow-sm active:scale-[0.99]"
         >
-          Copiar link de registro
+          Copiar link de invitación
         </button>
 
         <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm">

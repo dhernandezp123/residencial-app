@@ -65,6 +65,7 @@ function RegisterContent() {
   const residentialId = searchParams.get('residential_id') || ''
 
   const [residential, setResidential] = useState<Residential | null>(null)
+  const [residentialError, setResidentialError] = useState<string | null>(null)
   const [houses, setHouses] = useState<House[]>([])
   const [formData, setFormData] = useState<RegisterFormData>(initialFormData)
   const [showPassword, setShowPassword] = useState(false)
@@ -98,6 +99,8 @@ function RegisterContent() {
     Boolean(matchedHouse?.pays_security)
 
   const loadResidential = useCallback(async () => {
+    console.log('[Register] residential_id recibido:', residentialId)
+
     if (!residentialId) {
       setLoadingResidential(false)
       return
@@ -112,13 +115,17 @@ function RegisterContent() {
       .eq('is_active', true)
       .single()
 
+    console.log('[Register] resultado query residentials:', { data, error })
+
     if (error) {
-      console.error('Error loading residential:', error)
+      console.error('[Register] error cargando residencial:', error)
+      setResidentialError('No se pudo validar la residencial')
       setResidential(null)
       setLoadingResidential(false)
       return
     }
 
+    setResidentialError(null)
     setResidential(data)
     setLoadingResidential(false)
   }, [residentialId])
@@ -231,10 +238,10 @@ function RegisterContent() {
               Registro de vecino
             </p>
             <h1 className="mt-2 text-2xl font-bold text-slate-950">
-              Enlace requerido
+              Invitación no válida
             </h1>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              Necesitas un enlace de invitación válido para registrarte.
+              Necesitas un enlace de invitación válido para registrarte. Solicítalo a la administración de tu residencial.
             </p>
             <Link
               href="/login"
@@ -363,13 +370,20 @@ function RegisterContent() {
             </div>
           </label>
 
-          <section className="rounded-2xl bg-slate-50 p-4">
+          <section className={`rounded-2xl p-4 ${residentialError ? 'bg-red-50' : 'bg-slate-50'}`}>
             <p className="text-sm font-semibold text-slate-700">Residencial</p>
-            <p className="mt-1 text-base font-bold text-slate-950">
+            <p className={`mt-1 text-base font-bold ${residentialError ? 'text-red-700' : 'text-slate-950'}`}>
               {loadingResidential
                 ? 'Cargando residencial...'
-                : residential?.name || 'Invitación no válida'}
+                : residentialError
+                  ? 'No se pudo validar la residencial'
+                  : residential?.name || 'Invitación no válida'}
             </p>
+            {!loadingResidential && residentialError && (
+              <p className="mt-1 text-xs leading-5 text-red-500">
+                El link puede ser incorrecto o la residencial no está activa. Contacta a administración.
+              </p>
+            )}
           </section>
 
           <div className="grid grid-cols-2 gap-3">
