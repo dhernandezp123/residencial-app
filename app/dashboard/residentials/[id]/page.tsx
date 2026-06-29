@@ -871,20 +871,36 @@ export default function ResidentialDetailPage({
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {grouped[block].map((house) => (
-                        <Link
-                          key={house.id}
-                          href={`/dashboard/houses/${house.id}`}
-                          className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 active:scale-[0.97]"
-                        >
-                          <span
-                            className={`h-2 w-2 flex-shrink-0 rounded-full ${
-                              house.pays_security ? 'bg-green-500' : 'bg-amber-400'
+                      {grouped[block].map((house) => {
+                        const statusDot = !house.is_active
+                          ? 'bg-slate-400'
+                          : house.pays_security
+                            ? 'bg-green-500'
+                            : 'bg-amber-400'
+                        const statusLabel = !house.is_active
+                          ? 'Inactiva'
+                          : house.pays_security
+                            ? 'Activa con seguridad'
+                            : 'Activa sin seguridad'
+
+                        return (
+                          <Link
+                            key={house.id}
+                            href={`/dashboard/houses/${house.id}`}
+                            aria-label={`Casa ${house.block}-${house.house_number}: ${statusLabel}`}
+                            className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold active:scale-[0.97] ${
+                              house.is_active
+                                ? 'border-slate-200 text-slate-800'
+                                : 'border-slate-200 bg-slate-50 text-slate-500'
                             }`}
-                          />
-                          {house.house_number}
-                        </Link>
-                      ))}
+                          >
+                            <span
+                              className={`h-2 w-2 flex-shrink-0 rounded-full ${statusDot}`}
+                            />
+                            {house.house_number}
+                          </Link>
+                        )
+                      })}
                     </div>
                   </div>
                 ))

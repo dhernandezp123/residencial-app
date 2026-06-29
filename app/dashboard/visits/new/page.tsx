@@ -70,6 +70,7 @@ const accessModeOptions: { value: AccessMode; label: string }[] = [
 export default function NewVisitPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [housePaysecurity, setHousePaysecurity] = useState<boolean | null>(null)
+  const [houseIsActive, setHouseIsActive] = useState<boolean | null>(null)
   const [formData, setFormData] = useState<VisitFormData>(initialFormData)
   const [createdVisit, setCreatedVisit] = useState<CreatedVisit | null>(null)
   const [residentialName, setResidentialName] = useState('Residencial')
@@ -107,7 +108,7 @@ export default function NewVisitPage() {
     if (data.house_id) {
       const { data: houseData, error: houseError } = await supabase
         .from('houses')
-        .select('residential_id,block,house_number,pays_security')
+        .select('residential_id,block,house_number,pays_security,is_active')
         .eq('id', data.house_id)
         .single()
 
@@ -115,6 +116,7 @@ export default function NewVisitPage() {
         console.error('Error loading house for share label:', houseError)
       } else {
         setHousePaysecurity(houseData.pays_security ?? false)
+        setHouseIsActive(houseData.is_active ?? false)
         const { data: residentialData, error: residentialError } =
           await supabase
             .from('residentials')
@@ -147,6 +149,7 @@ export default function NewVisitPage() {
     profile.role === 'resident' &&
     Boolean(profile.residential_id) &&
     Boolean(profile.house_id) &&
+    houseIsActive === true &&
     housePaysecurity === true
 
   const handleCreateVisit = async (e: React.FormEvent) => {

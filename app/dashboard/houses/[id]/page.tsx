@@ -58,7 +58,10 @@ export default function HouseDetailPage({ params }: HousePageProps) {
   const [currentUserIsResidentialAdmin, setCurrentUserIsResidentialAdmin] =
     useState(false)
   const [togglingSecurity, setTogglingSecurity] = useState(false)
+  const [togglingActive, setTogglingActive] = useState(false)
   const [confirmingDeactivate, setConfirmingDeactivate] = useState(false)
+  const [confirmingHouseDeactivate, setConfirmingHouseDeactivate] =
+    useState(false)
   const [removingResidentId, setRemovingResidentId] = useState<string | null>(null)
   const [confirmRemoveResidentId, setConfirmRemoveResidentId] = useState<string | null>(null)
 
@@ -68,6 +71,12 @@ export default function HouseDetailPage({ params }: HousePageProps) {
     const timer = setTimeout(() => setConfirmingDeactivate(false), 5000)
     return () => clearTimeout(timer)
   }, [confirmingDeactivate])
+
+  useEffect(() => {
+    if (!confirmingHouseDeactivate) return
+    const timer = setTimeout(() => setConfirmingHouseDeactivate(false), 5000)
+    return () => clearTimeout(timer)
+  }, [confirmingHouseDeactivate])
 
   useEffect(() => {
     if (!confirmRemoveResidentId) return
@@ -167,21 +176,68 @@ export default function HouseDetailPage({ params }: HousePageProps) {
 
     setTogglingSecurity(true)
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('houses')
       .update({ pays_security: newValue })
       .eq('id', id)
+      .select('pays_security')
+      .single()
 
-    if (error) {
+    if (error || !data) {
       console.error('Error updating pays_security:', error)
       toast.error('No se pudo actualizar el estado de seguridad')
       setTogglingSecurity(false)
       return
     }
 
-    setHouse({ ...house, pays_security: newValue })
+    setHouse({ ...house, pays_security: data.pays_security })
     toast.success(newValue ? 'Acceso activado' : 'Acceso desactivado')
     setTogglingSecurity(false)
+  }
+
+  const handleToggleHouseActive = async () => {
+    if (!house || !canManageSecurity) return
+
+    const newValue = !house.is_active
+
+    if (!newValue) {
+      if (!confirmingHouseDeactivate) {
+        setConfirmingHouseDeactivate(true)
+        toast.warning(
+          `Toca de nuevo para desactivar la casa ${house.block}-${house.house_number}.`,
+        )
+        return
+      }
+      setConfirmingHouseDeactivate(false)
+    }
+
+    setTogglingActive(true)
+
+    const payload = newValue
+      ? { is_active: true }
+      : { is_active: false, pays_security: false }
+
+    const { data, error } = await supabase
+      .from('houses')
+      .update(payload)
+      .eq('id', id)
+      .select('is_active,pays_security')
+      .single()
+
+    setTogglingActive(false)
+
+    if (error || !data) {
+      console.error('Error updating house active state:', error)
+      toast.error('No se pudo actualizar la casa')
+      return
+    }
+
+    setHouse({
+      ...house,
+      is_active: data.is_active,
+      pays_security: data.pays_security,
+    })
+    toast.success(newValue ? 'Casa activada' : 'Casa desactivada')
   }
 
   const handleRemoveResident = async (resident: ResidentProfile) => {
@@ -329,6 +385,29 @@ export default function HouseDetailPage({ params }: HousePageProps) {
               {house.notes}
             </p>
           )}
+
+          {canManageSecurity && (
+            <button
+              type="button"
+              onClick={() => void handleToggleHouseActive()}
+              disabled={togglingActive}
+              className={`mt-4 min-h-12 w-full rounded-2xl px-4 py-3 font-semibold disabled:opacity-60 active:scale-[0.99] ${
+                house.is_active
+                  ? confirmingHouseDeactivate
+                    ? 'bg-red-700 text-white'
+                    : 'border border-red-200 text-red-700'
+                  : 'bg-slate-950 text-white'
+              }`}
+            >
+              {togglingActive
+                ? 'Actualizando...'
+                : house.is_active
+                  ? confirmingHouseDeactivate
+                    ? 'Confirmar desactivar casa'
+                    : 'Desactivar casa'
+                  : 'Activar casa'}
+            </button>
+          )}
         </section>
 
         {/* Control de seguridad */}
@@ -377,7 +456,7 @@ export default function HouseDetailPage({ params }: HousePageProps) {
                 : house.pays_security
                   ? confirmingDeactivate
                     ? '¿Confirmar desactivación?'
-                    : 'Desactivar acceso'
+                    : 'Desactivar seguridad'
                   : 'Activar acceso'}
             </button>
           )}

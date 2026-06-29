@@ -296,22 +296,36 @@ export default function AdminHousesPage() {
   const handleToggleActive = async (house: House) => {
     setUpdatingHouseId(house.id)
     const nextValue = !house.is_active
+    const payload = nextValue
+      ? { is_active: true }
+      : { is_active: false, pays_security: false }
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('houses')
-      .update({ is_active: nextValue })
+      .update(payload)
       .eq('id', house.id)
+      .select('is_active,pays_security')
+      .single()
 
     setUpdatingHouseId(null)
 
-    if (error) {
-      toast.error(error.message)
+    if (error || !data) {
+      console.error('Error updating house active state:', error)
+      toast.error('No se pudo actualizar la casa')
       return
     }
 
     toast.success(nextValue ? 'Casa activada' : 'Casa desactivada')
     setHouses((prev) =>
-      prev.map((h) => (h.id === house.id ? { ...h, is_active: nextValue } : h)),
+      prev.map((h) =>
+        h.id === house.id
+          ? {
+              ...h,
+              is_active: data.is_active,
+              pays_security: data.pays_security,
+            }
+          : h,
+      ),
     )
   }
 
@@ -319,22 +333,25 @@ export default function AdminHousesPage() {
     setUpdatingHouseId(house.id)
     const nextValue = !house.pays_security
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('houses')
       .update({ pays_security: nextValue })
       .eq('id', house.id)
+      .select('pays_security')
+      .single()
 
     setUpdatingHouseId(null)
 
-    if (error) {
-      toast.error(error.message)
+    if (error || !data) {
+      console.error('Error updating house security:', error)
+      toast.error('No se pudo actualizar la seguridad')
       return
     }
 
     toast.success(nextValue ? 'Seguridad activada' : 'Seguridad desactivada')
     setHouses((prev) =>
       prev.map((h) =>
-        h.id === house.id ? { ...h, pays_security: nextValue } : h,
+        h.id === house.id ? { ...h, pays_security: data.pays_security } : h,
       ),
     )
   }
