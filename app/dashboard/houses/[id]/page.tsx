@@ -265,13 +265,20 @@ export default function HouseDetailPage({ params }: HousePageProps) {
   return (
     <main className="min-h-screen bg-slate-100 px-5 py-6">
       <div className="mx-auto max-w-sm space-y-5">
-        <Link
-          href={`/dashboard/residentials/${house.residential_id}`}
-          className="block text-sm font-semibold text-slate-600"
-        >
-          ← Volver al residencial
-        </Link>
-
+        <nav className="grid grid-cols-2 gap-2">
+          <Link
+            href="/dashboard"
+            className="min-h-11 rounded-xl bg-white px-4 py-3 text-center text-sm font-semibold text-slate-700 shadow-sm active:scale-[0.99]"
+          >
+            Menú principal
+          </Link>
+          <Link
+            href={`/dashboard/residentials/${house.residential_id}`}
+            className="min-h-11 rounded-xl bg-white px-4 py-3 text-center text-sm font-semibold text-slate-700 shadow-sm active:scale-[0.99]"
+          >
+            Residencial
+          </Link>
+        </nav>
         <header className="rounded-2xl bg-slate-950 p-6 text-white shadow-lg">
           <p className="text-sm text-slate-300">Casa</p>
           <h1 className="mt-1 text-3xl font-bold">

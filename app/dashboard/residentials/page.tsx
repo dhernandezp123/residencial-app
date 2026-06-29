@@ -103,6 +103,13 @@ export default function ResidentialsPage() {
   return (
     <main className="min-h-screen bg-slate-100 px-5 py-6">
       <div className="mx-auto max-w-sm space-y-5">
+        <Link
+          href="/dashboard"
+          className="block text-sm font-semibold text-slate-600"
+        >
+          ← Menú principal
+        </Link>
+
         <header className="rounded-2xl bg-slate-950 p-6 text-white shadow-lg">
           <p className="text-sm text-slate-300">Super Admin</p>
           <h1 className="mt-1 text-2xl font-bold">Residenciales</h1>

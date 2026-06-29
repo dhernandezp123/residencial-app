@@ -53,6 +53,8 @@ export default function ResidentialDetailPage({
   const [showAdminPassword, setShowAdminPassword] = useState(false)
   const [saving, setSaving] = useState(false)
   const [savingAdmin, setSavingAdmin] = useState(false)
+  const [editingMaxHouses, setEditingMaxHouses] = useState(false)
+  const [savingMaxHouses, setSavingMaxHouses] = useState(false)
   const [resettingAdminId, setResettingAdminId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
@@ -69,6 +71,10 @@ export default function ResidentialDetailPage({
     phone: '',
     email: '',
     password: '',
+  })
+
+  const [maxHousesFormData, setMaxHousesFormData] = useState({
+    max_houses: '',
   })
 
   const loadData = async () => {
@@ -112,6 +118,11 @@ export default function ResidentialDetailPage({
     }
 
     setResidential(residentialData)
+    setMaxHousesFormData({
+      max_houses: residentialData.max_houses
+        ? String(residentialData.max_houses)
+        : '',
+    })
     setHouses(housesData || [])
     setAdmins(adminsData || [])
     setLoading(false)
@@ -124,6 +135,15 @@ export default function ResidentialDetailPage({
 
   const handleCreateHouse = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (
+      residential?.max_houses &&
+      residential.max_houses > 0 &&
+      houses.length >= residential.max_houses
+    ) {
+      toast.error('Aumenta casas contratadas antes de registrar otra casa')
+      return
+    }
+
     setSaving(true)
 
     const { error } = await supabase.from('houses').insert({
@@ -163,6 +183,39 @@ export default function ResidentialDetailPage({
     setSavingAdmin(true)
     toast.info('Pendiente implementar Edge Function create-admin')
     setSavingAdmin(false)
+  }
+
+  const handleUpdateMaxHouses = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!residential) return
+
+    const nextMaxHouses = Number(maxHousesFormData.max_houses || 0)
+
+    if (nextMaxHouses < houses.length) {
+      toast.error(
+        `No puede ser menor que las ${houses.length} casas ya registradas`,
+      )
+      return
+    }
+
+    setSavingMaxHouses(true)
+
+    const { error } = await supabase
+      .from('residentials')
+      .update({ max_houses: nextMaxHouses })
+      .eq('id', residential.id)
+
+    setSavingMaxHouses(false)
+
+    if (error) {
+      console.error('Error updating max houses:', error)
+      toast.error('No se pudo actualizar casas contratadas')
+      return
+    }
+
+    setResidential({ ...residential, max_houses: nextMaxHouses })
+    setEditingMaxHouses(false)
+    toast.success('Casas contratadas actualizadas')
   }
 
   const handleSendPasswordReset = async (admin: AdminProfile) => {
@@ -241,10 +294,20 @@ export default function ResidentialDetailPage({
   return (
     <main className="min-h-screen bg-slate-100 px-5 py-6">
       <div className="mx-auto max-w-sm space-y-5">
-        <Link href="/dashboard/residentials" className="text-sm font-semibold text-slate-600">
-          ← Volver
-        </Link>
-
+        <nav className="grid grid-cols-2 gap-2">
+          <Link
+            href="/dashboard"
+            className="min-h-11 rounded-xl bg-white px-4 py-3 text-center text-sm font-semibold text-slate-700 shadow-sm active:scale-[0.99]"
+          >
+            Menú principal
+          </Link>
+          <Link
+            href="/dashboard/residentials"
+            className="min-h-11 rounded-xl bg-white px-4 py-3 text-center text-sm font-semibold text-slate-700 shadow-sm active:scale-[0.99]"
+          >
+            Residenciales
+          </Link>
+        </nav>
         <header className="rounded-2xl bg-slate-950 p-6 text-white shadow-lg">
           <p className="text-sm text-slate-300">Residencial</p>
           <h1 className="mt-1 text-2xl font-bold">{residential.name}</h1>
@@ -257,7 +320,67 @@ export default function ResidentialDetailPage({
           <p className="mt-1 text-sm text-slate-300">
             Casas registradas: <span className="font-semibold text-white">{houses.length}</span>
           </p>
+          <p className="mt-1 text-sm text-slate-300">
+            Disponibles para registrar:{' '}
+            <span className="font-semibold text-white">
+              {Math.max((residential.max_houses || 0) - houses.length, 0)}
+            </span>
+          </p>
         </header>
+
+        <section className="rounded-2xl bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-500">Contrato</p>
+              <h2 className="mt-1 text-xl font-bold text-slate-950">
+                Casas contratadas
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Ajusta el cupo contratado cuando el residencial agregue casas,
+                etapas o apartamentos.
+              </p>
+            </div>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+              {residential.max_houses || 0}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setEditingMaxHouses(!editingMaxHouses)}
+            className="mt-4 min-h-12 w-full rounded-2xl border border-slate-200 px-4 py-3 font-semibold text-slate-800 active:scale-[0.99]"
+          >
+            {editingMaxHouses ? 'Cancelar' : 'Editar casas contratadas'}
+          </button>
+
+          {editingMaxHouses && (
+            <form onSubmit={handleUpdateMaxHouses} className="mt-4 space-y-3">
+              <label className="block space-y-1">
+                <span className="text-sm font-semibold text-slate-700">
+                  Nuevo total contratado
+                </span>
+                <input
+                  value={maxHousesFormData.max_houses}
+                  onChange={(e) =>
+                    setMaxHousesFormData({ max_houses: e.target.value })
+                  }
+                  min={houses.length}
+                  type="number"
+                  inputMode="numeric"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none"
+                  required
+                />
+              </label>
+              <button
+                type="submit"
+                disabled={savingMaxHouses}
+                className="min-h-12 w-full rounded-xl bg-slate-950 px-4 py-3 font-semibold text-white disabled:opacity-60 active:scale-[0.99]"
+              >
+                {savingMaxHouses ? 'Guardando...' : 'Guardar cupo'}
+              </button>
+            </form>
+          )}
+        </section>
 
         <button
           type="button"
