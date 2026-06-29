@@ -79,8 +79,8 @@ export default function HomePage() {
       setLoading(false)
     }
 
-    loadProfile()
-  }, [])
+    void loadProfile()
+  }, [router])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -372,9 +372,6 @@ function PushNotificationButton({
         window.matchMedia('(display-mode: standalone)').matches ||
         (navigator as Navigator & { standalone?: boolean }).standalone === true
 
-      console.log('[Push] support → Notification:', hasNotification, '| serviceWorker:', hasSW, '| PushManager:', hasPush)
-      console.log('[Push] Notification.permission:', hasNotification ? Notification.permission : 'N/A')
-      console.log('[Push] isIOS:', iosDevice, '| isStandalone:', standalone)
 
       setIsIOS(iosDevice)
       setIsStandalone(standalone)
@@ -393,7 +390,6 @@ function PushNotificationButton({
         setIsSubscribed(Boolean(sub))
       }
 
-      console.log('[Push] current subscription:', sub)
       setChecking(false)
     }
     void checkSubscription()

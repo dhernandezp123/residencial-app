@@ -28,6 +28,20 @@ type EntryRow = {
   exit_time: string | null
 }
 
+type HouseAccess = {
+  id: string
+  residential_id: string
+  is_active: boolean | null
+  pays_security: boolean | null
+}
+
+type ActorProfile = {
+  id: string
+  role: string
+  status: string
+  residential_id: string | null
+}
+
 // ─── Service client ───────────────────────────────────────────────────────────
 
 function makeServiceClient() {
@@ -103,6 +117,41 @@ async function notifyResidents(params: {
 
 // ─── Route handler ────────────────────────────────────────────────────────────
 
+function canRegisterForVisit(profile: ActorProfile, visit: Visit): boolean {
+  if (profile.role === 'super_admin') return true
+  if (!profile.residential_id) return false
+  if (!['guard', 'admin'].includes(profile.role)) return false
+  return profile.residential_id === visit.residential_id
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')
+}
+
+function isExpectedPhotoPath(params: {
+  path: string
+  kind: 'identity' | 'vehicle' | 'plate'
+  visit: Visit
+}): boolean {
+  const pattern = new RegExp(
+    `^${escapeRegex(params.visit.residential_id)}/${escapeRegex(
+      params.visit.id,
+    )}/${params.kind}-[a-zA-Z0-9-]+\\.(jpg|jpeg|png|webp|heic)$`,
+    'i',
+  )
+  return pattern.test(params.path)
+}
+
+async function verifyPhotoExists(params: {
+  bucket: string
+  path: string
+}): Promise<boolean> {
+  const db = makeServiceClient()
+  if (!db) return false
+  const { error } = await db.storage.from(params.bucket).download(params.path)
+  return !error
+}
+
 export async function POST(request: NextRequest) {
   const db = makeServiceClient()
   if (!db) {
@@ -127,7 +176,7 @@ export async function POST(request: NextRequest) {
   // ── Load and authorize profile ──
   const { data: profileData, error: profileError } = await db
     .from('profiles')
-    .select('id,role,status')
+    .select('id,role,status,residential_id')
     .eq('user_id', user.id)
     .single()
 
@@ -135,7 +184,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const profile = profileData as { id: string; role: string; status: string }
+  const profile = profileData as ActorProfile
 
   if (
     profile.status !== 'approved' ||
@@ -188,6 +237,10 @@ export async function POST(request: NextRequest) {
   }
 
   const visit = visitData as Visit
+
+  if (!canRegisterForVisit(profile, visit)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   // ── Load existing allowed entries ──
   const { data: entriesData, error: entriesError } = await db
@@ -253,6 +306,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'QR no disponible' }, { status: 409 })
   }
 
+  const { data: houseData, error: houseError } = await db
+    .from('houses')
+    .select('id,residential_id,is_active,pays_security')
+    .eq('id', visit.house_id)
+    .eq('residential_id', visit.residential_id)
+    .single()
+
+  if (houseError || !houseData) {
+    return NextResponse.json({ error: 'Casa no disponible' }, { status: 409 })
+  }
+
+  const house = houseData as HouseAccess
+  if (house.is_active !== true || house.pays_security !== true) {
+    return NextResponse.json({ error: 'Casa sin acceso activo' }, { status: 409 })
+  }
+
   // Photos required for entry
   if (
     typeof identity_photo_url !== 'string' ||
@@ -269,6 +338,56 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Insert entry ──
+  const identityPhotoPath = identity_photo_url.trim()
+  const vehiclePhotoPath = vehicle_photo_url.trim()
+  const platePhotoPath = plate_photo_url.trim()
+
+  const validPhotoPaths =
+    isExpectedPhotoPath({
+      path: identityPhotoPath,
+      kind: 'identity',
+      visit,
+    }) &&
+    isExpectedPhotoPath({
+      path: vehiclePhotoPath,
+      kind: 'vehicle',
+      visit,
+    }) &&
+    isExpectedPhotoPath({
+      path: platePhotoPath,
+      kind: 'plate',
+      visit,
+    })
+
+  if (!validPhotoPaths) {
+    return NextResponse.json(
+      { error: 'Evidencia fotografica invalida' },
+      { status: 400 },
+    )
+  }
+
+  const [identityExists, vehicleExists, plateExists] = await Promise.all([
+    verifyPhotoExists({
+      bucket: 'visitor-identities',
+      path: identityPhotoPath,
+    }),
+    verifyPhotoExists({
+      bucket: 'visitor-vehicles',
+      path: vehiclePhotoPath,
+    }),
+    verifyPhotoExists({
+      bucket: 'visitor-plates',
+      path: platePhotoPath,
+    }),
+  ])
+
+  if (!identityExists || !vehicleExists || !plateExists) {
+    return NextResponse.json(
+      { error: 'No se encontro la evidencia fotografica requerida' },
+      { status: 400 },
+    )
+  }
+
   const { data: insertedEntry, error: entryError } = await db
     .from('visitor_entries')
     .insert({
@@ -279,9 +398,9 @@ export async function POST(request: NextRequest) {
       guard_id: profile.id,
       entry_status: 'allowed',
       notes: null,
-      identity_photo_url: identity_photo_url.trim(),
-      vehicle_photo_url: vehicle_photo_url.trim(),
-      plate_photo_url: plate_photo_url.trim(),
+      identity_photo_url: identityPhotoPath,
+      vehicle_photo_url: vehiclePhotoPath,
+      plate_photo_url: platePhotoPath,
     })
     .select('id,entry_time,exit_time')
     .single()

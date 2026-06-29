@@ -18,6 +18,7 @@ type House = {
   block: string
   house_number: string
   pays_security: boolean
+  resident_limit: number | null
 }
 
 type RegisterFormData = {
@@ -135,7 +136,7 @@ function RegisterContent() {
 
     const { data, error } = await supabase
       .from('houses')
-      .select('id,residential_id,block,house_number,pays_security')
+      .select('id,residential_id,block,house_number,pays_security,resident_limit')
       .eq('residential_id', selectedResidentialId)
       .eq('is_active', true)
 
@@ -171,6 +172,27 @@ function RegisterContent() {
     }
 
     setSaving(true)
+
+    const { count: approvedResidentCount, error: countError } = await supabase
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('house_id', matchedHouse.id)
+      .eq('role', 'resident')
+      .eq('status', 'approved')
+
+    if (countError) {
+      console.error('Error checking resident capacity:', countError)
+      toast.error('No se pudo validar el cupo de la casa')
+      setSaving(false)
+      return
+    }
+
+    const residentLimit = matchedHouse.resident_limit || 3
+    if ((approvedResidentCount || 0) >= residentLimit) {
+      toast.error('Esta casa ya alcanzo el limite de residentes aprobados')
+      setSaving(false)
+      return
+    }
 
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: formData.email.trim(),

@@ -79,7 +79,7 @@ export default function EntriesPage() {
     const { data: sessionData } = await supabase.auth.getSession()
 
     if (!sessionData.session) {
-      toast.error('Inicia sesiÃ³n para ver entradas recientes')
+      toast.error('Inicia sesion para ver entradas recientes')
       setLoading(false)
       return
     }
@@ -268,7 +268,7 @@ export default function EntriesPage() {
           </h1>
           <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
             Solo guardias, administradores y super administradores aprobados
-            pueden ver esta bitÃ¡cora.
+            pueden ver esta bitacora.
           </p>
           <Link
             href="/dashboard"

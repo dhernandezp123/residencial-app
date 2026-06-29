@@ -1051,6 +1051,7 @@ function EntryPhotoInput({
         className="mt-3 block w-full text-sm font-semibold text-slate-700 file:mr-3 file:min-h-12 file:rounded-xl file:border-0 file:bg-slate-950 file:px-4 file:py-3 file:font-black file:text-white"
       />
       {file && (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={URL.createObjectURL(file)}
           alt={`Vista previa ${label}`}

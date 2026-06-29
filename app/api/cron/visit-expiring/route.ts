@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 type ExpiringVisit = {
   id: string
@@ -30,7 +30,28 @@ type NotificationInsert = {
   message: string
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET
+
+  if (!cronSecret && process.env.NODE_ENV === 'production') {
+    return NextResponse.json(
+      { error: 'CRON_SECRET not configured' },
+      { status: 503 },
+    )
+  }
+
+  if (cronSecret) {
+    const authHeader = request.headers.get('authorization')
+    const bearer = authHeader?.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : null
+    const headerSecret = request.headers.get('x-cron-secret')
+
+    if (bearer !== cronSecret && headerSecret !== cronSecret) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
