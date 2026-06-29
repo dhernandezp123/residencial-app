@@ -37,6 +37,24 @@ type AdminProfile = {
   status: string | null
 }
 
+type ResidentCandidate = {
+  id: string
+  first_name: string
+  last_name: string
+  phone: string | null
+  status: string | null
+  house_id: string | null
+  house: HouseSummary | null
+}
+
+type ResidentCandidateRow = Omit<ResidentCandidate, 'house'>
+
+type HouseSummary = {
+  id: string
+  block: string
+  house_number: string
+}
+
 export default function ResidentialDetailPage({
   params,
 }: {
@@ -47,12 +65,14 @@ export default function ResidentialDetailPage({
   const [residential, setResidential] = useState<Residential | null>(null)
   const [houses, setHouses] = useState<House[]>([])
   const [admins, setAdmins] = useState<AdminProfile[]>([])
+  const [residentCandidates, setResidentCandidates] = useState<ResidentCandidate[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [showAdminForm, setShowAdminForm] = useState(false)
   const [showAdminPassword, setShowAdminPassword] = useState(false)
   const [saving, setSaving] = useState(false)
   const [savingAdmin, setSavingAdmin] = useState(false)
+  const [promotingResidentId, setPromotingResidentId] = useState<string | null>(null)
   const [editingMaxHouses, setEditingMaxHouses] = useState(false)
   const [savingMaxHouses, setSavingMaxHouses] = useState(false)
   const [resettingAdminId, setResettingAdminId] = useState<string | null>(null)
@@ -117,6 +137,47 @@ export default function ResidentialDetailPage({
       toast.error(adminsError.message)
     }
 
+    const { data: candidatesData, error: candidatesError } = await supabase
+      .from('profiles')
+      .select('id,first_name,last_name,phone,status,house_id')
+      .eq('residential_id', id)
+      .eq('role', 'resident')
+      .in('status', ['approved', 'pending'])
+      .order('last_name', { ascending: true })
+
+    if (candidatesError) {
+      console.error('Error loading resident admin candidates:', candidatesError)
+      toast.error('No se pudieron cargar residentes')
+    }
+
+    const candidateRows = (candidatesData || []) as ResidentCandidateRow[]
+    const candidateHouseIds = Array.from(
+      new Set(
+        candidateRows
+          .map((candidate) => candidate.house_id)
+          .filter((houseId): houseId is string => Boolean(houseId)),
+      ),
+    )
+
+    const { data: candidateHousesData, error: candidateHousesError } =
+      candidateHouseIds.length > 0
+        ? await supabase
+            .from('houses')
+            .select('id,block,house_number')
+            .in('id', candidateHouseIds)
+        : { data: [], error: null }
+
+    if (candidateHousesError) {
+      console.error('Error loading candidate houses:', candidateHousesError)
+    }
+
+    const candidateHousesById = new Map(
+      ((candidateHousesData || []) as HouseSummary[]).map((house) => [
+        house.id,
+        house,
+      ]),
+    )
+
     setResidential(residentialData)
     setMaxHousesFormData({
       max_houses: residentialData.max_houses
@@ -125,6 +186,14 @@ export default function ResidentialDetailPage({
     })
     setHouses(housesData || [])
     setAdmins(adminsData || [])
+    setResidentCandidates(
+      candidateRows.map((candidate) => ({
+        ...candidate,
+        house: candidate.house_id
+          ? candidateHousesById.get(candidate.house_id) || null
+          : null,
+      })),
+    )
     setLoading(false)
   }
 
@@ -178,13 +247,6 @@ export default function ResidentialDetailPage({
     loadData()
   }
 
-  const handleCreateAdmin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSavingAdmin(true)
-    toast.info('Pendiente implementar Edge Function create-admin')
-    setSavingAdmin(false)
-  }
-
   const handleUpdateMaxHouses = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!residential) return
@@ -216,6 +278,38 @@ export default function ResidentialDetailPage({
     setResidential({ ...residential, max_houses: nextMaxHouses })
     setEditingMaxHouses(false)
     toast.success('Casas contratadas actualizadas')
+  }
+
+  const handleCreateAdmin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSavingAdmin(true)
+    toast.info('Selecciona un residente registrado para habilitarlo')
+    setSavingAdmin(false)
+  }
+
+  const handlePromoteResident = async (resident: ResidentCandidate) => {
+    setPromotingResidentId(resident.id)
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        role: 'admin',
+        status: 'approved',
+        residential_id: id,
+      })
+      .eq('id', resident.id)
+      .eq('role', 'resident')
+
+    setPromotingResidentId(null)
+
+    if (error) {
+      console.error('Error promoting resident to admin:', error)
+      toast.error('No se pudo habilitar como administrador')
+      return
+    }
+
+    toast.success('Residente habilitado como administrador')
+    await loadData()
   }
 
   const handleSendPasswordReset = async (admin: AdminProfile) => {
@@ -439,10 +533,65 @@ export default function ResidentialDetailPage({
             </div>
           )}
 
+          <div className="rounded-2xl bg-slate-50 p-4">
+            <p className="text-sm font-bold text-slate-900">
+              Habilitar residente como administrador
+            </p>
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              Selecciona un residente ya registrado. No se crea otra cuenta ni
+              se solicita contraseña nueva.
+            </p>
+          </div>
+
+          {residentCandidates.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm leading-6 text-slate-500">
+              No hay residentes disponibles para habilitar.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {residentCandidates.map((resident) => {
+                const houseLabel = resident.house
+                  ? `${resident.house.block}-${resident.house.house_number}`
+                  : 'Sin casa'
+
+                return (
+                  <article
+                    key={resident.id}
+                    className="rounded-2xl border border-slate-100 p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-bold text-slate-900">
+                          {resident.first_name} {resident.last_name}
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-500">
+                          {resident.phone || 'Sin telefono'} · Casa {houseLabel}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                        {resident.status || 'pending'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void handlePromoteResident(resident)}
+                      disabled={promotingResidentId === resident.id}
+                      className="mt-4 min-h-10 w-full rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 active:scale-[0.99]"
+                    >
+                      {promotingResidentId === resident.id
+                        ? 'Habilitando...'
+                        : 'Habilitar como administrador'}
+                    </button>
+                  </article>
+                )
+              })}
+            </div>
+          )}
+
           <button
             type="button"
             onClick={() => setShowAdminForm(!showAdminForm)}
-            className="min-h-12 w-full rounded-2xl bg-slate-950 px-4 py-3 font-semibold text-white active:scale-[0.99]"
+            className="hidden"
           >
             {showAdminForm ? 'Cancelar' : '+ Agregar administrador'}
           </button>
