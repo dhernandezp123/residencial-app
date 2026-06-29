@@ -38,6 +38,8 @@ type HouseSummary = {
   resident_limit: number | null
 }
 
+type ResidentAction = 'approve' | 'reject' | 'deactivate'
+
 const filters: { label: string; value: ResidentStatus }[] = [
   { label: 'Pendientes', value: 'pending' },
   { label: 'Aprobados', value: 'approved' },
@@ -50,6 +52,10 @@ export default function ResidentsPage() {
   const [selectedStatus, setSelectedStatus] = useState<ResidentStatus>('pending')
   const [loading, setLoading] = useState(true)
   const [savingResidentId, setSavingResidentId] = useState<string | null>(null)
+  const [confirmingResidentAction, setConfirmingResidentAction] = useState<{
+    residentId: string
+    action: ResidentAction
+  } | null>(null)
 
   const loadResidents = async () => {
     setLoading(true)
@@ -147,10 +153,52 @@ export default function ResidentsPage() {
     void Promise.resolve().then(loadResidents)
   }, [])
 
+  useEffect(() => {
+    if (!confirmingResidentAction) return
+
+    const timer = window.setTimeout(() => {
+      setConfirmingResidentAction(null)
+    }, 5000)
+
+    return () => window.clearTimeout(timer)
+  }, [confirmingResidentAction])
+
+  const requestResidentConfirmation = (
+    residentId: string,
+    action: ResidentAction,
+    message: string,
+  ): boolean => {
+    if (
+      confirmingResidentAction?.residentId === residentId &&
+      confirmingResidentAction.action === action
+    ) {
+      setConfirmingResidentAction(null)
+      return true
+    }
+
+    setConfirmingResidentAction({ residentId, action })
+    toast.warning(message)
+    return false
+  }
+
   const handleUpdateStatus = async (
     resident: ResidentProfile,
     status: ResidentStatus
   ) => {
+    const action: ResidentAction = status === 'approved' ? 'approve' : 'reject'
+
+    if (
+      !requestResidentConfirmation(
+        resident.id,
+        action,
+        status === 'approved'
+          ? 'Toca de nuevo para aprobar este residente'
+          : 'Toca de nuevo para rechazar este residente',
+      )
+    ) {
+      return
+    }
+
     setSavingResidentId(resident.id)
 
     if (status === 'approved') {
@@ -213,6 +261,16 @@ export default function ResidentsPage() {
   }
 
   const handleDeactivateResident = async (resident: ResidentProfile) => {
+    if (
+      !requestResidentConfirmation(
+        resident.id,
+        'deactivate',
+        'Toca de nuevo para inactivar y quitar de casa',
+      )
+    ) {
+      return
+    }
+
     setSavingResidentId(resident.id)
 
     const { error } = await supabase
@@ -318,17 +376,25 @@ export default function ResidentsPage() {
           </section>
         ) : (
           <section className="space-y-3">
-            {filteredResidents.map((resident) => (
-              <ResidentCard
-                key={resident.id}
-                resident={resident}
-                saving={savingResidentId === resident.id}
-                onApprove={() => handleUpdateStatus(resident, 'approved')}
-                onReject={() => handleUpdateStatus(resident, 'rejected')}
-                onDeactivate={() => handleDeactivateResident(resident)}
-                onSendPasswordReset={() => handleSendPasswordReset(resident)}
-              />
-            ))}
+            {filteredResidents.map((resident) => {
+              const confirmingAction =
+                confirmingResidentAction?.residentId === resident.id
+                  ? confirmingResidentAction.action
+                  : null
+
+              return (
+                <ResidentCard
+                  key={resident.id}
+                  resident={resident}
+                  saving={savingResidentId === resident.id}
+                  confirmingAction={confirmingAction}
+                  onApprove={() => handleUpdateStatus(resident, 'approved')}
+                  onReject={() => handleUpdateStatus(resident, 'rejected')}
+                  onDeactivate={() => handleDeactivateResident(resident)}
+                  onSendPasswordReset={() => handleSendPasswordReset(resident)}
+                />
+              )
+            })}
           </section>
         )}
       </div>
@@ -339,6 +405,7 @@ export default function ResidentsPage() {
 function ResidentCard({
   resident,
   saving,
+  confirmingAction,
   onApprove,
   onReject,
   onDeactivate,
@@ -346,6 +413,7 @@ function ResidentCard({
 }: {
   resident: ResidentProfile
   saving: boolean
+  confirmingAction: ResidentAction | null
   onApprove: () => void
   onReject: () => void
   onDeactivate: () => void
@@ -410,17 +478,27 @@ function ResidentCard({
             type="button"
             onClick={onReject}
             disabled={saving}
-            className="min-h-12 rounded-xl bg-red-50 dark:bg-red-900/40 px-4 py-3 text-sm font-semibold text-red-700 dark:text-red-300 disabled:opacity-60 active:scale-[0.99]"
+            className={`min-h-12 rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-60 active:scale-[0.99] ${
+              confirmingAction === 'reject'
+                ? 'bg-red-600 text-white'
+                : 'bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300'
+            }`}
           >
-            Rechazar
+            {confirmingAction === 'reject' ? 'Confirmar rechazo' : 'Rechazar'}
           </button>
           <button
             type="button"
             onClick={onApprove}
             disabled={saving}
-            className="min-h-12 rounded-xl bg-green-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60 active:scale-[0.99]"
+            className={`min-h-12 rounded-xl px-4 py-3 text-sm font-semibold text-white disabled:opacity-60 active:scale-[0.99] ${
+              confirmingAction === 'approve' ? 'bg-amber-500' : 'bg-green-600'
+            }`}
           >
-            {saving ? 'Guardando...' : 'Aprobar'}
+            {saving
+              ? 'Guardando...'
+              : confirmingAction === 'approve'
+                ? 'Confirmar aprobacion'
+                : 'Aprobar'}
           </button>
         </div>
       )}
@@ -439,9 +517,17 @@ function ResidentCard({
             type="button"
             onClick={onDeactivate}
             disabled={saving}
-            className="min-h-12 w-full rounded-xl border border-red-200 dark:border-red-800 px-4 py-3 text-sm font-semibold text-red-700 dark:text-red-300 disabled:opacity-60 active:scale-[0.99]"
+            className={`min-h-12 w-full rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-60 active:scale-[0.99] ${
+              confirmingAction === 'deactivate'
+                ? 'bg-red-600 text-white'
+                : 'border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
+            }`}
           >
-            {saving ? 'Guardando...' : 'Inactivar y quitar de casa'}
+            {saving
+              ? 'Guardando...'
+              : confirmingAction === 'deactivate'
+                ? 'Confirmar inactivacion'
+                : 'Inactivar y quitar de casa'}
           </button>
         </div>
       )}

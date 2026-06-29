@@ -67,6 +67,12 @@ const initialForm: FormData = {
   notes: '',
 }
 
+type HouseAction =
+  | 'activate-house'
+  | 'deactivate-house'
+  | 'activate-security'
+  | 'deactivate-security'
+
 function getResidentialName(
   residentials: HouseRow['residentials'],
 ): string {
@@ -85,6 +91,10 @@ export default function AdminHousesPage() {
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [updatingHouseId, setUpdatingHouseId] = useState<string | null>(null)
+  const [confirmingHouseAction, setConfirmingHouseAction] = useState<{
+    houseId: string
+    action: HouseAction
+  } | null>(null)
   const [formData, setFormData] = useState<FormData>(initialForm)
 
   const loadData = async () => {
@@ -242,6 +252,23 @@ export default function AdminHousesPage() {
     void Promise.resolve().then(loadData)
   }, [])
 
+  useEffect(() => {
+    if (!confirmingHouseAction) return
+
+    const timer = window.setTimeout(() => {
+      setConfirmingHouseAction(null)
+    }, 5000)
+
+    return () => window.clearTimeout(timer)
+  }, [confirmingHouseAction])
+
+  const isConfirmingHouseAction = (
+    houseId: string,
+    action: HouseAction,
+  ): boolean =>
+    confirmingHouseAction?.houseId === houseId &&
+    confirmingHouseAction.action === action
+
   const handleCreateHouse = async (event: React.FormEvent) => {
     event.preventDefault()
 
@@ -294,8 +321,21 @@ export default function AdminHousesPage() {
   }
 
   const handleToggleActive = async (house: House) => {
-    setUpdatingHouseId(house.id)
     const nextValue = !house.is_active
+    const action: HouseAction = nextValue ? 'activate-house' : 'deactivate-house'
+
+    if (!isConfirmingHouseAction(house.id, action)) {
+      setConfirmingHouseAction({ houseId: house.id, action })
+      toast.warning(
+        nextValue
+          ? 'Toca de nuevo para activar esta casa'
+          : 'Toca de nuevo para desactivar esta casa y quitar seguridad',
+      )
+      return
+    }
+
+    setConfirmingHouseAction(null)
+    setUpdatingHouseId(house.id)
     const payload = nextValue
       ? { is_active: true }
       : { is_active: false, pays_security: false }
@@ -330,8 +370,23 @@ export default function AdminHousesPage() {
   }
 
   const handleToggleSecurity = async (house: House) => {
-    setUpdatingHouseId(house.id)
     const nextValue = !house.pays_security
+    const action: HouseAction = nextValue
+      ? 'activate-security'
+      : 'deactivate-security'
+
+    if (!isConfirmingHouseAction(house.id, action)) {
+      setConfirmingHouseAction({ houseId: house.id, action })
+      toast.warning(
+        nextValue
+          ? 'Toca de nuevo para activar seguridad'
+          : 'Toca de nuevo para quitar seguridad',
+      )
+      return
+    }
+
+    setConfirmingHouseAction(null)
+    setUpdatingHouseId(house.id)
 
     const { data, error } = await supabase
       .from('houses')
@@ -564,6 +619,23 @@ export default function AdminHousesPage() {
               {houses.length !== 1 ? 's' : ''}
             </p>
             {houses.map((house) => (
+              (() => {
+                const activeAction: HouseAction = house.is_active
+                  ? 'deactivate-house'
+                  : 'activate-house'
+                const securityAction: HouseAction = house.pays_security
+                  ? 'deactivate-security'
+                  : 'activate-security'
+                const isConfirmingActive = isConfirmingHouseAction(
+                  house.id,
+                  activeAction,
+                )
+                const isConfirmingSecurity = isConfirmingHouseAction(
+                  house.id,
+                  securityAction,
+                )
+
+                return (
               <article
                 key={house.id}
                 className={`rounded-2xl bg-white dark:bg-slate-800 p-5 shadow-sm ${
@@ -639,24 +711,44 @@ export default function AdminHousesPage() {
                     type="button"
                     onClick={() => void handleToggleSecurity(house)}
                     disabled={updatingHouseId === house.id}
-                    className="min-h-10 w-full rounded-xl border border-blue-200 dark:border-blue-800 px-4 py-2 text-sm font-semibold text-blue-700 dark:text-blue-300 disabled:opacity-60 active:scale-[0.99]"
+                    className={`min-h-10 w-full rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-60 active:scale-[0.99] ${
+                      isConfirmingSecurity
+                        ? 'bg-amber-500 text-white'
+                        : 'border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300'
+                    }`}
                   >
-                    {house.pays_security ? 'Quitar seguridad' : 'Activar seguridad'}
+                    {isConfirmingSecurity
+                      ? house.pays_security
+                        ? 'Confirmar quitar seguridad'
+                        : 'Confirmar activar seguridad'
+                      : house.pays_security
+                        ? 'Quitar seguridad'
+                        : 'Activar seguridad'}
                   </button>
                   <button
                     type="button"
                     onClick={() => void handleToggleActive(house)}
                     disabled={updatingHouseId === house.id}
                     className={`min-h-10 w-full rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-60 active:scale-[0.99] ${
-                      house.is_active
+                      isConfirmingActive
+                        ? 'bg-red-600 text-white'
+                        : house.is_active
                         ? 'border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300'
                         : 'bg-slate-950 dark:bg-slate-700 text-white'
                     }`}
                   >
-                    {house.is_active ? 'Desactivar casa' : 'Activar casa'}
+                    {isConfirmingActive
+                      ? house.is_active
+                        ? 'Confirmar desactivar casa'
+                        : 'Confirmar activar casa'
+                      : house.is_active
+                        ? 'Desactivar casa'
+                        : 'Activar casa'}
                   </button>
                 </div>
               </article>
+                )
+              })()
             ))}
           </section>
         )}

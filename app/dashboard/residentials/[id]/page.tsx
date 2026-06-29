@@ -73,6 +73,9 @@ export default function ResidentialDetailPage({
   const [saving, setSaving] = useState(false)
   const [savingAdmin, setSavingAdmin] = useState(false)
   const [promotingResidentId, setPromotingResidentId] = useState<string | null>(null)
+  const [confirmPromoteResidentId, setConfirmPromoteResidentId] = useState<
+    string | null
+  >(null)
   const [editingMaxHouses, setEditingMaxHouses] = useState(false)
   const [savingMaxHouses, setSavingMaxHouses] = useState(false)
   const [resettingAdminId, setResettingAdminId] = useState<string | null>(null)
@@ -204,6 +207,16 @@ export default function ResidentialDetailPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
+  useEffect(() => {
+    if (!confirmPromoteResidentId) return
+
+    const timer = window.setTimeout(() => {
+      setConfirmPromoteResidentId(null)
+    }, 5000)
+
+    return () => window.clearTimeout(timer)
+  }, [confirmPromoteResidentId])
+
   const handleCreateHouse = async (e: React.FormEvent) => {
     e.preventDefault()
     if (
@@ -290,6 +303,13 @@ export default function ResidentialDetailPage({
   }
 
   const handlePromoteResident = async (resident: ResidentCandidate) => {
+    if (confirmPromoteResidentId !== resident.id) {
+      setConfirmPromoteResidentId(resident.id)
+      toast.warning('Toca de nuevo para habilitar como administrador')
+      return
+    }
+
+    setConfirmPromoteResidentId(null)
     setPromotingResidentId(resident.id)
 
     const { error } = await supabase
@@ -578,11 +598,17 @@ export default function ResidentialDetailPage({
                       type="button"
                       onClick={() => void handlePromoteResident(resident)}
                       disabled={promotingResidentId === resident.id}
-                      className="mt-4 min-h-10 w-full rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 active:scale-[0.99]"
+                      className={`mt-4 min-h-10 w-full rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 active:scale-[0.99] ${
+                        confirmPromoteResidentId === resident.id
+                          ? 'bg-amber-500'
+                          : 'bg-slate-950'
+                      }`}
                     >
                       {promotingResidentId === resident.id
                         ? 'Habilitando...'
-                        : 'Habilitar como administrador'}
+                        : confirmPromoteResidentId === resident.id
+                          ? 'Confirmar administrador'
+                          : 'Habilitar como administrador'}
                     </button>
                   </article>
                 )

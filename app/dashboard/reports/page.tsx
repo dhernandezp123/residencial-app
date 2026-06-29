@@ -107,6 +107,10 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [confirmingReportAction, setConfirmingReportAction] = useState<{
+    reportId: string
+    status: ReportStatus
+  } | null>(null)
   const [notesDraft, setNotesDraft] = useState<Record<string, string>>({})
 
   const isAdminView =
@@ -296,6 +300,16 @@ export default function ReportsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  useEffect(() => {
+    if (!confirmingReportAction) return
+
+    const timer = window.setTimeout(() => {
+      setConfirmingReportAction(null)
+    }, 5000)
+
+    return () => window.clearTimeout(timer)
+  }, [confirmingReportAction])
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
@@ -332,6 +346,23 @@ export default function ReportsPage() {
   }
 
   const handleUpdateReport = async (report: EnrichedReport, status: ReportStatus) => {
+    const requiresConfirmation = status === 'resolved' || status === 'dismissed'
+
+    if (
+      requiresConfirmation &&
+      (confirmingReportAction?.reportId !== report.id ||
+        confirmingReportAction.status !== status)
+    ) {
+      setConfirmingReportAction({ reportId: report.id, status })
+      toast.warning(
+        status === 'resolved'
+          ? 'Toca de nuevo para marcar como resuelto'
+          : 'Toca de nuevo para descartar el reporte',
+      )
+      return
+    }
+
+    setConfirmingReportAction(null)
     const adminNotes = notesDraft[report.id] || ''
     setUpdatingId(report.id)
 
@@ -453,6 +484,11 @@ export default function ReportsPage() {
                   notes={notesDraft[report.id] || ''}
                   onNotesChange={(value) =>
                     setNotesDraft((current) => ({ ...current, [report.id]: value }))
+                  }
+                  confirmingStatus={
+                    confirmingReportAction?.reportId === report.id
+                      ? confirmingReportAction.status
+                      : null
                   }
                   onUpdate={(status) => handleUpdateReport(report, status)}
                 />
@@ -580,12 +616,14 @@ function AdminReportCard({
   report,
   saving,
   notes,
+  confirmingStatus,
   onNotesChange,
   onUpdate,
 }: {
   report: EnrichedReport
   saving: boolean
   notes: string
+  confirmingStatus: ReportStatus | null
   onNotesChange: (value: string) => void
   onUpdate: (status: ReportStatus) => void
 }) {
@@ -633,9 +671,17 @@ function AdminReportCard({
             type="button"
             onClick={() => onUpdate(status)}
             disabled={saving}
-            className="min-h-11 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-60 active:scale-[0.99] dark:border-slate-600 dark:text-slate-200"
+            className={`min-h-11 rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-60 active:scale-[0.99] ${
+              confirmingStatus === status
+                ? 'bg-amber-500 text-white'
+                : 'border border-slate-200 text-slate-700 dark:border-slate-600 dark:text-slate-200'
+            }`}
           >
-            {saving ? 'Guardando...' : statusLabels[status]}
+            {saving
+              ? 'Guardando...'
+              : confirmingStatus === status
+                ? `Confirmar ${statusLabels[status].toLowerCase()}`
+                : statusLabels[status]}
           </button>
         ))}
       </div>
