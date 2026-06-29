@@ -44,10 +44,10 @@ export default function RegisterPage() {
   return (
     <Suspense
       fallback={
-        <main className="min-h-screen bg-slate-100 px-5 py-6">
-          <div className="mx-auto max-w-sm rounded-2xl bg-white p-6 shadow-sm">
-            <p className="text-sm font-semibold text-slate-500">Registro</p>
-            <h1 className="mt-2 text-2xl font-bold text-slate-950">
+        <main className="min-h-screen bg-slate-100 px-5 py-6 dark:bg-slate-900">
+          <div className="mx-auto max-w-sm rounded-2xl bg-white p-6 shadow-sm dark:bg-slate-800">
+            <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Registro</p>
+            <h1 className="mt-2 text-2xl font-bold text-slate-950 dark:text-white">
               Cargando invitación...
             </h1>
           </div>
@@ -225,21 +225,21 @@ function RegisterContent() {
 
   if (!residentialId) {
     return (
-      <main className="min-h-screen bg-slate-100 px-5 py-6">
+      <main className="min-h-screen bg-slate-100 px-5 py-6 dark:bg-slate-900">
         <div className="mx-auto max-w-sm space-y-5">
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <p className="text-sm font-semibold text-slate-500">
+          <section className="rounded-2xl bg-white p-6 shadow-sm dark:bg-slate-800">
+            <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
               Registro de vecino
             </p>
-            <h1 className="mt-2 text-2xl font-bold text-slate-950">
+            <h1 className="mt-2 text-2xl font-bold text-slate-950 dark:text-white">
               Invitación no válida
             </h1>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
+            <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
               Necesitas un enlace de invitación válido para registrarte. Solicítalo a la administración de tu residencial.
             </p>
             <Link
               href="/login"
-              className="mt-6 block min-h-12 rounded-2xl bg-slate-950 px-4 py-3 text-center font-semibold text-white active:scale-[0.99]"
+              className="mt-6 block min-h-12 rounded-2xl bg-slate-950 px-4 py-3 text-center font-semibold text-white active:scale-[0.99] dark:bg-slate-700"
             >
               Volver a login
             </Link>
@@ -250,13 +250,13 @@ function RegisterContent() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 px-5 py-6">
+    <main className="min-h-screen bg-slate-100 px-5 py-6 dark:bg-slate-900">
       <div className="mx-auto max-w-sm space-y-5">
-        <Link href="/login" className="block text-sm font-semibold text-slate-600">
+        <Link href="/login" className="block text-sm font-semibold text-slate-600 dark:text-slate-300">
           ← Volver a login
         </Link>
 
-        <header className="rounded-2xl bg-slate-950 p-6 text-white shadow-lg">
+        <header className="rounded-2xl bg-slate-950 p-6 text-white shadow-lg dark:bg-slate-800">
           <p className="text-sm text-slate-300">Registro de vecino</p>
           <h1 className="mt-1 text-2xl font-bold">Solicitar acceso</h1>
           <p className="mt-2 text-sm leading-6 text-slate-300">
@@ -266,23 +266,23 @@ function RegisterContent() {
 
         <form
           onSubmit={handleSubmit}
-          className="space-y-4 rounded-2xl bg-white p-6 shadow-sm"
+          className="space-y-4 rounded-2xl bg-white p-6 shadow-sm dark:bg-slate-800"
         >
           <label className="block space-y-1">
-            <span className="text-sm font-semibold text-slate-700">Nombre</span>
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Nombre</span>
             <input
               value={formData.firstName}
               onChange={(e) =>
                 setFormData({ ...formData, firstName: e.target.value })
               }
               placeholder="Ej: Ana"
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none placeholder:text-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
               required
             />
           </label>
 
           <label className="block space-y-1">
-            <span className="text-sm font-semibold text-slate-700">
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
               Apellido
             </span>
             <input
@@ -291,13 +291,13 @@ function RegisterContent() {
                 setFormData({ ...formData, lastName: e.target.value })
               }
               placeholder="Ej: López"
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none placeholder:text-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
               required
             />
           </label>
 
           <label className="block space-y-1">
-            <span className="text-sm font-semibold text-slate-700">
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
               Teléfono
             </span>
             <input
@@ -308,13 +308,13 @@ function RegisterContent() {
               placeholder="Ej: 9999-9999"
               type="tel"
               inputMode="tel"
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none placeholder:text-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
               required
             />
           </label>
 
           <label className="block space-y-1">
-            <span className="text-sm font-semibold text-slate-700">Correo</span>
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Correo</span>
             <input
               value={formData.email}
               onChange={(e) =>
@@ -322,13 +322,13 @@ function RegisterContent() {
               }
               placeholder="tu@correo.com"
               type="email"
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none placeholder:text-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
               required
             />
           </label>
 
           <label className="block space-y-1">
-            <span className="text-sm font-semibold text-slate-700">
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
               Contraseña
             </span>
             <div className="relative">
@@ -340,7 +340,7 @@ function RegisterContent() {
                 placeholder="Mínimo 6 caracteres"
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="new-password"
-                className="w-full rounded-2xl border border-slate-200 px-4 py-3 pr-12 text-sm outline-none"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-12 text-sm text-slate-950 outline-none placeholder:text-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                 required
                 minLength={6}
               />
@@ -353,7 +353,7 @@ function RegisterContent() {
                 aria-label={
                   showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'
                 }
-                className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white"
               >
                 {showPassword ? (
                   <EyeOff className="h-5 w-5" aria-hidden="true" />
@@ -364,9 +364,9 @@ function RegisterContent() {
             </div>
           </label>
 
-          <section className={`rounded-2xl p-4 ${residentialError ? 'bg-red-50' : 'bg-slate-50'}`}>
-            <p className="text-sm font-semibold text-slate-700">Residencial</p>
-            <p className={`mt-1 text-base font-bold ${residentialError ? 'text-red-700' : 'text-slate-950'}`}>
+          <section className={`rounded-2xl p-4 ${residentialError ? 'bg-red-50 dark:bg-red-900/30' : 'bg-slate-50 dark:bg-slate-700/60'}`}>
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Residencial</p>
+            <p className={`mt-1 text-base font-bold ${residentialError ? 'text-red-700 dark:text-red-300' : 'text-slate-950 dark:text-white'}`}>
               {loadingResidential
                 ? 'Cargando residencial...'
                 : residentialError
@@ -374,7 +374,7 @@ function RegisterContent() {
                   : residential?.name || 'Invitación no válida'}
             </p>
             {!loadingResidential && residentialError && (
-              <p className="mt-1 text-xs leading-5 text-red-500">
+              <p className="mt-1 text-xs leading-5 text-red-500 dark:text-red-300">
                 El link puede ser incorrecto o la residencial no está activa. Contacta a administración.
               </p>
             )}
@@ -382,7 +382,7 @@ function RegisterContent() {
 
           <div className="grid grid-cols-2 gap-3">
             <label className="block space-y-1">
-              <span className="text-sm font-semibold text-slate-700">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                 Lote / Bloque
               </span>
               <input
@@ -391,14 +391,14 @@ function RegisterContent() {
                   setFormData({ ...formData, block: e.target.value })
                 }
                 placeholder="Ej: X"
-                className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm uppercase outline-none"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm uppercase text-slate-950 outline-none placeholder:text-slate-400 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                 required
                 disabled={!residential || loadingHouses}
               />
             </label>
 
             <label className="block space-y-1">
-              <span className="text-sm font-semibold text-slate-700">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                 Número
               </span>
               <input
@@ -408,7 +408,7 @@ function RegisterContent() {
                 }
                 placeholder="Ej: XX"
                 inputMode="numeric"
-                className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none placeholder:text-slate-400 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                 required
                 disabled={!residential || loadingHouses}
               />
@@ -425,7 +425,7 @@ function RegisterContent() {
           <button
             type="submit"
             disabled={saving || loadingResidential || loadingHouses || !canSubmit}
-            className="min-h-12 w-full rounded-2xl bg-slate-950 px-4 py-3 font-semibold text-white disabled:opacity-60 active:scale-[0.99]"
+            className="min-h-12 w-full rounded-2xl bg-slate-950 px-4 py-3 font-semibold text-white disabled:opacity-60 active:scale-[0.99] dark:bg-slate-700"
           >
             {saving ? 'Enviando solicitud...' : 'Enviar solicitud'}
           </button>
@@ -448,7 +448,7 @@ function HouseValidationCard({
 }) {
   if (loadingHouses) {
     return (
-      <section className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-500">
+      <section className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-500 dark:bg-slate-700/60 dark:text-slate-300">
         Cargando casas del residencial...
       </section>
     )
@@ -456,7 +456,7 @@ function HouseValidationCard({
 
   if (!hasCompleteHouseInput) {
     return (
-      <section className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-600">
+      <section className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-600 dark:bg-slate-700/60 dark:text-slate-300">
         Ingresa tu lote y número de casa para continuar.
       </section>
     )
@@ -464,7 +464,7 @@ function HouseValidationCard({
 
   if (!matchedHouse) {
     return (
-      <section className="rounded-2xl bg-red-50 p-4 text-sm font-semibold leading-6 text-red-700">
+      <section className="rounded-2xl bg-red-50 p-4 text-sm font-semibold leading-6 text-red-700 dark:bg-red-900/30 dark:text-red-300">
         No encontramos la casa {houseLabel}. Verifica el lote y número, o
         contacta a administración.
       </section>
@@ -473,14 +473,14 @@ function HouseValidationCard({
 
   if (!matchedHouse.pays_security) {
     return (
-      <section className="rounded-2xl bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-700">
+      <section className="rounded-2xl bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
         Esta casa no tiene seguridad activa. Contacta a administración.
       </section>
     )
   }
 
   return (
-    <section className="rounded-2xl bg-green-50 p-4 text-sm font-semibold leading-6 text-green-700">
+    <section className="rounded-2xl bg-green-50 p-4 text-sm font-semibold leading-6 text-green-700 dark:bg-green-900/30 dark:text-green-300">
       Casa encontrada: {houseLabel}. Puedes enviar tu solicitud.
     </section>
   )

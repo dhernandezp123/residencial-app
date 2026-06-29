@@ -3,6 +3,11 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --field-background: #ffffff;
+  --field-foreground: #0f172a;
+  --field-placeholder: #94a3b8;
+  --field-border: #e2e8f0;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -15,6 +20,11 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --field-background: #1e293b;
+    --field-foreground: #f8fafc;
+    --field-placeholder: #94a3b8;
+    --field-border: #475569;
+    color-scheme: dark;
   }
 }
 
@@ -30,8 +40,17 @@ body {
 input,
 select,
 textarea {
+  background-color: var(--field-background);
+  border-color: var(--field-border);
+  color: var(--field-foreground);
   min-height: 48px !important;
   font-size: 16px !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--field-placeholder);
+  opacity: 1;
 }
 
 button,
