@@ -8,7 +8,6 @@ type AccessMode = 'single_use' | 'multi_use'
 
 type VisitQrCardProps = {
   qrDataUrl: string
-  qrScanUrl: string
   visitorName: string
   announcedBy: string
   accessMode: AccessMode
@@ -140,7 +139,6 @@ function downloadBlob(blob: Blob, fileName: string) {
 
 export function VisitQrCard({
   qrDataUrl,
-  qrScanUrl,
   visitorName,
   announcedBy,
   accessMode,
@@ -150,6 +148,7 @@ export function VisitQrCard({
   houseLabel,
 }: VisitQrCardProps) {
   const [sharingImage, setSharingImage] = useState(false)
+  const invitationText = `${normalizeDisplayName(announcedBy)} te ha invitado a su casa, presenta este QR en la garita de Seguridad`
 
   const generateVisitCardBlob = async () => {
     const [templateImage, qrImage] = await Promise.all([
@@ -197,13 +196,10 @@ export function VisitQrCard({
     context.fillStyle = '#ffffff'
     context.fillText(badgeText, cardWidth / 2, badgeY + 34)
 
-    context.font = '700 22px Arial'
+    context.font = '700 24px Arial'
     context.fillStyle = '#14231C'
-    context.fillText(
-      'Presentar este código al ingresar y salir.',
-      cardWidth / 2,
-      975,
-    )
+    setResponsiveFont(context, invitationText, 840, 700, 24, 19)
+    drawWrappedText(context, invitationText, cardWidth / 2, 970, 840, 30, 2)
 
     const lines: CardLine[] = [
       { label: 'Anunciado por', value: normalizeDisplayName(announcedBy) },
@@ -216,7 +212,7 @@ export function VisitQrCard({
     context.textAlign = 'left'
     const firstColumnX = 195
     const secondColumnX = 565
-    const firstRowY = 990
+    const firstRowY = 1060
     const rowGap = 70
     const columnWidth = 330
 
@@ -254,7 +250,7 @@ export function VisitQrCard({
       const file = new File([blob], fileName, { type: 'image/png' })
       const shareData = {
         title: 'ResidentPass',
-        text: `QR de acceso para ${visitorName}`,
+        text: invitationText,
         files: [file],
       }
 
@@ -271,27 +267,23 @@ export function VisitQrCard({
       toast.success('Imagen QR descargada')
     } catch (error) {
       console.error('Error sharing QR image:', error)
+      toast.error('No se pudo compartir la imagen QR')
+    } finally {
+      setSharingImage(false)
+    }
+  }
 
-      try {
-        if (navigator.share) {
-          await navigator.share({
-            title: 'ResidentPass',
-            text: `Visita para ${visitorName}: ${qrScanUrl}`,
-            url: qrScanUrl,
-          })
-        } else {
-          window.open(
-            `https://wa.me/?text=${encodeURIComponent(
-              `Visita para ${visitorName}: ${qrScanUrl}`,
-            )}`,
-            '_blank',
-            'noopener,noreferrer',
-          )
-        }
-      } catch (shareError) {
-        console.error('Error sharing QR fallback:', shareError)
-        toast.error('No se pudo compartir la imagen QR')
-      }
+  const handleDownloadImage = async () => {
+    setSharingImage(true)
+
+    try {
+      const blob = await generateVisitCardBlob()
+      const fileName = `visita-${visitorName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`
+      downloadBlob(blob, fileName)
+      toast.success('Imagen QR descargada')
+    } catch (error) {
+      console.error('Error downloading QR image:', error)
+      toast.error('No se pudo generar la imagen QR')
     } finally {
       setSharingImage(false)
     }
@@ -324,13 +316,14 @@ export function VisitQrCard({
         {sharingImage ? 'Preparando imagen...' : 'Compartir imagen QR'}
       </button>
 
-      <a
-        href={qrDataUrl}
-        download={`visita-${visitorName}.png`}
-        className="block min-h-12 w-full rounded-2xl border border-slate-200 px-4 py-3 text-center font-semibold text-slate-800 active:scale-[0.99]"
+      <button
+        type="button"
+        onClick={() => void handleDownloadImage()}
+        disabled={sharingImage}
+        className="min-h-12 w-full rounded-2xl border border-slate-200 px-4 py-3 text-center font-semibold text-slate-800 disabled:opacity-60 active:scale-[0.99]"
       >
-        Descargar QR
-      </a>
+        Descargar imagen QR
+      </button>
     </div>
   )
 }

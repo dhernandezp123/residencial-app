@@ -30,6 +30,7 @@ type House = {
 
 type AdminProfile = {
   id: string
+  user_id: string
   first_name: string
   last_name: string
   phone: string | null
@@ -52,6 +53,7 @@ export default function ResidentialDetailPage({
   const [showAdminPassword, setShowAdminPassword] = useState(false)
   const [saving, setSaving] = useState(false)
   const [savingAdmin, setSavingAdmin] = useState(false)
+  const [resettingAdminId, setResettingAdminId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     block: '',
@@ -99,7 +101,7 @@ export default function ResidentialDetailPage({
 
     const { data: adminsData, error: adminsError } = await supabase
       .from('profiles')
-      .select('id,first_name,last_name,phone,status')
+      .select('id,user_id,first_name,last_name,phone,status')
       .eq('residential_id', id)
       .eq('role', 'admin')
       .order('created_at', { ascending: false })
@@ -161,6 +163,40 @@ export default function ResidentialDetailPage({
     setSavingAdmin(true)
     toast.info('Pendiente implementar Edge Function create-admin')
     setSavingAdmin(false)
+  }
+
+  const handleSendPasswordReset = async (admin: AdminProfile) => {
+    setResettingAdminId(admin.id)
+
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData.session?.access_token
+
+    if (!token) {
+      toast.error('Inicia sesión nuevamente')
+      setResettingAdminId(null)
+      return
+    }
+
+    const response = await fetch('/api/admin/send-password-reset', {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ profileId: admin.id }),
+    })
+
+    setResettingAdminId(null)
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string
+      }
+      toast.error(payload.error || 'No se pudo enviar el reset')
+      return
+    }
+
+    toast.success('Correo de recuperación enviado')
   }
 
   const handleCopyRegisterLink = async () => {
@@ -265,6 +301,16 @@ export default function ResidentialDetailPage({
                       {admin.status || 'approved'}
                     </span>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => void handleSendPasswordReset(admin)}
+                    disabled={resettingAdminId === admin.id}
+                    className="mt-4 min-h-10 w-full rounded-xl border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 disabled:opacity-60 active:scale-[0.99]"
+                  >
+                    {resettingAdminId === admin.id
+                      ? 'Enviando...'
+                      : 'Enviar reset de contraseña'}
+                  </button>
                 </article>
               ))}
             </div>

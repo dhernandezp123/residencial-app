@@ -27,6 +27,10 @@ type HouseRow = Omit<HouseDetail, 'residentials'> & {
     | {
         id: string
         name: string
+      }
+    | {
+        id: string
+        name: string
       }[]
     | null
 }
@@ -53,6 +57,8 @@ export default function HouseDetailPage({ params }: HousePageProps) {
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
   const [togglingSecurity, setTogglingSecurity] = useState(false)
   const [confirmingDeactivate, setConfirmingDeactivate] = useState(false)
+  const [removingResidentId, setRemovingResidentId] = useState<string | null>(null)
+  const [confirmRemoveResidentId, setConfirmRemoveResidentId] = useState<string | null>(null)
 
   // Auto-cancel the confirmation state after 5 s if user doesn't confirm
   useEffect(() => {
@@ -60,6 +66,12 @@ export default function HouseDetailPage({ params }: HousePageProps) {
     const timer = setTimeout(() => setConfirmingDeactivate(false), 5000)
     return () => clearTimeout(timer)
   }, [confirmingDeactivate])
+
+  useEffect(() => {
+    if (!confirmRemoveResidentId) return
+    const timer = setTimeout(() => setConfirmRemoveResidentId(null), 5000)
+    return () => clearTimeout(timer)
+  }, [confirmRemoveResidentId])
 
   const loadHouse = async () => {
     setLoading(true)
@@ -83,7 +95,9 @@ export default function HouseDetailPage({ params }: HousePageProps) {
     const houseRow = data as HouseRow
     setHouse({
       ...houseRow,
-      residentials: houseRow.residentials?.[0] || null,
+      residentials: Array.isArray(houseRow.residentials)
+        ? houseRow.residentials[0] || null
+        : houseRow.residentials,
     })
     setLoading(false)
   }
@@ -163,6 +177,41 @@ export default function HouseDetailPage({ params }: HousePageProps) {
     setHouse({ ...house, pays_security: newValue })
     toast.success(newValue ? 'Acceso activado' : 'Acceso desactivado')
     setTogglingSecurity(false)
+  }
+
+  const handleRemoveResident = async (resident: ResidentProfile) => {
+    if (!canManageSecurity) return
+
+    if (confirmRemoveResidentId !== resident.id) {
+      setConfirmRemoveResidentId(resident.id)
+      toast.warning(
+        `Toca de nuevo para quitar a ${resident.first_name} ${resident.last_name} de esta casa.`,
+      )
+      return
+    }
+
+    setRemovingResidentId(resident.id)
+    setConfirmRemoveResidentId(null)
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        house_id: null,
+        status: 'inactive',
+      })
+      .eq('id', resident.id)
+      .eq('role', 'resident')
+
+    setRemovingResidentId(null)
+
+    if (error) {
+      console.error('Error removing resident from house:', error)
+      toast.error('No se pudo quitar el residente')
+      return
+    }
+
+    toast.success('Residente quitado de la casa')
+    await loadResidents()
   }
 
   const approvedCount = residents.filter((r) => r.status === 'approved').length
@@ -345,33 +394,57 @@ export default function HouseDetailPage({ params }: HousePageProps) {
               {residents.map((resident) => (
                 <li
                   key={resident.id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-3"
+                  className="space-y-3 rounded-xl border border-slate-100 p-3"
                 >
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold text-slate-900">
-                      {resident.first_name} {resident.last_name}
-                    </p>
-                    {resident.phone && (
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        {resident.phone}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-slate-900">
+                        {resident.first_name} {resident.last_name}
                       </p>
-                    )}
-                  </div>
-                  <span
-                    className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                      resident.status === 'approved'
-                        ? 'bg-green-100 text-green-700'
+                      {resident.phone && (
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          {resident.phone}
+                        </p>
+                      )}
+                    </div>
+                    <span
+                      className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        resident.status === 'approved'
+                          ? 'bg-green-100 text-green-700'
+                          : resident.status === 'pending'
+                            ? 'bg-amber-100 text-amber-700'
+                            : resident.status === 'inactive'
+                              ? 'bg-slate-100 text-slate-600'
+                              : 'bg-red-100 text-red-700'
+                      }`}
+                    >
+                      {resident.status === 'approved'
+                        ? 'Aprobado'
                         : resident.status === 'pending'
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-slate-100 text-slate-600'
-                    }`}
-                  >
-                    {resident.status === 'approved'
-                      ? 'Aprobado'
-                      : resident.status === 'pending'
-                        ? 'Pendiente'
-                        : resident.status}
-                  </span>
+                          ? 'Pendiente'
+                          : resident.status === 'inactive'
+                            ? 'Inactivo'
+                            : resident.status}
+                    </span>
+                  </div>
+                  {canManageSecurity && (
+                    <button
+                      type="button"
+                      onClick={() => void handleRemoveResident(resident)}
+                      disabled={removingResidentId === resident.id}
+                      className={`min-h-10 w-full rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-60 active:scale-[0.99] ${
+                        confirmRemoveResidentId === resident.id
+                          ? 'bg-red-600 text-white'
+                          : 'border border-red-200 text-red-700'
+                      }`}
+                    >
+                      {removingResidentId === resident.id
+                        ? 'Quitando...'
+                        : confirmRemoveResidentId === resident.id
+                          ? 'Confirmar quitar residente'
+                          : 'Quitar de esta casa'}
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>

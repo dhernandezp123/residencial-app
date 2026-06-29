@@ -38,7 +38,6 @@ type CreatedVisit = {
   access_mode: AccessMode
   created_at: string
   valid_until: string
-  shareUrl: string
   qrDataUrl: string
   announcedBy: string
   residentialName: string
@@ -73,7 +72,6 @@ export default function NewVisitPage() {
   const [housePaysecurity, setHousePaysecurity] = useState<boolean | null>(null)
   const [formData, setFormData] = useState<VisitFormData>(initialFormData)
   const [createdVisit, setCreatedVisit] = useState<CreatedVisit | null>(null)
-  const [accessLabel, setAccessLabel] = useState('tu residencial/casa')
   const [residentialName, setResidentialName] = useState('Residencial')
   const [houseLabel, setHouseLabel] = useState('Casa')
   const [loading, setLoading] = useState(true)
@@ -129,12 +127,8 @@ export default function NewVisitPage() {
             'Error loading residential for share label:',
             residentialError,
           )
-          setAccessLabel(`Casa ${houseData.block}-${houseData.house_number}`)
           setHouseLabel(`Casa ${houseData.block}-${houseData.house_number}`)
         } else {
-          setAccessLabel(
-            `${residentialData.name} / Casa ${houseData.block}-${houseData.house_number}`,
-          )
           setResidentialName(residentialData.name)
           setHouseLabel(`Casa ${houseData.block}-${houseData.house_number}`)
         }
@@ -241,7 +235,6 @@ export default function NewVisitPage() {
       access_mode: formData.access_mode,
       created_at: visitData.created_at,
       valid_until: visitData.valid_until,
-      shareUrl,
       qrDataUrl,
       announcedBy: `${profile.first_name} ${profile.last_name}`,
       residentialName,
@@ -250,49 +243,6 @@ export default function NewVisitPage() {
     setFormData(initialFormData)
     setSaving(false)
     toast.success('Visita creada correctamente')
-  }
-
-  const handleShare = async () => {
-    if (!createdVisit) {
-      return
-    }
-
-    const shareMessage = `Te comparto tu acceso a ${accessLabel}. Presenta este QR en garita: ${createdVisit.shareUrl}`
-
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: 'Acceso residencial',
-          text: shareMessage,
-          url: createdVisit.shareUrl,
-        })
-      } else {
-        await navigator.clipboard.writeText(createdVisit.shareUrl)
-        toast.success('Link copiado para compartir')
-      }
-    } catch (error) {
-      console.error('Error sharing visit:', error)
-      try {
-        await navigator.clipboard.writeText(createdVisit.shareUrl)
-        toast.success('Link copiado para compartir')
-      } catch (clipboardError) {
-        console.error('Error copying visit link:', clipboardError)
-        toast.error('No se pudo compartir la visita')
-      }
-    }
-  }
-
-  const handleOpenWhatsApp = () => {
-    if (!createdVisit) {
-      return
-    }
-
-    const shareMessage = `Te comparto tu acceso a ${accessLabel}. Presenta este QR en garita: ${createdVisit.shareUrl}`
-    window.open(
-      `https://wa.me/?text=${encodeURIComponent(shareMessage)}`,
-      '_blank',
-      'noopener,noreferrer',
-    )
   }
 
   if (loading) {
@@ -374,7 +324,6 @@ export default function NewVisitPage() {
           <section className="space-y-3 rounded-2xl bg-white dark:bg-slate-800 p-6 shadow-sm">
             <VisitQrCard
               qrDataUrl={createdVisit.qrDataUrl}
-              qrScanUrl={createdVisit.shareUrl}
               visitorName={createdVisit.visitor_name}
               announcedBy={createdVisit.announcedBy}
               accessMode={createdVisit.access_mode}
@@ -383,22 +332,6 @@ export default function NewVisitPage() {
               residentialName={createdVisit.residentialName}
               houseLabel={createdVisit.houseLabel}
             />
-
-            <button
-              type="button"
-              onClick={handleShare}
-              className="min-h-12 w-full rounded-2xl bg-slate-950 dark:bg-slate-700 px-4 py-3 font-semibold text-white active:scale-[0.99]"
-            >
-              Compartir por WhatsApp
-            </button>
-
-            <button
-              type="button"
-              onClick={handleOpenWhatsApp}
-              className="min-h-12 w-full rounded-2xl border border-green-200 dark:border-green-800 px-4 py-3 font-semibold text-green-700 dark:text-green-400 active:scale-[0.99]"
-            >
-              Abrir WhatsApp
-            </button>
 
             <button
               type="button"

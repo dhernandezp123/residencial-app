@@ -578,7 +578,6 @@ export default function VisitsPage() {
                   {isExpanded && qrDataUrl && visit.qrToken && (
                     <VisitQrCard
                       qrDataUrl={qrDataUrl}
-                      qrScanUrl={getShareUrl(visit.qrToken.token)}
                       visitorName={visit.visitor_name}
                       announcedBy={
                         profile

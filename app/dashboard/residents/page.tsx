@@ -7,10 +7,11 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 
-type ResidentStatus = 'pending' | 'approved' | 'rejected'
+type ResidentStatus = 'pending' | 'approved' | 'rejected' | 'inactive'
 
 type ResidentProfile = {
   id: string
+  user_id: string
   residential_id: string | null
   house_id: string | null
   first_name: string
@@ -41,6 +42,7 @@ const filters: { label: string; value: ResidentStatus }[] = [
   { label: 'Pendientes', value: 'pending' },
   { label: 'Aprobados', value: 'approved' },
   { label: 'Rechazados', value: 'rejected' },
+  { label: 'Inactivos', value: 'inactive' },
 ]
 
 export default function ResidentsPage() {
@@ -55,10 +57,10 @@ export default function ResidentsPage() {
     const { data, error } = await supabase
       .from('profiles')
       .select(
-        'id,first_name,last_name,phone,status,role,residential_id,house_id'
+        'id,user_id,first_name,last_name,phone,status,role,residential_id,house_id'
       )
       .eq('role', 'resident')
-      .in('status', ['pending', 'approved', 'rejected'])
+      .in('status', ['pending', 'approved', 'rejected', 'inactive'])
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -210,6 +212,64 @@ export default function ResidentsPage() {
     loadResidents()
   }
 
+  const handleDeactivateResident = async (resident: ResidentProfile) => {
+    setSavingResidentId(resident.id)
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        status: 'inactive',
+        house_id: null,
+      })
+      .eq('id', resident.id)
+      .eq('role', 'resident')
+
+    setSavingResidentId(null)
+
+    if (error) {
+      console.error('Error deactivating resident:', error)
+      toast.error('No se pudo inactivar el residente')
+      return
+    }
+
+    toast.success('Residente inactivado correctamente')
+    loadResidents()
+  }
+
+  const handleSendPasswordReset = async (resident: ResidentProfile) => {
+    setSavingResidentId(resident.id)
+
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData.session?.access_token
+
+    if (!token) {
+      toast.error('Inicia sesión nuevamente')
+      setSavingResidentId(null)
+      return
+    }
+
+    const response = await fetch('/api/admin/send-password-reset', {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ profileId: resident.id }),
+    })
+
+    setSavingResidentId(null)
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string
+      }
+      toast.error(payload.error || 'No se pudo enviar el reset')
+      return
+    }
+
+    toast.success('Correo de recuperación enviado')
+  }
+
   const filteredResidents = residents.filter(
     (resident) => resident.status === selectedStatus
   )
@@ -233,7 +293,7 @@ export default function ResidentsPage() {
           </p>
         </header>
 
-        <section className="grid grid-cols-3 gap-2 rounded-2xl bg-white dark:bg-slate-800 p-2 shadow-sm">
+        <section className="grid grid-cols-2 gap-2 rounded-2xl bg-white dark:bg-slate-800 p-2 shadow-sm">
           {filters.map((filter) => (
             <button
               key={filter.value}
@@ -265,6 +325,8 @@ export default function ResidentsPage() {
                 saving={savingResidentId === resident.id}
                 onApprove={() => handleUpdateStatus(resident, 'approved')}
                 onReject={() => handleUpdateStatus(resident, 'rejected')}
+                onDeactivate={() => handleDeactivateResident(resident)}
+                onSendPasswordReset={() => handleSendPasswordReset(resident)}
               />
             ))}
           </section>
@@ -279,11 +341,15 @@ function ResidentCard({
   saving,
   onApprove,
   onReject,
+  onDeactivate,
+  onSendPasswordReset,
 }: {
   resident: ResidentProfile
   saving: boolean
   onApprove: () => void
   onReject: () => void
+  onDeactivate: () => void
+  onSendPasswordReset: () => void
 }) {
   const fullName = `${resident.first_name} ${resident.last_name}`.trim()
   const houseLabel = resident.house
@@ -308,7 +374,9 @@ function ResidentCard({
               ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
               : resident.status === 'rejected'
                 ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
-                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                : resident.status === 'inactive'
+                  ? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                  : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
           }`}
         >
           {getStatusLabel(resident.status)}
@@ -356,6 +424,27 @@ function ResidentCard({
           </button>
         </div>
       )}
+
+      {resident.status !== 'inactive' && (
+        <div className="mt-3 grid gap-2">
+          <button
+            type="button"
+            onClick={onSendPasswordReset}
+            disabled={saving}
+            className="min-h-12 w-full rounded-xl border border-blue-200 dark:border-blue-800 px-4 py-3 text-sm font-semibold text-blue-700 dark:text-blue-300 disabled:opacity-60 active:scale-[0.99]"
+          >
+            {saving ? 'Enviando...' : 'Enviar reset de contraseña'}
+          </button>
+          <button
+            type="button"
+            onClick={onDeactivate}
+            disabled={saving}
+            className="min-h-12 w-full rounded-xl border border-red-200 dark:border-red-800 px-4 py-3 text-sm font-semibold text-red-700 dark:text-red-300 disabled:opacity-60 active:scale-[0.99]"
+          >
+            {saving ? 'Guardando...' : 'Inactivar y quitar de casa'}
+          </button>
+        </div>
+      )}
     </article>
   )
 }
@@ -390,6 +479,10 @@ function getStatusLabel(status: ResidentStatus) {
 
   if (status === 'rejected') {
     return 'Rechazado'
+  }
+
+  if (status === 'inactive') {
+    return 'Inactivo'
   }
 
   return 'Pendiente'

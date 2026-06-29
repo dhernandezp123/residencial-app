@@ -191,6 +191,24 @@ function SuperAdminDashboard({ onLogout }: { onLogout: () => void }) {
         href="/dashboard/residentials"
       />
       <DashboardButton
+        icon={Home}
+        title="Casas"
+        subtitle="Ver casas, seguridad y ocupación"
+        href="/dashboard/houses"
+      />
+      <DashboardButton
+        icon={UserCheck}
+        title="Residentes"
+        subtitle="Aprobar, revisar y quitar usuarios"
+        href="/dashboard/residents"
+      />
+      <DashboardButton
+        icon={Shield}
+        title="Guardias"
+        subtitle="Administrar seguridad por residencial"
+        href="/dashboard/guards"
+      />
+      <DashboardButton
         icon={UserCog}
         title="Administradores"
         subtitle="Asignar admins por residencial"

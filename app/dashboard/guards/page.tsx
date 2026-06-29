@@ -17,6 +17,7 @@ type CurrentProfile = {
 
 type GuardProfile = {
   id: string
+  user_id: string
   first_name: string
   last_name: string
   phone: string | null
@@ -59,6 +60,7 @@ export default function GuardsPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [resettingGuardId, setResettingGuardId] = useState<string | null>(null)
 
   const loadData = async () => {
     setLoading(true)
@@ -97,7 +99,7 @@ export default function GuardsPage() {
 
     const guardsQuery = supabase
       .from('profiles')
-      .select('id,first_name,last_name,phone,status,residential_id')
+      .select('id,user_id,first_name,last_name,phone,status,residential_id')
       .eq('role', 'guard')
       .order('created_at', { ascending: false })
 
@@ -207,6 +209,40 @@ export default function GuardsPage() {
     setSaving(true)
     toast.info('Pendiente implementar Edge Function create-guard')
     setSaving(false)
+  }
+
+  const handleSendPasswordReset = async (guard: GuardProfile) => {
+    setResettingGuardId(guard.id)
+
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData.session?.access_token
+
+    if (!token) {
+      toast.error('Inicia sesión nuevamente')
+      setResettingGuardId(null)
+      return
+    }
+
+    const response = await fetch('/api/admin/send-password-reset', {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ profileId: guard.id }),
+    })
+
+    setResettingGuardId(null)
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string
+      }
+      toast.error(payload.error || 'No se pudo enviar el reset')
+      return
+    }
+
+    toast.success('Correo de recuperación enviado')
   }
 
   const canManageGuards =
@@ -451,6 +487,16 @@ export default function GuardsPage() {
                   </span>{' '}
                   {guard.residential?.name || 'Sin residencial'}
                 </p>
+                <button
+                  type="button"
+                  onClick={() => void handleSendPasswordReset(guard)}
+                  disabled={resettingGuardId === guard.id}
+                  className="mt-4 min-h-10 w-full rounded-xl border border-blue-200 dark:border-blue-800 px-4 py-2 text-sm font-semibold text-blue-700 dark:text-blue-300 disabled:opacity-60 active:scale-[0.99]"
+                >
+                  {resettingGuardId === guard.id
+                    ? 'Enviando...'
+                    : 'Enviar reset de contraseña'}
+                </button>
               </article>
             ))}
           </section>
