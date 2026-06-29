@@ -76,6 +76,7 @@ export default function ResidentialDetailPage({
   const [editingMaxHouses, setEditingMaxHouses] = useState(false)
   const [savingMaxHouses, setSavingMaxHouses] = useState(false)
   const [resettingAdminId, setResettingAdminId] = useState<string | null>(null)
+  const [houseSearch, setHouseSearch] = useState('')
 
   const [formData, setFormData] = useState({
     block: '',
@@ -828,47 +829,69 @@ export default function ResidentialDetailPage({
           <div className="rounded-2xl bg-white p-5 text-sm text-slate-500 shadow-sm">
             No hay casas registradas.
           </div>
-        ) : (
-          <section className="space-y-3">
-            {houses.map((house) => (
-              <article key={house.id} className="rounded-2xl bg-white p-5 shadow-sm">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-bold text-slate-900">
-                      {house.block}-{house.house_number}
-                    </h2>
-                    <p className="mt-1 text-sm text-slate-500">
-                      Usuarios app permitidos: {house.resident_limit || 3}
-                    </p>
-                  </div>
+        ) : (() => {
+          const query = houseSearch.trim().toLowerCase()
+          const filtered = query
+            ? houses.filter((h) =>
+                `${h.block}-${h.house_number}`.toLowerCase().includes(query)
+              )
+            : houses
 
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                      house.pays_security
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-amber-100 text-amber-700'
-                    }`}
-                  >
-                    {house.pays_security ? 'Paga' : 'No paga'}
-                  </span>
+          const grouped = filtered.reduce<Record<string, House[]>>((acc, house) => {
+            if (!acc[house.block]) acc[house.block] = []
+            acc[house.block].push(house)
+            return acc
+          }, {})
+
+          const blocks = Object.keys(grouped).sort()
+
+          return (
+            <section className="space-y-3">
+              <div className="relative">
+                <input
+                  type="search"
+                  value={houseSearch}
+                  onChange={(e) => setHouseSearch(e.target.value)}
+                  placeholder="Buscar casa (ej: D-83)"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none shadow-sm placeholder:text-slate-400"
+                />
+              </div>
+
+              {blocks.length === 0 ? (
+                <div className="rounded-2xl bg-white p-5 text-sm text-slate-500 shadow-sm">
+                  Sin resultados para &ldquo;{houseSearch}&rdquo;.
                 </div>
-
-                {house.notes && (
-                  <p className="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
-                    {house.notes}
-                  </p>
-                )}
-
-                <Link
-                  href={`/dashboard/houses/${house.id}`}
-                  className="mt-5 block min-h-12 w-full rounded-xl border border-slate-200 px-4 py-3 text-center text-sm font-semibold text-slate-800 active:scale-[0.99]"
-                >
-                  Ver casa
-                </Link>
-              </article>
-            ))}
-          </section>
-        )}
+              ) : (
+                blocks.map((block) => (
+                  <div key={block} className="rounded-2xl bg-white p-5 shadow-sm">
+                    <div className="mb-3 flex items-center justify-between">
+                      <h3 className="font-bold text-slate-900">Bloque {block}</h3>
+                      <span className="text-xs text-slate-400">
+                        {grouped[block].length} casa{grouped[block].length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {grouped[block].map((house) => (
+                        <Link
+                          key={house.id}
+                          href={`/dashboard/houses/${house.id}`}
+                          className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 active:scale-[0.97]"
+                        >
+                          <span
+                            className={`h-2 w-2 flex-shrink-0 rounded-full ${
+                              house.pays_security ? 'bg-green-500' : 'bg-amber-400'
+                            }`}
+                          />
+                          {house.house_number}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </section>
+          )
+        })()}
       </div>
     </main>
   )
