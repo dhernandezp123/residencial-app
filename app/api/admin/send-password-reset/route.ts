@@ -10,6 +10,8 @@ type ProfileRow = {
   status: string
   residential_id: string | null
   is_residential_admin: boolean | null
+  access_email: string | null
+  uses_internal_email: boolean | null
 }
 
 function getAdminClient() {
@@ -55,7 +57,7 @@ export async function POST(request: NextRequest) {
 
   const { data: actorData, error: actorError } = await admin
     .from('profiles')
-    .select('id,user_id,role,status,residential_id,is_residential_admin')
+    .select('id,user_id,role,status,residential_id,is_residential_admin,access_email,uses_internal_email')
     .eq('user_id', user.id)
     .single()
 
@@ -77,7 +79,7 @@ export async function POST(request: NextRequest) {
 
   const { data: targetData, error: targetError } = await admin
     .from('profiles')
-    .select('id,user_id,role,status,residential_id,is_residential_admin')
+    .select('id,user_id,role,status,residential_id,is_residential_admin,access_email,uses_internal_email')
     .eq('id', profileId.trim())
     .single()
 
@@ -96,6 +98,16 @@ export async function POST(request: NextRequest) {
 
   if (!canReset) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  if (
+    target.uses_internal_email ||
+    target.access_email?.endsWith('@residentpass.local')
+  ) {
+    return NextResponse.json(
+      { error: 'Este usuario usa acceso interno. Asigna una contrasena temporal.' },
+      { status: 422 },
+    )
   }
 
   const { data: targetUserData, error: targetUserError } =
