@@ -203,17 +203,17 @@ export function VisitQrCard({
 
     const lines: CardLine[] = [
       { label: 'Anunciado por', value: normalizeDisplayName(announcedBy) },
-      { label: 'Creado', value: formatCardDate(createdAt) },
-      { label: 'Válido hasta', value: formatCardDate(validUntil) },
       { label: 'Residencial', value: residentialName },
+      { label: 'Válido hasta', value: formatCardDate(validUntil) },
+      { label: 'Creado', value: formatCardDate(createdAt) },
       { label: 'Casa', value: houseLabel },
     ]
 
     context.textAlign = 'left'
     const firstColumnX = 195
     const secondColumnX = 565
-    const firstRowY = 1060
-    const rowGap = 70
+    const firstRowY = 1048
+    const rowGap = 66
     const columnWidth = 330
 
     lines.forEach((line, index) => {

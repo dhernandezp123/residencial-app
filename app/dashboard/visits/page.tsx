@@ -297,8 +297,20 @@ export default function VisitsPage() {
     `${window.location.origin}/gate/scan?token=${token}`
 
   const handleViewQr = async (visit: VisitWithToken) => {
-    if (visit.status !== 'active' || !visit.qrToken) {
-      toast.error('Esta visita no tiene un QR activo')
+    const isExpiredNow =
+      visit.status === 'expired' ||
+      visit.qrToken?.status === 'expired' ||
+      new Date(visit.valid_until).getTime() <= new Date().getTime() ||
+      (visit.qrToken
+        ? new Date(visit.qrToken.expires_at).getTime() <= new Date().getTime()
+        : false)
+
+    if (
+      isExpiredNow ||
+      visit.status !== 'active' ||
+      visit.qrToken?.status !== 'active'
+    ) {
+      toast.error('Este QR ya no está activo')
       return
     }
 
@@ -337,7 +349,11 @@ export default function VisitsPage() {
   }
 
   const handleCancelVisit = async (visit: VisitWithToken) => {
-    if (visit.status !== 'active') {
+    const isExpiredNow =
+      visit.status === 'expired' ||
+      new Date(visit.valid_until).getTime() <= new Date().getTime()
+
+    if (isExpiredNow || visit.status !== 'active') {
       toast.error('Solo puedes cancelar visitas activas')
       return
     }
@@ -462,6 +478,9 @@ export default function VisitsPage() {
           <section className="space-y-4" aria-label="Lista de visitas">
             {visits.map((visit) => {
               const expiresAt = new Date(visit.valid_until)
+              const tokenExpiresAt = visit.qrToken
+                ? new Date(visit.qrToken.expires_at)
+                : expiresAt
               const expiresLabel = new Intl.DateTimeFormat('es-HN', {
                 day: 'numeric',
                 month: 'short',
@@ -469,13 +488,20 @@ export default function VisitsPage() {
                 hour: 'numeric',
                 minute: '2-digit',
               }).format(expiresAt)
-              const isActive = visit.status === 'active'
               const isExpanded = expandedVisitId === visit.id
               const qrDataUrl = qrImagesByVisitId[visit.id]
               const isExpiredNow =
                 visit.status === 'expired' ||
+                visit.qrToken?.status === 'expired' ||
                 (visit.status === 'active' &&
-                  new Date(visit.valid_until) < new Date())
+                  expiresAt.getTime() <= new Date().getTime()) ||
+                (visit.qrToken?.status === 'active' &&
+                  tokenExpiresAt.getTime() <= new Date().getTime())
+              const effectiveStatus: VisitStatus = isExpiredNow
+                ? 'expired'
+                : visit.status
+              const canUseQr =
+                effectiveStatus === 'active' && visit.qrToken?.status === 'active'
               const isVisitorInside = openEntriesByVisitId[visit.id] === true
 
               return (
@@ -493,9 +519,9 @@ export default function VisitsPage() {
                       </h2>
                     </div>
                     <span
-                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[visit.status]}`}
+                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[effectiveStatus]}`}
                     >
-                      {statusLabels[visit.status]}
+                      {statusLabels[effectiveStatus]}
                     </span>
                   </div>
 
@@ -552,7 +578,7 @@ export default function VisitsPage() {
                     <button
                       type="button"
                       onClick={() => void handleViewQr(visit)}
-                      disabled={!isActive || !visit.qrToken}
+                      disabled={!canUseQr}
                       className="min-h-12 w-full rounded-2xl bg-slate-950 dark:bg-slate-700 px-4 py-3 font-semibold text-white disabled:opacity-50 active:scale-[0.99]"
                     >
                       {isExpanded ? 'Ocultar QR' : 'Ver QR'}
@@ -560,7 +586,7 @@ export default function VisitsPage() {
                     <button
                       type="button"
                       onClick={() => void handleCancelVisit(visit)}
-                      disabled={!isActive || actionLoadingId === visit.id}
+                      disabled={effectiveStatus !== 'active' || actionLoadingId === visit.id}
                       className={`min-h-12 w-full rounded-2xl px-4 py-3 font-semibold disabled:opacity-50 active:scale-[0.99] ${
                         cancelConfirmId === visit.id
                           ? 'bg-red-600 text-white'
