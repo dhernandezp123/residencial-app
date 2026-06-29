@@ -21,6 +21,7 @@ type CurrentProfile = {
   status: ProfileStatus
   residential_id: string | null
   house_id: string | null
+  is_residential_admin: boolean | null
 }
 
 type IncidentReport = {
@@ -108,8 +109,12 @@ export default function ReportsPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [notesDraft, setNotesDraft] = useState<Record<string, string>>({})
 
-  const isAdminView = profile?.role === 'admin' || profile?.role === 'super_admin'
-  const isResidentView = profile?.role === 'resident'
+  const isAdminView =
+    profile?.role === 'admin' ||
+    profile?.role === 'super_admin' ||
+    Boolean(profile?.is_residential_admin)
+  const isResidentView =
+    profile?.role === 'resident' && !profile.is_residential_admin
 
   const loadData = async () => {
     setLoading(true)
@@ -123,7 +128,7 @@ export default function ReportsPage() {
 
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .select('id,first_name,last_name,role,status,residential_id,house_id')
+      .select('id,first_name,last_name,role,status,residential_id,house_id,is_residential_admin')
       .eq('user_id', sessionData.session.user.id)
       .single()
 
@@ -159,10 +164,14 @@ export default function ReportsPage() {
       }
     }
 
-    if (currentProfile.role === 'resident') {
-      await loadReports(currentProfile, currentProfile.id)
-    } else if (currentProfile.role === 'admin' || currentProfile.role === 'super_admin') {
+    if (
+      currentProfile.role === 'admin' ||
+      currentProfile.role === 'super_admin' ||
+      currentProfile.is_residential_admin
+    ) {
       await loadReports(currentProfile)
+    } else if (currentProfile.role === 'resident') {
+      await loadReports(currentProfile, currentProfile.id)
     }
 
     setLoading(false)
@@ -180,7 +189,11 @@ export default function ReportsPage() {
       query = query.eq('reporter_profile_id', reporterId)
     }
 
-    if (currentProfile.role === 'admin' && currentProfile.residential_id) {
+    if (
+      (currentProfile.role === 'admin' ||
+        currentProfile.is_residential_admin) &&
+      currentProfile.residential_id
+    ) {
       query = query.eq('residential_id', currentProfile.residential_id)
     }
 

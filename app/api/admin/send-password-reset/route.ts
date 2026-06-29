@@ -9,6 +9,7 @@ type ProfileRow = {
   role: AdminRole
   status: string
   residential_id: string | null
+  is_residential_admin: boolean | null
 }
 
 function getAdminClient() {
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
 
   const { data: actorData, error: actorError } = await admin
     .from('profiles')
-    .select('id,user_id,role,status,residential_id')
+    .select('id,user_id,role,status,residential_id,is_residential_admin')
     .eq('user_id', user.id)
     .single()
 
@@ -66,14 +67,17 @@ export async function POST(request: NextRequest) {
 
   if (
     actor.status !== 'approved' ||
-    !['admin', 'super_admin'].includes(actor.role)
+    !(
+      ['admin', 'super_admin'].includes(actor.role) ||
+      actor.is_residential_admin
+    )
   ) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const { data: targetData, error: targetError } = await admin
     .from('profiles')
-    .select('id,user_id,role,status,residential_id')
+    .select('id,user_id,role,status,residential_id,is_residential_admin')
     .eq('id', profileId.trim())
     .single()
 
@@ -85,7 +89,7 @@ export async function POST(request: NextRequest) {
 
   const canReset =
     actor.role === 'super_admin' ||
-    (actor.role === 'admin' &&
+    ((actor.role === 'admin' || actor.is_residential_admin) &&
       target.role !== 'super_admin' &&
       Boolean(actor.residential_id) &&
       actor.residential_id === target.residential_id)

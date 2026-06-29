@@ -13,6 +13,7 @@ type CurrentProfile = {
   role: 'super_admin' | 'admin' | 'resident' | 'guard'
   status: 'pending' | 'approved' | 'rejected' | 'inactive'
   residential_id: string | null
+  is_residential_admin: boolean | null
 }
 
 type GuardProfile = {
@@ -75,7 +76,7 @@ export default function GuardsPage() {
 
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .select('id,role,status,residential_id')
+      .select('id,role,status,residential_id,is_residential_admin')
       .eq('user_id', sessionData.session.user.id)
       .single()
 
@@ -88,10 +89,12 @@ export default function GuardsPage() {
 
     const currentProfile = profileData as CurrentProfile
     setProfile(currentProfile)
+    const isDelegatedAdmin = Boolean(currentProfile.is_residential_admin)
+    const isAdminLike = currentProfile.role === 'admin' || isDelegatedAdmin
 
     if (
       currentProfile.status !== 'approved' ||
-      !['super_admin', 'admin'].includes(currentProfile.role)
+      !(currentProfile.role === 'super_admin' || isAdminLike)
     ) {
       setLoading(false)
       return
@@ -103,7 +106,7 @@ export default function GuardsPage() {
       .eq('role', 'guard')
       .order('created_at', { ascending: false })
 
-    if (currentProfile.role === 'admin') {
+    if (isAdminLike) {
       if (!currentProfile.residential_id) {
         setGuards([])
         setLoading(false)
@@ -181,7 +184,7 @@ export default function GuardsPage() {
       }
     }
 
-    if (currentProfile.role === 'admin' && currentProfile.residential_id) {
+    if (isAdminLike && currentProfile.residential_id) {
       const { data: adminResidentialData } = await supabase
         .from('residentials')
         .select('id,name')
@@ -247,7 +250,9 @@ export default function GuardsPage() {
 
   const canManageGuards =
     profile?.status === 'approved' &&
-    (profile.role === 'super_admin' || profile.role === 'admin')
+    (profile.role === 'super_admin' ||
+      profile.role === 'admin' ||
+      profile.is_residential_admin)
 
   if (loading) {
     return (

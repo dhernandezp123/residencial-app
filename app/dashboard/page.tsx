@@ -38,6 +38,7 @@ type Profile = {
   status: 'pending' | 'approved' | 'rejected' | 'inactive'
   user_id: string
   residential_id: string | null
+  is_residential_admin: boolean | null
 }
 
 const roleLabels: Record<Profile['role'], string> = {
@@ -70,7 +71,7 @@ export default function HomePage() {
 
       const { data } = await supabase
         .from('profiles')
-        .select('id,first_name,last_name,role,status,user_id,residential_id')
+        .select('id,first_name,last_name,role,status,user_id,residential_id,is_residential_admin')
         .eq('user_id', sessionData.session.user.id)
         .single()
 
@@ -138,7 +139,9 @@ export default function HomePage() {
               <span
                 className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${roleBadgeClass[profile.role]}`}
               >
-                {roleLabels[profile.role]}
+                {profile.role === 'resident' && profile.is_residential_admin
+                  ? 'Residente + Admin'
+                  : roleLabels[profile.role]}
               </span>
             </div>
             <button
@@ -157,7 +160,7 @@ export default function HomePage() {
         {profile.role === 'super_admin' && (
           <SuperAdminDashboard onLogout={handleLogout} />
         )}
-        {profile.role === 'admin' && (
+        {(profile.role === 'admin' || profile.is_residential_admin) && (
           <AdminDashboard onLogout={handleLogout} />
         )}
         {profile.role === 'resident' && (

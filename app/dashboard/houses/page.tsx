@@ -15,6 +15,7 @@ type CurrentProfile = {
   role: Role
   status: Status
   residential_id: string | null
+  is_residential_admin: boolean | null
 }
 
 type ResidentialSummary = {
@@ -97,7 +98,7 @@ export default function AdminHousesPage() {
 
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .select('residential_id,role,status')
+      .select('residential_id,role,status,is_residential_admin')
       .eq('user_id', sessionData.session.user.id)
       .single()
 
@@ -110,10 +111,12 @@ export default function AdminHousesPage() {
 
     const currentProfile = profileData as CurrentProfile
     setProfile(currentProfile)
+    const isDelegatedAdmin = Boolean(currentProfile.is_residential_admin)
+    const isAdminLike = currentProfile.role === 'admin' || isDelegatedAdmin
 
     if (
       currentProfile.status !== 'approved' ||
-      !['admin', 'super_admin'].includes(currentProfile.role)
+      !(isAdminLike || currentProfile.role === 'super_admin')
     ) {
       toast.error('Acceso no autorizado')
       setHouses([])
@@ -121,7 +124,7 @@ export default function AdminHousesPage() {
       return
     }
 
-    if (currentProfile.role === 'admin' && !currentProfile.residential_id) {
+    if (isAdminLike && !currentProfile.residential_id) {
       toast.error('No tienes un residencial asignado')
       setHouses([])
       setLoading(false)
@@ -133,7 +136,7 @@ export default function AdminHousesPage() {
       .select('id,name')
       .order('name', { ascending: true })
 
-    if (currentProfile.role === 'admin' && currentProfile.residential_id) {
+    if (isAdminLike && currentProfile.residential_id) {
       residentialsQuery.eq('id', currentProfile.residential_id)
     }
 
@@ -150,7 +153,7 @@ export default function AdminHousesPage() {
     const loadedResidentials = (residentialsData || []) as ResidentialSummary[]
     setResidentials(loadedResidentials)
 
-    if (currentProfile.role === 'admin' && loadedResidentials[0]) {
+    if (isAdminLike && loadedResidentials[0]) {
       setResidentialName(loadedResidentials[0].name)
       setFormData((currentFormData) => ({
         ...currentFormData,
@@ -168,7 +171,7 @@ export default function AdminHousesPage() {
       .order('block', { ascending: true })
       .order('house_number', { ascending: true })
 
-    if (currentProfile.role === 'admin' && currentProfile.residential_id) {
+    if (isAdminLike && currentProfile.residential_id) {
       housesQuery.eq('residential_id', currentProfile.residential_id)
     }
 
@@ -280,7 +283,10 @@ export default function AdminHousesPage() {
     toast.success('Casa registrada correctamente')
     setFormData({
       ...initialForm,
-      residential_id: profile?.role === 'admin' ? targetResidentialId : '',
+      residential_id:
+        profile?.role === 'admin' || profile?.is_residential_admin
+          ? targetResidentialId
+          : '',
     })
     setShowForm(false)
     await loadData()
@@ -335,7 +341,9 @@ export default function AdminHousesPage() {
 
   const canManageHouses =
     profile?.status === 'approved' &&
-    (profile.role === 'admin' || profile.role === 'super_admin')
+    (profile.role === 'admin' ||
+      profile.role === 'super_admin' ||
+      profile.is_residential_admin)
 
   if (loading) {
     return (

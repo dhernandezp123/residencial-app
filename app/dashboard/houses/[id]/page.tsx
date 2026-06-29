@@ -55,6 +55,8 @@ export default function HouseDetailPage({ params }: HousePageProps) {
   const [residents, setResidents] = useState<ResidentProfile[]>([])
   const [loadingResidents, setLoadingResidents] = useState(true)
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
+  const [currentUserIsResidentialAdmin, setCurrentUserIsResidentialAdmin] =
+    useState(false)
   const [togglingSecurity, setTogglingSecurity] = useState(false)
   const [confirmingDeactivate, setConfirmingDeactivate] = useState(false)
   const [removingResidentId, setRemovingResidentId] = useState<string | null>(null)
@@ -129,11 +131,14 @@ export default function HouseDetailPage({ params }: HousePageProps) {
 
     const { data } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role,is_residential_admin')
       .eq('user_id', sessionData.session.user.id)
       .single()
 
-    if (data) setCurrentUserRole(data.role)
+    if (data) {
+      setCurrentUserRole(data.role)
+      setCurrentUserIsResidentialAdmin(Boolean(data.is_residential_admin))
+    }
   }
 
   useEffect(() => {
@@ -217,7 +222,9 @@ export default function HouseDetailPage({ params }: HousePageProps) {
   const approvedCount = residents.filter((r) => r.status === 'approved').length
   const pendingCount = residents.filter((r) => r.status === 'pending').length
   const canManageSecurity =
-    currentUserRole === 'admin' || currentUserRole === 'super_admin'
+    currentUserRole === 'admin' ||
+    currentUserRole === 'super_admin' ||
+    currentUserIsResidentialAdmin
 
   if (loading) {
     return (

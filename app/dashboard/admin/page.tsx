@@ -27,6 +27,7 @@ type CurrentProfile = {
   role: ProfileRole
   status: ProfileStatus
   residential_id: string | null
+  is_residential_admin: boolean | null
 }
 
 type KpiData = {
@@ -127,7 +128,7 @@ export default function AdminDashboardPage() {
 
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .select('id,first_name,last_name,role,status,residential_id')
+      .select('id,first_name,last_name,role,status,residential_id,is_residential_admin')
       .eq('user_id', sessionData.session.user.id)
       .single()
 
@@ -141,15 +142,19 @@ export default function AdminDashboardPage() {
     const currentProfile = profileData as CurrentProfile
     setProfile(currentProfile)
 
+    const isDelegatedAdmin = Boolean(currentProfile.is_residential_admin)
+    const isAdminLike =
+      currentProfile.role === 'admin' || isDelegatedAdmin
+
     if (
-      !['admin', 'super_admin'].includes(currentProfile.role) ||
+      !(isAdminLike || currentProfile.role === 'super_admin') ||
       currentProfile.status !== 'approved'
     ) {
       setLoading(false)
       return
     }
 
-    if (currentProfile.role === 'admin' && !currentProfile.residential_id) {
+    if (isAdminLike && !currentProfile.residential_id) {
       toast.error('Tu perfil no tiene residencial asignado')
       setLoading(false)
       return
@@ -337,7 +342,10 @@ export default function AdminDashboardPage() {
 
   if (
     !profile ||
-    !['admin', 'super_admin'].includes(profile.role) ||
+    !(
+      ['admin', 'super_admin'].includes(profile.role) ||
+      profile.is_residential_admin
+    ) ||
     profile.status !== 'approved'
   ) {
     return (

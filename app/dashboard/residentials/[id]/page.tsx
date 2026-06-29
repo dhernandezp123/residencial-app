@@ -129,7 +129,7 @@ export default function ResidentialDetailPage({
       .from('profiles')
       .select('id,user_id,first_name,last_name,phone,status')
       .eq('residential_id', id)
-      .eq('role', 'admin')
+      .or('role.eq.admin,is_residential_admin.eq.true')
       .order('created_at', { ascending: false })
 
     if (adminsError) {
@@ -142,6 +142,7 @@ export default function ResidentialDetailPage({
       .select('id,first_name,last_name,phone,status,house_id')
       .eq('residential_id', id)
       .eq('role', 'resident')
+      .eq('is_residential_admin', false)
       .in('status', ['approved', 'pending'])
       .order('last_name', { ascending: true })
 
@@ -293,7 +294,7 @@ export default function ResidentialDetailPage({
     const { error } = await supabase
       .from('profiles')
       .update({
-        role: 'admin',
+        is_residential_admin: true,
         status: 'approved',
         residential_id: id,
       })
