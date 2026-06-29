@@ -13,6 +13,7 @@ import {
   Camera,
   ClipboardList,
   Home,
+  MessageSquareWarning,
   Plus,
   Shield,
   Building2,
@@ -209,6 +210,12 @@ function SuperAdminDashboard({ onLogout }: { onLogout: () => void }) {
         href="/dashboard/guards"
       />
       <DashboardButton
+        icon={MessageSquareWarning}
+        title="Quejas e incidentes"
+        subtitle="Revisar reportes de residentes"
+        href="/dashboard/reports"
+      />
+      <DashboardButton
         icon={UserCog}
         title="Administradores"
         subtitle="Asignar admins por residencial"
@@ -245,6 +252,12 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         title="Guardias"
         subtitle="Crear usuarios de seguridad"
         href="/dashboard/guards"
+      />
+      <DashboardButton
+        icon={MessageSquareWarning}
+        title="Quejas e incidentes"
+        subtitle="Dar seguimiento a reportes"
+        href="/dashboard/reports"
       />
       <LogoutButton onLogout={onLogout} />
     </div>
@@ -286,6 +299,12 @@ function ResidentDashboard({
         title="Notificaciones"
         subtitle="Ver avisos de entradas y salidas"
         href="/dashboard/notifications"
+      />
+      <DashboardButton
+        icon={MessageSquareWarning}
+        title="Quejas y sugerencias"
+        subtitle="Reportar incidentes a administración"
+        href="/dashboard/reports"
       />
       <PushNotificationButton
         profileId={profileId}
