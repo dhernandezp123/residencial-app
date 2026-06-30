@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import QRCode from 'qrcode'
 import { Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -259,6 +260,12 @@ export default function NewEventPage() {
             Tu perfil debe estar aprobado como residente y tener una casa
             asignada para crear eventos.
           </p>
+          <Link
+            href="/dashboard"
+            className="mt-6 block min-h-12 rounded-2xl bg-slate-950 px-4 py-3 text-center font-semibold text-white active:scale-[0.99] dark:bg-slate-700"
+          >
+            Ir al dashboard
+          </Link>
         </div>
       </main>
     )
@@ -284,6 +291,12 @@ export default function NewEventPage() {
                 shareUrl={createdEvent.shareUrl}
               />
             </div>
+            <Link
+              href="/dashboard"
+              className="mt-4 block min-h-12 rounded-2xl border border-slate-200 px-4 py-3 text-center font-semibold text-slate-800 active:scale-[0.99] dark:border-slate-600 dark:text-slate-200"
+            >
+              Ir al dashboard
+            </Link>
           </section>
         </div>
       </main>

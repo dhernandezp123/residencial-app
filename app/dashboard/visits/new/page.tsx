@@ -430,6 +430,12 @@ function NewVisitContent() {
             >
               Crear otra visita
             </button>
+            <Link
+              href="/dashboard"
+              className="block min-h-12 w-full rounded-2xl bg-slate-950 px-4 py-3 text-center font-semibold text-white active:scale-[0.99] dark:bg-slate-700"
+            >
+              Ir al dashboard
+            </Link>
           </section>
         </div>
       </main>

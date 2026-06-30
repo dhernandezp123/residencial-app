@@ -544,10 +544,6 @@ export default function HouseDetailPage({ params }: HousePageProps) {
           )}
         </section>
 
-        <section className="grid gap-3">
-          <PlaceholderAction title="Visitas" />
-          <PlaceholderAction title="Historial" />
-        </section>
       </div>
     </main>
   )
@@ -559,17 +555,5 @@ function KpiCard({ label, value }: { label: string; value: string }) {
       <p className="text-sm font-semibold text-slate-500">{label}</p>
       <p className="mt-2 text-3xl font-bold text-slate-950">{value}</p>
     </article>
-  )
-}
-
-function PlaceholderAction({ title }: { title: string }) {
-  return (
-    <button
-      type="button"
-      disabled
-      className="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left font-semibold text-slate-400 shadow-sm"
-    >
-      {title}
-    </button>
   )
 }

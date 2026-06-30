@@ -736,6 +736,12 @@ function GateScanContent() {
               Cerrar cámara
             </button>
           )}
+          <Link
+            href="/dashboard"
+            className="block min-h-14 w-full rounded-2xl border border-white/30 px-4 py-4 text-center text-lg font-black text-white active:scale-[0.99]"
+          >
+            Volver al dashboard
+          </Link>
         </div>
       </main>
     )

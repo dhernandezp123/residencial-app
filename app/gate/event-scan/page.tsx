@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { Suspense, useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { CheckCircle, LogIn, LogOut, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
@@ -304,6 +305,23 @@ function EventScanContent() {
         <section className="w-full max-w-sm rounded-2xl bg-white/10 p-6 text-center">
           <XCircle className="mx-auto h-14 w-14 text-red-200" />
           <h1 className="mt-3 text-3xl font-black">{state.title}</h1>
+          <p className="mt-3 text-sm leading-6 text-red-100">
+            Verifica que el QR sea de evento, que no haya vencido y que tu
+            usuario de guardia tenga permisos para este residencial.
+          </p>
+          <button
+            type="button"
+            onClick={() => void loadEvent()}
+            className="mt-6 min-h-12 w-full rounded-2xl bg-white px-4 py-3 font-black text-red-800 active:scale-[0.99]"
+          >
+            Reintentar
+          </button>
+          <Link
+            href="/dashboard"
+            className="mt-3 block min-h-12 w-full rounded-2xl border border-white/40 px-4 py-3 text-center font-black text-white active:scale-[0.99]"
+          >
+            Volver al dashboard
+          </Link>
         </section>
       </main>
     )
@@ -319,6 +337,13 @@ function EventScanContent() {
   return (
     <main className="min-h-screen bg-slate-100 px-5 py-6 dark:bg-slate-900">
       <div className="mx-auto max-w-sm space-y-5">
+        <Link
+          href="/dashboard"
+          className="block min-h-11 rounded-xl bg-white px-4 py-3 text-center text-sm font-semibold text-slate-700 shadow-sm active:scale-[0.99] dark:bg-slate-800 dark:text-slate-200"
+        >
+          Volver al dashboard
+        </Link>
+
         <section className="rounded-2xl bg-[#14231C] p-6 text-white shadow-lg">
           <div className="flex items-start gap-3">
             <CheckCircle className="mt-1 h-7 w-7 flex-shrink-0 text-emerald-300" />
@@ -350,6 +375,12 @@ function EventScanContent() {
           <h2 className="text-lg font-black text-slate-950 dark:text-white">
             Invitados
           </h2>
+
+          {state.guests.length === 0 && (
+            <div className="rounded-2xl bg-white p-5 text-sm leading-6 text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-400">
+              Este evento no tiene invitados registrados.
+            </div>
+          )}
 
           {state.guests.map((guest) => {
             const canCheckIn = guest.status === 'pending'
