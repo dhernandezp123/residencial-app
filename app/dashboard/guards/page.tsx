@@ -4,9 +4,10 @@ export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, ShieldPlus } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { EmptyState } from '@/components/ui'
 
 type Role = 'super_admin' | 'admin' | 'resident' | 'guard'
 type ProfileStatus = 'pending' | 'approved' | 'rejected' | 'inactive'
@@ -705,9 +706,20 @@ export default function GuardsPage() {
         )}
 
         {guards.length === 0 ? (
-          <section className="rounded-2xl bg-white p-6 text-sm leading-6 text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-400">
-            No hay guardias registrados.
-          </section>
+          <EmptyState
+            icon={<ShieldPlus className="h-6 w-6" />}
+            title="No hay guardias registrados"
+            description="Agrega un guardia para que pueda validar accesos en garita."
+            action={
+              <button
+                type="button"
+                onClick={() => setShowForm(true)}
+                className="block min-h-12 w-full rounded-2xl bg-slate-950 px-4 py-3 font-semibold text-white active:scale-[0.99] dark:bg-slate-700"
+              >
+                Agregar guardia
+              </button>
+            }
+          />
         ) : (
           <section className="space-y-3">
             {guards.map((guard) => {

@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { UserCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { DashboardHeader, EmptyState, StatusBadge } from '@/components/ui'
@@ -495,7 +496,11 @@ export default function ResidentsPage() {
         {loading ? (
           <ResidentsSkeleton />
         ) : filteredResidents.length === 0 ? (
-          <EmptyState description="No hay residentes en este estado." />
+          <EmptyState
+            icon={<UserCheck className="h-6 w-6" />}
+            title="No hay residentes en este estado"
+            description="Cuando existan solicitudes o residentes con este estado, apareceran aqui."
+          />
         ) : (
           <section className="space-y-3">
             {filteredResidents.map((resident) => {

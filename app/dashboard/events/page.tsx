@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { PageHeader } from '@/app/components/PageHeader'
 import { supabase } from '@/lib/supabase'
 import { EventQrCard } from './EventQrCard'
+import { EmptyState } from '@/components/ui'
 
 type Profile = {
   id: string
@@ -267,16 +268,19 @@ export default function EventsPage() {
         )}
 
         {!loading && profile?.role === 'resident' && events.length === 0 && (
-          <section className="rounded-2xl bg-white p-6 text-center shadow-sm dark:bg-slate-800">
-            <CalendarDays className="mx-auto h-10 w-10 text-[#15936A]" />
-            <h1 className="mt-3 text-xl font-bold text-slate-950 dark:text-white">
-              Aún no tienes eventos
-            </h1>
-            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-              Crea una invitación grupal para compartir un solo QR con tus
-              invitados.
-            </p>
-          </section>
+          <EmptyState
+            icon={<CalendarDays className="h-6 w-6" />}
+            title="Aun no tienes eventos"
+            description="Crea un evento para compartir un solo QR con varios invitados."
+            action={
+              <Link
+                href="/dashboard/events/new"
+                className="block min-h-12 rounded-2xl bg-[#15936A] px-4 py-3 text-center font-semibold text-white active:scale-[0.99]"
+              >
+                Crear evento
+              </Link>
+            }
+          />
         )}
 
         {!loading && profile?.role === 'resident' && events.length > 0 && (

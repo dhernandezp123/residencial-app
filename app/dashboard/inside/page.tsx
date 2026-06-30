@@ -4,8 +4,10 @@ export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { EmptyState } from '@/components/ui'
 
 type ProfileRole = 'super_admin' | 'admin' | 'resident' | 'guard'
 type ProfileStatus = 'pending' | 'approved' | 'rejected' | 'inactive'
@@ -287,12 +289,11 @@ export default function InsideDashboardPage() {
         </header>
 
         {entries.length === 0 ? (
-          <section className="rounded-2xl bg-white dark:bg-slate-800 p-6 text-center shadow-sm">
-            <h2 className="text-xl font-bold text-slate-950 dark:text-white">No hay visitantes dentro actualmente</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-              Cuando se registre una entrada permitida, se mostrará aquí.
-            </p>
-          </section>
+          <EmptyState
+            icon={<Users className="h-6 w-6" />}
+            title="No hay visitantes dentro"
+            description="Las visitas sin salida registrada apareceran aqui."
+          />
         ) : (
           <section className="space-y-4">
             {entries.map((entry) => {

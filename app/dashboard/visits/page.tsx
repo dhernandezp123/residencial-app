@@ -5,10 +5,12 @@ export const dynamic = 'force-dynamic'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import QRCode from 'qrcode'
+import { CalendarPlus } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { VisitQrCard } from './VisitQrCard'
 import { PageHeader } from '@/app/components/PageHeader'
+import { EmptyState } from '@/components/ui'
 
 type Profile = {
   id: string
@@ -466,14 +468,19 @@ export default function VisitsPage() {
         </Link>
 
         {visits.length === 0 ? (
-          <section className="rounded-2xl bg-white dark:bg-slate-800 p-6 text-center shadow-sm">
-            <h2 className="text-xl font-bold text-slate-950 dark:text-white">
-              Aún no tienes visitas
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-              Crea tu primera visita para generar un código QR de ingreso.
-            </p>
-          </section>
+          <EmptyState
+            icon={<CalendarPlus className="h-6 w-6" />}
+            title="Aun no tienes visitas"
+            description="Cuando crees una visita, aparecera aqui con su QR y estado."
+            action={
+              <Link
+                href="/dashboard/visits/new?mode=visit"
+                className="block min-h-12 rounded-2xl bg-[#15936A] px-4 py-3 text-center font-semibold text-white active:scale-[0.99]"
+              >
+                Crear visita
+              </Link>
+            }
+          />
         ) : (
           <section className="space-y-4" aria-label="Lista de visitas">
             {visits.map((visit) => {

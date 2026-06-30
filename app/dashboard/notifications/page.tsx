@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { Bell, Clock, LogIn, LogOut } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { EmptyState } from '@/components/ui'
 
 type ProfileStatus = 'pending' | 'approved' | 'rejected' | 'inactive'
 
@@ -239,12 +240,11 @@ export default function NotificationsPage() {
         )}
 
         {notifications.length === 0 ? (
-          <section className="rounded-2xl bg-white dark:bg-slate-800 px-6 py-12 shadow-sm text-center">
-            <Bell className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600" />
-            <p className="mt-4 font-semibold text-slate-500 dark:text-slate-400">
-              No tienes notificaciones.
-            </p>
-          </section>
+          <EmptyState
+            icon={<Bell className="h-6 w-6" />}
+            title="No tienes notificaciones"
+            description="Los avisos de accesos, salidas y vencimientos apareceran aqui."
+          />
         ) : (
           <section className="space-y-3">
             {notifications.map((notification) => (

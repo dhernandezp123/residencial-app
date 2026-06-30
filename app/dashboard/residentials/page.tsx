@@ -4,8 +4,10 @@ export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { Building2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { EmptyState, LoadingSkeleton } from '@/components/ui'
 
 type Residential = {
   id: string
@@ -242,13 +244,25 @@ export default function ResidentialsPage() {
         )}
 
         {loading ? (
-          <div className="rounded-2xl bg-white p-5 text-sm text-slate-500 shadow-sm">
-            Cargando residenciales...
+          <div className="space-y-3">
+            <LoadingSkeleton className="h-32 animate-pulse rounded-2xl bg-white" />
+            <LoadingSkeleton className="h-32 animate-pulse rounded-2xl bg-white" />
           </div>
         ) : residentials.length === 0 ? (
-          <div className="rounded-2xl bg-white p-5 text-sm text-slate-500 shadow-sm">
-            No hay residenciales registrados.
-          </div>
+          <EmptyState
+            icon={<Building2 className="h-6 w-6" />}
+            title="No hay residenciales registrados"
+            description="Crea el primer residencial para comenzar a administrar casas, residentes y accesos."
+            action={
+              <button
+                type="button"
+                onClick={() => setShowForm(true)}
+                className="block min-h-12 w-full rounded-2xl bg-slate-950 px-4 py-3 font-semibold text-white active:scale-[0.99]"
+              >
+                Nuevo residencial
+              </button>
+            }
+          />
         ) : (
           <section className="space-y-3">
             {residentials.map((residential) => (
