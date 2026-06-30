@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   BarChart3,
@@ -126,7 +126,11 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-slate-100 dark:bg-slate-900 px-5 py-6">
-      <div className="mx-auto max-w-sm space-y-3">
+      <div
+        className={`mx-auto max-w-sm space-y-3 ${
+          profile.role === 'resident' ? 'pb-28' : ''
+        }`}
+      >
 
         {/* Profile card */}
         <div className="rounded-2xl bg-[#14231C] p-5 text-white shadow-sm">
@@ -279,63 +283,169 @@ function ResidentDashboard({
   onLogout: () => void
 }) {
   return (
-    <div className="space-y-3">
-      <div className="space-y-3">
-        <DashboardButton
-          icon={Plus}
-          title="Visita"
-          subtitle="Invitado personal"
-          href="/dashboard/visits/new?mode=visit"
-          highlight
-        />
-        <DashboardButton
-          icon={Package}
-          title="Delivery"
-          subtitle="Comida, paquetes o entregas"
-          href="/dashboard/visits/new?mode=delivery"
-          highlight
-        />
-        <DashboardButton
-          icon={CalendarDays}
-          title="Evento"
-          subtitle="Invitaciones grupales"
-          href="/dashboard/events"
-          highlight
-        />
-      </div>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-3">
-        <SecondaryGlassActionCard
-          icon={ClipboardList}
-          title="Mis visitas"
-          subtitle="Activas e historial"
-          href="/dashboard/visits"
-        />
-        <SecondaryGlassActionCard
-          icon={Home}
-          title="Mi casa"
-          subtitle="Datos de vivienda"
-          href="/dashboard/my-house"
-        />
-        <SecondaryGlassActionCard
-          icon={Bell}
-          title="Notificaciones"
-          subtitle="Entradas y salidas"
-          href="/dashboard/notifications"
-        />
-        <SecondaryGlassActionCard
-          icon={MessageSquareWarning}
-          title="Quejas y sugerencias"
-          subtitle="Reportar incidente"
-          href="/dashboard/reports"
-        />
+    <>
+      <div className="space-y-4">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(8.75rem,1fr))] gap-3">
+          <PrimaryResidentActionCard
+            icon={Plus}
+            title="Visita"
+            subtitle="Invitado personal"
+            href="/dashboard/visits/new?mode=visit"
+          />
+          <PrimaryResidentActionCard
+            icon={Package}
+            title="Delivery"
+            subtitle="Comida y paquetes"
+            href="/dashboard/visits/new?mode=delivery"
+          />
+          <PrimaryResidentActionCard
+            icon={CalendarDays}
+            title="Evento"
+            subtitle="Invitaciones grupales"
+            href="/dashboard/events"
+          />
+        </div>
+
         <PushNotificationButton
           profileId={profileId}
           residentialId={residentialId}
         />
+
+        <div className="pb-3">
+          <LogoutButton onLogout={onLogout} />
+        </div>
       </div>
-      <LogoutButton onLogout={onLogout} />
+
+      <MobileNavigation />
+    </>
+  )
+}
+
+function PrimaryResidentActionCard({
+  icon: Icon,
+  title,
+  subtitle,
+  href,
+}: {
+  icon: LucideIcon
+  title: string
+  subtitle: string
+  href: string
+}) {
+  return (
+    <Link
+      href={href}
+      className="group flex min-h-36 flex-col justify-between overflow-hidden rounded-3xl bg-[#15936A] p-4 text-white shadow-lg shadow-emerald-900/20 transition-transform active:scale-[0.99]"
+    >
+      <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-white/15 shadow-sm backdrop-blur-xl">
+        <Icon className="h-6 w-6" />
+      </span>
+      <span>
+        <span className="block text-lg font-black leading-tight">{title}</span>
+        <span className="mt-1 block text-xs font-medium leading-4 text-white/80">
+          {subtitle}
+        </span>
+      </span>
+    </Link>
+  )
+}
+
+function MobileNavigation() {
+  const pathname = usePathname()
+  const items: {
+    href: string
+    label: string
+    icon: LucideIcon
+  }[] = [
+    { href: '/dashboard/visits', label: 'Mis visitas', icon: ClipboardList },
+    { href: '/dashboard/my-house', label: 'Mi casa', icon: Home },
+    { href: '/dashboard/notifications', label: 'Notificaciones', icon: Bell },
+    {
+      href: '/dashboard/reports',
+      label: 'Quejas y sugerencias',
+      icon: MessageSquareWarning,
+    },
+  ]
+
+  return (
+    <nav
+      aria-label="Navegación residente"
+      className="fixed bottom-4 left-4 right-4 z-50"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
+      <div className="mx-auto flex max-w-sm items-center justify-around rounded-full border border-white/70 bg-white/85 px-3 py-2 shadow-lg shadow-slate-900/15 backdrop-blur-xl">
+        {items.map((item) => {
+          const Icon = item.icon
+          const active = pathname === item.href
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-label={item.label}
+              title={item.label}
+              className={`flex h-12 w-12 items-center justify-center rounded-full transition-colors active:scale-95 ${
+                active ? 'bg-slate-100 text-[#15936A]' : 'text-slate-500'
+              }`}
+            >
+              <Icon className="h-5 w-5" />
+            </Link>
+          )
+        })}
+      </div>
+    </nav>
+  )
+}
+
+function ResidentNotificationCard({
+  icon: Icon,
+  title,
+  subtitle,
+  onClick,
+  disabled,
+  muted,
+}: {
+  icon: LucideIcon
+  title: string
+  subtitle: string
+  onClick?: () => void
+  disabled?: boolean
+  muted?: boolean
+}) {
+  const content = (
+    <div className="flex min-h-20 items-center gap-3 text-left">
+      <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-white/60 text-[#15936A] shadow-sm backdrop-blur-xl">
+        <Icon className={`h-5 w-5 ${muted ? 'text-slate-400' : ''}`} />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-bold leading-tight text-slate-950 dark:text-white">
+          {title}
+        </span>
+        <span className="mt-1 block text-xs leading-4 text-slate-600 dark:text-slate-300">
+          {subtitle}
+        </span>
+      </span>
     </div>
   )
+
+  const className = `w-full rounded-3xl border border-white/60 bg-white/75 p-3 shadow-lg shadow-slate-200/60 backdrop-blur-xl transition-transform dark:border-white/10 dark:bg-white/10 dark:shadow-black/20 ${
+    disabled ? 'cursor-default opacity-75' : 'active:scale-[0.99]'
+  }`
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        className={className}
+      >
+        {content}
+      </button>
+    )
+  }
+
+  return <div className={className}>{content}</div>
 }
 
 function GuardDashboard({ onLogout }: { onLogout: () => void }) {
@@ -363,64 +473,6 @@ function GuardDashboard({ onLogout }: { onLogout: () => void }) {
       <LogoutButton onLogout={onLogout} />
     </div>
   )
-}
-
-function SecondaryGlassActionCard({
-  icon: Icon,
-  title,
-  subtitle,
-  href,
-  onClick,
-  disabled,
-  muted,
-}: {
-  icon: LucideIcon
-  title: string
-  subtitle: string
-  href?: string
-  onClick?: () => void
-  disabled?: boolean
-  muted?: boolean
-}) {
-  const content = (
-    <div className="flex h-full min-h-36 flex-col items-center justify-center text-center">
-      <span className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/70 bg-white/60 text-[#15936A] shadow-sm shadow-white/40 backdrop-blur-xl dark:border-white/10 dark:bg-white/10">
-        <Icon className={`h-6 w-6 ${muted ? 'text-slate-400' : ''}`} />
-      </span>
-      <span className="text-sm font-bold leading-tight text-slate-950 dark:text-white">
-        {title}
-      </span>
-      <span className="mt-1 text-xs leading-4 text-slate-600 dark:text-slate-300">
-        {subtitle}
-      </span>
-    </div>
-  )
-  const className = `min-h-36 w-full rounded-3xl border border-white/60 bg-white/70 p-4 shadow-lg shadow-slate-200/70 backdrop-blur-xl active:scale-[0.99] transition-transform dark:border-white/10 dark:bg-white/10 dark:shadow-black/20 ${
-    disabled ? 'cursor-default opacity-70' : ''
-  }`
-
-  if (href && !disabled) {
-    return (
-      <Link href={href} className={className}>
-        {content}
-      </Link>
-    )
-  }
-
-  if (onClick) {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        disabled={disabled}
-        className={className}
-      >
-        {content}
-      </button>
-    )
-  }
-
-  return <div className={className}>{content}</div>
 }
 
 function PushNotificationButton({
@@ -535,7 +587,7 @@ function PushNotificationButton({
   // Still checking browser capabilities — don't flash anything
   if (checking) {
     return (
-      <SecondaryGlassActionCard
+      <ResidentNotificationCard
         icon={Bell}
         title="Notificaciones"
         subtitle="Revisando estado"
@@ -547,7 +599,7 @@ function PushNotificationButton({
   // iOS detected but not installed as PWA → push requires standalone mode
   if (isIOS && !isStandalone) {
     return (
-      <SecondaryGlassActionCard
+      <ResidentNotificationCard
         icon={Smartphone}
         title="Instalar app"
         subtitle="Requerido en iPhone"
@@ -558,7 +610,7 @@ function PushNotificationButton({
 
   if (!supported) {
     return (
-      <SecondaryGlassActionCard
+      <ResidentNotificationCard
         icon={BellOff}
         title="No disponibles"
         subtitle="Este navegador no soporta"
@@ -570,7 +622,7 @@ function PushNotificationButton({
 
   if (permissionDenied) {
     return (
-      <SecondaryGlassActionCard
+      <ResidentNotificationCard
         icon={BellOff}
         title="Bloqueadas"
         subtitle="Revisa navegador"
@@ -581,19 +633,12 @@ function PushNotificationButton({
   }
 
   if (isSubscribed) {
-    return (
-      <SecondaryGlassActionCard
-        icon={Bell}
-        title="Notificaciones activas"
-        subtitle="Avisos al instante"
-        disabled
-      />
-    )
+    return null
   }
 
   if (!activating) {
     return (
-      <SecondaryGlassActionCard
+      <ResidentNotificationCard
         icon={Bell}
         title="Activar notificaciones"
         subtitle="Avisos de accesos"
@@ -604,7 +649,7 @@ function PushNotificationButton({
 
   if (activating) {
     return (
-      <SecondaryGlassActionCard
+      <ResidentNotificationCard
         icon={Bell}
         title="Activando..."
         subtitle="Avisos de accesos"
