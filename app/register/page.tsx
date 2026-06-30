@@ -173,23 +173,36 @@ function RegisterContent() {
 
     setSaving(true)
 
-    const { count: approvedResidentCount, error: countError } = await supabase
-      .from('profiles')
-      .select('id', { count: 'exact', head: true })
-      .eq('house_id', matchedHouse.id)
-      .eq('role', 'resident')
-      .eq('status', 'approved')
-
-    if (countError) {
-      console.error('Error checking resident capacity:', countError)
-      toast.error('No se pudo validar el cupo de la casa')
+    let capacityResponse: Response
+    try {
+      capacityResponse = await fetch('/api/register/validate-house-capacity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ house_id: matchedHouse.id }),
+      })
+    } catch {
+      toast.error('No se pudo validar el cupo de la casa.')
       setSaving(false)
       return
     }
 
-    const residentLimit = matchedHouse.resident_limit || 3
-    if ((approvedResidentCount || 0) >= residentLimit) {
-      toast.error('Esta casa ya alcanzo el limite de residentes aprobados')
+    if (!capacityResponse.ok && capacityResponse.status !== 200) {
+      toast.error('No se pudo validar el cupo de la casa.')
+      setSaving(false)
+      return
+    }
+
+    const capacity = (await capacityResponse.json()) as {
+      canRegister: boolean
+      approvedCount?: number
+      residentLimit?: number
+      reason?: string
+    }
+
+    if (!capacity.canRegister) {
+      toast.error(
+        capacity.reason ?? 'Esta casa ya alcanzó el límite de usuarios permitidos.',
+      )
       setSaving(false)
       return
     }
