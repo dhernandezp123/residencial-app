@@ -40,7 +40,7 @@ export function FloatingBottomNavigation({
               href={item.href}
               aria-label={item.ariaLabel}
               title={item.ariaLabel}
-              className={`flex h-14 min-w-14 flex-col items-center justify-center gap-0.5 rounded-2xl px-2 transition-all duration-200 active:scale-95 ${
+              className={`flex h-14 min-w-14 flex-col items-center justify-center gap-0.5 rounded-2xl px-2 transition-all duration-200 ease-out active:scale-[0.98] ${
                 active ? 'bg-[#EAF6F0] text-[#15936A]' : 'text-slate-500'
               }`}
             >

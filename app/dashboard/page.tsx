@@ -539,7 +539,7 @@ function PushNotificationButton({
     }
 
     setIsSubscribed(true)
-    toast.success('Notificaciones activadas correctamente')
+    toast.success('Notificaciones activadas')
     setActivating(false)
   }
 

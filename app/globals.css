@@ -65,3 +65,26 @@ button {
 main {
   padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
 }
+
+@keyframes qr-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.qr-reveal {
+  animation: qr-reveal 280ms ease-out both;
+  will-change: opacity, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qr-reveal {
+    animation: none;
+  }
+}

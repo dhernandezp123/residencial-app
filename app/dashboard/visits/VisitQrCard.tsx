@@ -290,12 +290,12 @@ export function VisitQrCard({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="qr-reveal space-y-3 pb-[env(safe-area-inset-bottom)]">
       <div>
         <p className="text-sm font-semibold text-slate-500">
           Código QR para ingreso
         </p>
-        <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 ease-out">
           <Image
             src={qrDataUrl}
             alt="Código QR para ingreso"
@@ -311,18 +311,32 @@ export function VisitQrCard({
         type="button"
         onClick={() => void handleShareImage()}
         disabled={sharingImage}
-        className="min-h-12 w-full rounded-2xl bg-[#15936A] px-4 py-3 font-semibold text-white disabled:opacity-60 active:scale-[0.99] hover:bg-[#0E6B4E] transition-colors"
+        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#15936A] px-4 py-3 font-semibold text-white transition-all duration-200 ease-out hover:bg-[#0E6B4E] disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.98]"
       >
-        {sharingImage ? 'Preparando imagen...' : 'Compartir imagen QR'}
+        {sharingImage ? (
+          <>
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+            Preparando...
+          </>
+        ) : (
+          'Compartir imagen QR'
+        )}
       </button>
 
       <button
         type="button"
         onClick={() => void handleDownloadImage()}
         disabled={sharingImage}
-        className="min-h-12 w-full rounded-2xl border border-slate-200 px-4 py-3 text-center font-semibold text-slate-800 disabled:opacity-60 active:scale-[0.99]"
+        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-center font-semibold text-slate-800 transition-all duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.98]"
       >
-        Descargar imagen QR
+        {sharingImage ? (
+          <>
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" />
+            Preparando...
+          </>
+        ) : (
+          'Descargar imagen QR'
+        )}
       </button>
     </div>
   )

@@ -9,7 +9,13 @@ type AppCardProps = {
 export function AppCard({
   children,
   as: Component = 'section',
-  className = 'rounded-2xl bg-white p-6 shadow-sm dark:bg-slate-800',
+  className = '',
 }: AppCardProps) {
-  return <Component className={className}>{children}</Component>
+  return (
+    <Component
+      className={`rounded-2xl bg-white p-6 shadow-sm transition-all duration-200 ease-out hover:-translate-y-[1px] hover:shadow-lg dark:bg-slate-800 ${className}`}
+    >
+      {children}
+    </Component>
+  )
 }

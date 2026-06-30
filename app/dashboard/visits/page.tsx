@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { VisitQrCard } from './VisitQrCard'
 import { PageHeader } from '@/app/components/PageHeader'
-import { EmptyState } from '@/components/ui'
+import { EmptyState, StatusBadge } from '@/components/ui'
 
 type Profile = {
   id: string
@@ -66,11 +66,11 @@ const statusLabels: Record<VisitStatus, string> = {
   cancelled: 'Cancelada',
 }
 
-const statusStyles: Record<VisitStatus, string> = {
-  active: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
-  used: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300',
-  expired: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
-  cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+const statusTones: Record<VisitStatus, 'green' | 'slate' | 'amber' | 'red'> = {
+  active: 'green',
+  used: 'slate',
+  expired: 'amber',
+  cancelled: 'red',
 }
 
 export default function VisitsPage() {
@@ -312,7 +312,7 @@ export default function VisitsPage() {
       visit.status !== 'active' ||
       visit.qrToken?.status !== 'active'
     ) {
-      toast.error('Este QR ya no está activo')
+      toast.error('QR vencido')
       return
     }
 
@@ -395,7 +395,7 @@ export default function VisitsPage() {
       }
     }
 
-    toast.success('Visita cancelada correctamente')
+    toast.success('Visita cancelada')
     setExpandedVisitId(null)
     setCancelConfirmId(null)
     setQrImagesByVisitId((currentImages) => {
@@ -525,11 +525,12 @@ export default function VisitsPage() {
                         {visit.visitor_name}
                       </h2>
                     </div>
-                    <span
-                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[effectiveStatus]}`}
+                    <StatusBadge
+                      tone={statusTones[effectiveStatus]}
+                      className="shrink-0"
                     >
                       {statusLabels[effectiveStatus]}
-                    </span>
+                    </StatusBadge>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">

@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ClipboardList } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import { EmptyState } from '@/components/ui'
+import { EmptyState, StatusBadge } from '@/components/ui'
 
 type ProfileRole = 'super_admin' | 'admin' | 'resident' | 'guard'
 type ProfileStatus = 'pending' | 'approved' | 'rejected' | 'inactive'
@@ -346,15 +346,12 @@ export default function EntriesPage() {
                         {entry.visit?.visitor_name || 'No disponible'}
                       </h2>
                     </div>
-                    <span
-                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
-                        isInside
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
-                          : 'bg-orange-100 text-orange-800 dark:bg-amber-900/40 dark:text-amber-300'
-                      }`}
+                    <StatusBadge
+                      tone={isInside ? 'green' : 'amber'}
+                      className="shrink-0"
                     >
                       {isInside ? 'Dentro' : 'Salió'}
-                    </span>
+                    </StatusBadge>
                   </div>
 
                   <div className="grid gap-3">

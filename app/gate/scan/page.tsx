@@ -642,7 +642,7 @@ function GateScanContent() {
         entry_time: currentOpenEntry?.entry_time ?? null,
       })
       setSavingEntry(false)
-      toast.success('Salida registrada correctamente')
+      toast.success('Salida registrada')
       signal('exit_success')
       return
     }
@@ -655,7 +655,7 @@ function GateScanContent() {
       entry_time: null,
     })
     setSavingEntry(false)
-    toast.success('Ingreso registrado correctamente')
+    toast.success('Acceso registrado')
     signal('entry_success')
   }
 
@@ -992,19 +992,26 @@ function GateScanContent() {
           type="button"
           onClick={handleRegisterAccess}
           disabled={savingEntry}
-          className={`min-h-14 w-full rounded-2xl px-4 py-4 text-lg font-black shadow-xl disabled:opacity-60 active:scale-[0.99] ${
+          className={`inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl px-4 py-4 text-lg font-black shadow-xl transition-all duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.98] ${
             confirmingExit
               ? 'bg-orange-500 text-orange-950'
               : 'bg-white text-green-800'
           }`}
         >
-          {savingEntry
-            ? (uploadStatus ?? 'Registrando...')
-            : openEntry
-              ? confirmingExit
-                ? 'Confirmar salida'
-                : 'Registrar salida'
-              : 'Registrar ingreso'}
+          {savingEntry ? (
+            <>
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-current/30 border-t-current" />
+              {uploadStatus ?? 'Registrando...'}
+            </>
+          ) : openEntry ? (
+            confirmingExit ? (
+              'Confirmar salida'
+            ) : (
+              'Registrar salida'
+            )
+          ) : (
+            'Registrar ingreso'
+          )}
         </button>
         <Link
           href="/dashboard"

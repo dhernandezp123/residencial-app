@@ -86,8 +86,8 @@ export function EventQrCard({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+    <div className="qr-reveal space-y-3 pb-[env(safe-area-inset-bottom)]">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 ease-out">
         <Image
           src={qrDataUrl}
           alt="Código QR del evento"
@@ -102,15 +102,22 @@ export function EventQrCard({
         type="button"
         onClick={() => void handleShare()}
         disabled={sharing}
-        className="min-h-12 w-full rounded-2xl bg-[#15936A] px-4 py-3 font-semibold text-white transition-all duration-200 active:scale-[0.98] disabled:opacity-60"
+        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#15936A] px-4 py-3 font-semibold text-white transition-all duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.98]"
       >
-        {sharing ? 'Preparando QR...' : 'Compartir imagen QR'}
+        {sharing ? (
+          <>
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+            Preparando...
+          </>
+        ) : (
+          'Compartir imagen QR'
+        )}
       </button>
 
       <button
         type="button"
         onClick={() => void handleCopyLink()}
-        className="min-h-12 w-full rounded-2xl border border-slate-200 px-4 py-3 font-semibold text-slate-800 transition-all duration-200 active:scale-[0.98] dark:border-slate-600 dark:text-slate-200"
+        className="min-h-12 w-full rounded-2xl border border-slate-200 px-4 py-3 font-semibold text-slate-800 transition-all duration-200 ease-out active:scale-[0.98] dark:border-slate-600 dark:text-slate-200"
       >
         Copiar link
       </button>

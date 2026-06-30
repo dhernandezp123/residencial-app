@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import { PageHeader } from '@/app/components/PageHeader'
 import { supabase } from '@/lib/supabase'
 import { EventQrCard } from './EventQrCard'
-import { EmptyState } from '@/components/ui'
+import { EmptyState, StatusBadge } from '@/components/ui'
 
 type Profile = {
   id: string
@@ -43,6 +43,12 @@ const statusLabels: Record<string, string> = {
   active: 'Activo',
   cancelled: 'Cancelado',
   expired: 'Vencido',
+}
+
+const statusTones: Record<string, 'green' | 'red' | 'amber' | 'slate'> = {
+  active: 'green',
+  cancelled: 'red',
+  expired: 'amber',
 }
 
 function formatDate(value: string) {
@@ -308,17 +314,9 @@ export default function EventsPage() {
                         {formatDate(event.event_date)}
                       </p>
                     </div>
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                        effectiveStatus === 'active'
-                          ? 'bg-emerald-50 text-[#15936A]'
-                          : effectiveStatus === 'cancelled'
-                            ? 'bg-red-50 text-red-700'
-                            : 'bg-amber-50 text-amber-700'
-                      }`}
-                    >
+                    <StatusBadge tone={statusTones[effectiveStatus] || 'slate'}>
                       {statusLabels[effectiveStatus] || effectiveStatus}
-                    </span>
+                    </StatusBadge>
                   </div>
 
                   <div className="mt-4 grid grid-cols-2 gap-3 text-sm">

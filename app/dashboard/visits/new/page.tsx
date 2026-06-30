@@ -326,7 +326,7 @@ function NewVisitContent() {
     setFormData(buildInitialFormData(mode))
     setMoreOptionsOpen(false)
     setSaving(false)
-    toast.success('Visita creada correctamente')
+    toast.success('Visita creada')
   }
 
   if (loading) {
@@ -615,9 +615,16 @@ function NewVisitContent() {
           <button
             type="submit"
             disabled={saving}
-            className="min-h-12 w-full rounded-2xl bg-slate-950 px-4 py-3 font-semibold text-white active:scale-[0.99] disabled:opacity-60 dark:bg-slate-700"
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 font-semibold text-white transition-all duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.98] dark:bg-slate-700"
           >
-            {saving ? 'Creando...' : 'Crear visita e invitar'}
+            {saving ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                Creando...
+              </>
+            ) : (
+              'Crear visita e invitar'
+            )}
           </button>
         </form>
       </div>

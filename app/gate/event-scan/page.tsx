@@ -8,6 +8,7 @@ import { useSearchParams } from 'next/navigation'
 import { CheckCircle, LogIn, LogOut, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { StatusBadge } from '@/components/ui'
 
 type EventToken = {
   id: string
@@ -400,17 +401,17 @@ function EventScanContent() {
                       {guestStatusLabel(guest.status)}
                     </p>
                   </div>
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-bold ${
+                  <StatusBadge
+                    tone={
                       guest.status === 'inside'
-                        ? 'bg-emerald-50 text-[#15936A]'
+                        ? 'green'
                         : guest.status === 'completed'
-                          ? 'bg-slate-100 text-slate-600'
-                          : 'bg-amber-50 text-amber-700'
-                    }`}
+                          ? 'slate'
+                          : 'amber'
+                    }
                   >
                     {guestStatusLabel(guest.status)}
-                  </span>
+                  </StatusBadge>
                 </div>
 
                 {(canCheckIn || canCheckOut) && (
@@ -418,11 +419,13 @@ function EventScanContent() {
                     type="button"
                     onClick={() => void updateGuestStatus(guest)}
                     disabled={savingGuestId === guest.id}
-                    className={`mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 font-semibold text-white transition-all duration-200 active:scale-[0.98] disabled:opacity-60 ${
+                    className={`mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 font-semibold text-white transition-all duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.98] ${
                       canCheckOut ? 'bg-slate-950' : 'bg-[#15936A]'
                     }`}
                   >
-                    {canCheckOut ? (
+                    {savingGuestId === guest.id ? (
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                    ) : canCheckOut ? (
                       <LogOut className="h-5 w-5" />
                     ) : (
                       <LogIn className="h-5 w-5" />

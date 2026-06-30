@@ -10,7 +10,7 @@ import {
   UserPlus,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { EmptyState, GlassCard } from '@/components/ui'
+import { EmptyState, GlassCard, StatusBadge } from '@/components/ui'
 
 export type ActivityKind =
   | 'visit_entry'
@@ -31,42 +31,54 @@ export type ActivityItem = {
 
 const activityMeta: Record<
   ActivityKind,
-  { icon: LucideIcon; label: string; className: string }
+  {
+    icon: LucideIcon
+    label: string
+    className: string
+    tone: 'green' | 'slate' | 'blue' | 'violet' | 'amber'
+  }
 > = {
   visit_entry: {
     icon: LogIn,
     label: 'Ingreso visita',
     className: 'bg-[#EAF6F0] text-[#15936A]',
+    tone: 'green',
   },
   visit_exit: {
     icon: LogOut,
     label: 'Salida visita',
     className: 'bg-slate-100 text-slate-600',
+    tone: 'slate',
   },
   delivery: {
     icon: PackageCheck,
     label: 'Delivery',
     className: 'bg-blue-100 text-blue-700',
+    tone: 'blue',
   },
   event: {
     icon: CalendarDays,
     label: 'Evento',
     className: 'bg-emerald-100 text-emerald-700',
+    tone: 'green',
   },
   resident_registration: {
     icon: UserPlus,
     label: 'Registro residente',
     className: 'bg-violet-100 text-violet-700',
+    tone: 'violet',
   },
   resident_approval: {
     icon: CheckCircle2,
     label: 'Aprobacion residente',
     className: 'bg-[#EAF6F0] text-[#15936A]',
+    tone: 'green',
   },
   receipt: {
     icon: ReceiptText,
     label: 'Comprobante cargado',
     className: 'bg-amber-100 text-amber-700',
+    tone: 'amber',
   },
 }
 
@@ -111,9 +123,12 @@ export function ActivityTimeline({ items }: { items: ActivityItem[] }) {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+                  <StatusBadge
+                    tone={meta.tone}
+                    className="px-2 py-0.5 text-[10px] uppercase tracking-wide"
+                  >
                     {meta.label}
-                  </span>
+                  </StatusBadge>
                   <time className="text-[11px] font-semibold text-slate-400">
                     {formatActivityTime(item.occurredAt)}
                   </time>

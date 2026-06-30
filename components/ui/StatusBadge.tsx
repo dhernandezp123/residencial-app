@@ -25,10 +25,9 @@ export function StatusBadge({
 }: StatusBadgeProps) {
   return (
     <span
-      className={
-        className ||
-        `rounded-full px-3 py-1 text-xs font-semibold ${toneClass[tone]}`
-      }
+      className={`inline-flex items-center whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold transition-colors duration-200 ${toneClass[tone]} ${
+        className || ''
+      }`}
     >
       {children}
     </span>

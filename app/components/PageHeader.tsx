@@ -11,10 +11,10 @@ export function PageHeader({
   backHref?: string
 }) {
   return (
-    <header className="flex items-center gap-3 rounded-2xl bg-slate-950 dark:bg-slate-800 px-5 py-4 text-white shadow-sm">
+    <header className="flex items-center gap-3 rounded-2xl bg-slate-950 px-5 py-4 text-white shadow-sm transition-all duration-200 ease-out dark:bg-slate-800">
       <Link
         href={backHref}
-        className="flex-shrink-0 rounded-xl bg-white/10 p-2 active:scale-95"
+        className="flex-shrink-0 rounded-xl bg-white/10 p-2 transition-all duration-200 ease-out active:scale-[0.98]"
         aria-label="Volver"
       >
         <ArrowLeft className="h-5 w-5" />

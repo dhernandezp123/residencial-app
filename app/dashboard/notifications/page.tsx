@@ -164,7 +164,7 @@ export default function NotificationsPage() {
     setNotifications((prev) =>
       prev.map((n) => ({ ...n, read_at: n.read_at ?? now })),
     )
-    toast.success('Todas las notificaciones marcadas como leídas')
+    toast.success('Notificaciones leídas')
   }
 
   if (loading) {

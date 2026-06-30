@@ -235,7 +235,7 @@ export default function NewEventPage() {
     })
     setFormData(buildInitialFormData())
     setSaving(false)
-    toast.success('Evento creado correctamente')
+    toast.success('Evento creado')
   }
 
   if (loading) {
@@ -403,9 +403,16 @@ export default function NewEventPage() {
           <button
             type="submit"
             disabled={saving}
-            className="min-h-12 w-full rounded-2xl bg-[#15936A] px-4 py-3 font-semibold text-white transition-all duration-200 active:scale-[0.98] disabled:opacity-60"
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#15936A] px-4 py-3 font-semibold text-white transition-all duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.98]"
           >
-            {saving ? 'Creando evento...' : 'Crear evento y generar QR'}
+            {saving ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                Creando...
+              </>
+            ) : (
+              'Crear evento y generar QR'
+            )}
           </button>
         </form>
       </div>

@@ -303,7 +303,7 @@ export default function ResidentsPage() {
       return
     }
 
-    toast.success('Nombre de residente actualizado')
+    toast.success('Nombre actualizado')
     cancelEditingResidentName()
     loadResidents()
   }
@@ -379,9 +379,7 @@ export default function ResidentsPage() {
     }
 
     toast.success(
-      status === 'approved'
-        ? 'Residente aprobado correctamente'
-        : 'Residente rechazado correctamente'
+      status === 'approved' ? 'Residente aprobado' : 'Residente rechazado'
     )
 
     loadResidents()
@@ -417,7 +415,7 @@ export default function ResidentsPage() {
       return
     }
 
-    toast.success('Residente inactivado correctamente')
+    toast.success('Residente inactivado')
     loadResidents()
   }
 
