@@ -13,7 +13,7 @@ import {
   Camera,
   CalendarDays,
   ClipboardList,
-  Package,
+  PackageCheck,
   Home,
   MessageSquareWarning,
   Plus,
@@ -153,7 +153,7 @@ export default function HomePage() {
             <button
               onClick={handleLogout}
               title="Cerrar sesión"
-              className="flex-shrink-0 rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/20 active:scale-[0.97] transition-colors"
+              className="min-h-10 flex-shrink-0 rounded-xl bg-white/10 px-2.5 py-1.5 text-xs font-semibold text-slate-300 transition-all duration-200 hover:bg-white/15 active:scale-[0.98]"
             >
               Salir
             </button>
@@ -290,7 +290,7 @@ function ResidentDashboard({
             href="/dashboard/visits/new?mode=visit"
           />
           <PrimaryResidentActionCard
-            icon={Package}
+            icon={PackageCheck}
             title="Delivery"
             subtitle="Comida y paquetes"
             href="/dashboard/visits/new?mode=delivery"
@@ -298,7 +298,7 @@ function ResidentDashboard({
           <PrimaryResidentActionCard
             icon={CalendarDays}
             title="Evento"
-            subtitle="Invitaciones grupales"
+            subtitle="Múltiples invitados"
             href="/dashboard/events"
           />
         </div>
