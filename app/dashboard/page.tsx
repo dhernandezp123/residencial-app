@@ -280,55 +280,59 @@ function ResidentDashboard({
 }) {
   return (
     <div className="space-y-3">
-      <DashboardButton
-        icon={Plus}
-        title="Visita"
-        subtitle="Invitado personal"
-        href="/dashboard/visits/new?mode=visit"
-        highlight
-      />
-      <DashboardButton
-        icon={Package}
-        title="Delivery"
-        subtitle="Comida, paquetes o entregas"
-        href="/dashboard/visits/new?mode=delivery"
-        highlight
-      />
-      <DashboardButton
-        icon={CalendarDays}
-        title="Evento"
-        subtitle="Invitaciones grupales"
-        href="/dashboard/events"
-        highlight
-      />
-      <DashboardButton
-        icon={ClipboardList}
-        title="Mis visitas"
-        subtitle="Ver visitas activas e historial"
-        href="/dashboard/visits"
-      />
-      <DashboardButton
-        icon={Home}
-        title="Mi casa"
-        subtitle="Ver datos de mi vivienda"
-        href="/dashboard/my-house"
-      />
-      <DashboardButton
-        icon={Bell}
-        title="Notificaciones"
-        subtitle="Ver avisos de entradas y salidas"
-        href="/dashboard/notifications"
-      />
-      <DashboardButton
-        icon={MessageSquareWarning}
-        title="Quejas y sugerencias"
-        subtitle="Reportar incidentes a administración"
-        href="/dashboard/reports"
-      />
-      <PushNotificationButton
-        profileId={profileId}
-        residentialId={residentialId}
-      />
+      <div className="space-y-3">
+        <DashboardButton
+          icon={Plus}
+          title="Visita"
+          subtitle="Invitado personal"
+          href="/dashboard/visits/new?mode=visit"
+          highlight
+        />
+        <DashboardButton
+          icon={Package}
+          title="Delivery"
+          subtitle="Comida, paquetes o entregas"
+          href="/dashboard/visits/new?mode=delivery"
+          highlight
+        />
+        <DashboardButton
+          icon={CalendarDays}
+          title="Evento"
+          subtitle="Invitaciones grupales"
+          href="/dashboard/events"
+          highlight
+        />
+      </div>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-3">
+        <SecondaryGlassActionCard
+          icon={ClipboardList}
+          title="Mis visitas"
+          subtitle="Activas e historial"
+          href="/dashboard/visits"
+        />
+        <SecondaryGlassActionCard
+          icon={Home}
+          title="Mi casa"
+          subtitle="Datos de vivienda"
+          href="/dashboard/my-house"
+        />
+        <SecondaryGlassActionCard
+          icon={Bell}
+          title="Notificaciones"
+          subtitle="Entradas y salidas"
+          href="/dashboard/notifications"
+        />
+        <SecondaryGlassActionCard
+          icon={MessageSquareWarning}
+          title="Quejas y sugerencias"
+          subtitle="Reportar incidente"
+          href="/dashboard/reports"
+        />
+        <PushNotificationButton
+          profileId={profileId}
+          residentialId={residentialId}
+        />
+      </div>
       <LogoutButton onLogout={onLogout} />
     </div>
   )
@@ -359,6 +363,64 @@ function GuardDashboard({ onLogout }: { onLogout: () => void }) {
       <LogoutButton onLogout={onLogout} />
     </div>
   )
+}
+
+function SecondaryGlassActionCard({
+  icon: Icon,
+  title,
+  subtitle,
+  href,
+  onClick,
+  disabled,
+  muted,
+}: {
+  icon: LucideIcon
+  title: string
+  subtitle: string
+  href?: string
+  onClick?: () => void
+  disabled?: boolean
+  muted?: boolean
+}) {
+  const content = (
+    <div className="flex h-full min-h-36 flex-col items-center justify-center text-center">
+      <span className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/70 bg-white/60 text-[#15936A] shadow-sm shadow-white/40 backdrop-blur-xl dark:border-white/10 dark:bg-white/10">
+        <Icon className={`h-6 w-6 ${muted ? 'text-slate-400' : ''}`} />
+      </span>
+      <span className="text-sm font-bold leading-tight text-slate-950 dark:text-white">
+        {title}
+      </span>
+      <span className="mt-1 text-xs leading-4 text-slate-600 dark:text-slate-300">
+        {subtitle}
+      </span>
+    </div>
+  )
+  const className = `min-h-36 w-full rounded-3xl border border-white/60 bg-white/70 p-4 shadow-lg shadow-slate-200/70 backdrop-blur-xl active:scale-[0.99] transition-transform dark:border-white/10 dark:bg-white/10 dark:shadow-black/20 ${
+    disabled ? 'cursor-default opacity-70' : ''
+  }`
+
+  if (href && !disabled) {
+    return (
+      <Link href={href} className={className}>
+        {content}
+      </Link>
+    )
+  }
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        className={className}
+      >
+        {content}
+      </button>
+    )
+  }
+
+  return <div className={className}>{content}</div>
 }
 
 function PushNotificationButton({
@@ -471,9 +533,86 @@ function PushNotificationButton({
   }
 
   // Still checking browser capabilities — don't flash anything
-  if (checking) return null
+  if (checking) {
+    return (
+      <SecondaryGlassActionCard
+        icon={Bell}
+        title="Notificaciones"
+        subtitle="Revisando estado"
+        disabled
+      />
+    )
+  }
 
   // iOS detected but not installed as PWA → push requires standalone mode
+  if (isIOS && !isStandalone) {
+    return (
+      <SecondaryGlassActionCard
+        icon={Smartphone}
+        title="Instalar app"
+        subtitle="Requerido en iPhone"
+        disabled
+      />
+    )
+  }
+
+  if (!supported) {
+    return (
+      <SecondaryGlassActionCard
+        icon={BellOff}
+        title="No disponibles"
+        subtitle="Este navegador no soporta"
+        disabled
+        muted
+      />
+    )
+  }
+
+  if (permissionDenied) {
+    return (
+      <SecondaryGlassActionCard
+        icon={BellOff}
+        title="Bloqueadas"
+        subtitle="Revisa navegador"
+        disabled
+        muted
+      />
+    )
+  }
+
+  if (isSubscribed) {
+    return (
+      <SecondaryGlassActionCard
+        icon={Bell}
+        title="Notificaciones activas"
+        subtitle="Avisos al instante"
+        disabled
+      />
+    )
+  }
+
+  if (!activating) {
+    return (
+      <SecondaryGlassActionCard
+        icon={Bell}
+        title="Activar notificaciones"
+        subtitle="Avisos de accesos"
+        onClick={handleActivate}
+      />
+    )
+  }
+
+  if (activating) {
+    return (
+      <SecondaryGlassActionCard
+        icon={Bell}
+        title="Activando..."
+        subtitle="Avisos de accesos"
+        disabled
+      />
+    )
+  }
+
   if (isIOS && !isStandalone) {
     return (
       <div className="rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 p-4 shadow-sm">
