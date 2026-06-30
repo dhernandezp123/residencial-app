@@ -15,7 +15,15 @@ type HouseRow = {
 function getAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!supabaseUrl || !serviceRoleKey) return null
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    console.error(
+      'validate-house-capacity: missing env vars',
+      !supabaseUrl ? 'NEXT_PUBLIC_SUPABASE_URL' : 'SUPABASE_SERVICE_ROLE_KEY',
+    )
+    return null
+  }
+
   return createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
@@ -24,15 +32,25 @@ function getAdminClient() {
 export async function POST(request: NextRequest) {
   const admin = getAdminClient()
   if (!admin) {
-    return NextResponse.json({ error: 'Server not configured' }, { status: 503 })
+    return NextResponse.json(
+      { error: 'missing_service_role' },
+      { status: 503 },
+    )
   }
 
-  const body = (await request.json().catch(() => ({}))) as ValidateBody
+  let body: ValidateBody = {}
+  try {
+    body = (await request.json()) as ValidateBody
+  } catch {
+    console.error('validate-house-capacity: invalid JSON body')
+  }
+
   const houseId = typeof body.house_id === 'string' ? body.house_id.trim() : ''
 
   if (!houseId) {
+    console.error('validate-house-capacity: house_id missing or not a string', body.house_id)
     return NextResponse.json(
-      { canRegister: false, reason: 'house_id requerido' },
+      { error: 'missing_house_id', canRegister: false, reason: 'house_id requerido' },
       { status: 400 },
     )
   }
@@ -44,8 +62,9 @@ export async function POST(request: NextRequest) {
     .single<HouseRow>()
 
   if (houseError || !house) {
+    console.error('validate-house-capacity: house_query_failed', houseId, houseError)
     return NextResponse.json(
-      { canRegister: false, reason: 'Casa no encontrada' },
+      { error: 'house_query_failed', canRegister: false, reason: 'Casa no encontrada' },
       { status: 404 },
     )
   }
@@ -74,9 +93,9 @@ export async function POST(request: NextRequest) {
     .eq('status', 'approved')
 
   if (countError) {
-    console.error('validate-house-capacity: count error', countError)
+    console.error('validate-house-capacity: profiles_count_failed', countError)
     return NextResponse.json(
-      { canRegister: false, reason: 'Error al consultar cupo' },
+      { error: 'profiles_count_failed', canRegister: false, reason: 'Error al consultar cupo' },
       { status: 500 },
     )
   }

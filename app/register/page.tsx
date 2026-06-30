@@ -186,17 +186,36 @@ function RegisterContent() {
       return
     }
 
-    if (!capacityResponse.ok && capacityResponse.status !== 200) {
+    let capacity: {
+      canRegister: boolean
+      approvedCount?: number
+      residentLimit?: number
+      reason?: string
+      error?: string
+    }
+
+    try {
+      capacity = (await capacityResponse.json()) as typeof capacity
+    } catch {
+      console.error('validate-house-capacity: response is not JSON, status', capacityResponse.status)
       toast.error('No se pudo validar el cupo de la casa.')
       setSaving(false)
       return
     }
 
-    const capacity = (await capacityResponse.json()) as {
-      canRegister: boolean
-      approvedCount?: number
-      residentLimit?: number
-      reason?: string
+    if (!capacityResponse.ok) {
+      console.error(
+        'validate-house-capacity: server error',
+        capacityResponse.status,
+        capacity,
+      )
+      if (capacity.error === 'missing_service_role') {
+        toast.error('Configuración del servidor incompleta.')
+      } else {
+        toast.error('No se pudo validar el cupo de la casa.')
+      }
+      setSaving(false)
+      return
     }
 
     if (!capacity.canRegister) {
