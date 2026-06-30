@@ -173,7 +173,6 @@ export default function HomePage() {
           <ResidentDashboard
             profileId={profile.id}
             residentialId={profile.residential_id}
-            onLogout={handleLogout}
           />
         )}
         {profile.role === 'guard' && (
@@ -276,11 +275,9 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 function ResidentDashboard({
   profileId,
   residentialId,
-  onLogout,
 }: {
   profileId: string
   residentialId: string | null
-  onLogout: () => void
 }) {
   return (
     <>
@@ -310,10 +307,6 @@ function ResidentDashboard({
           profileId={profileId}
           residentialId={residentialId}
         />
-
-        <div className="pb-3">
-          <LogoutButton onLogout={onLogout} />
-        </div>
       </div>
 
       <MobileNavigation />
@@ -335,13 +328,13 @@ function PrimaryResidentActionCard({
   return (
     <Link
       href={href}
-      className="group flex min-h-36 flex-col justify-between overflow-hidden rounded-3xl bg-[#15936A] p-4 text-white shadow-lg shadow-emerald-900/20 transition-transform active:scale-[0.99]"
+      className="group flex min-h-40 flex-col justify-between overflow-hidden rounded-3xl bg-[#15936A] p-4 text-white shadow-xl shadow-emerald-950/25 transition-all duration-200 hover:scale-[0.98] active:scale-95"
     >
-      <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-white/15 shadow-sm backdrop-blur-xl">
-        <Icon className="h-6 w-6" />
+      <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/20 bg-white/15 shadow-md shadow-emerald-950/10 backdrop-blur-xl">
+        <Icon className="h-7 w-7" />
       </span>
       <span>
-        <span className="block text-lg font-black leading-tight">{title}</span>
+        <span className="block text-xl font-black leading-tight">{title}</span>
         <span className="mt-1 block text-xs font-medium leading-4 text-white/80">
           {subtitle}
         </span>
@@ -355,14 +348,26 @@ function MobileNavigation() {
   const items: {
     href: string
     label: string
+    ariaLabel: string
     icon: LucideIcon
   }[] = [
-    { href: '/dashboard/visits', label: 'Mis visitas', icon: ClipboardList },
-    { href: '/dashboard/my-house', label: 'Mi casa', icon: Home },
-    { href: '/dashboard/notifications', label: 'Notificaciones', icon: Bell },
+    {
+      href: '/dashboard/visits',
+      label: 'Visitas',
+      ariaLabel: 'Mis visitas',
+      icon: ClipboardList,
+    },
+    { href: '/dashboard/my-house', label: 'Casa', ariaLabel: 'Mi casa', icon: Home },
+    {
+      href: '/dashboard/notifications',
+      label: 'Avisos',
+      ariaLabel: 'Notificaciones',
+      icon: Bell,
+    },
     {
       href: '/dashboard/reports',
-      label: 'Quejas y sugerencias',
+      label: 'Ayuda',
+      ariaLabel: 'Quejas y sugerencias',
       icon: MessageSquareWarning,
     },
   ]
@@ -382,13 +387,16 @@ function MobileNavigation() {
             <Link
               key={item.href}
               href={item.href}
-              aria-label={item.label}
-              title={item.label}
-              className={`flex h-12 w-12 items-center justify-center rounded-full transition-colors active:scale-95 ${
-                active ? 'bg-slate-100 text-[#15936A]' : 'text-slate-500'
+              aria-label={item.ariaLabel}
+              title={item.ariaLabel}
+              className={`flex h-14 min-w-14 flex-col items-center justify-center gap-0.5 rounded-2xl px-2 transition-all duration-200 active:scale-95 ${
+                active ? 'bg-[#EAF6F0] text-[#15936A]' : 'text-slate-500'
               }`}
             >
               <Icon className="h-5 w-5" />
+              <span className="text-[10px] font-semibold leading-none whitespace-nowrap">
+                {item.label}
+              </span>
             </Link>
           )
         })}
