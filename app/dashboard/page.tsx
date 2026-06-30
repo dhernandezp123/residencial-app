@@ -11,7 +11,9 @@ import {
   Bell,
   BellOff,
   Camera,
+  CalendarDays,
   ClipboardList,
+  Package,
   Home,
   MessageSquareWarning,
   Plus,
@@ -280,9 +282,23 @@ function ResidentDashboard({
     <div className="space-y-3">
       <DashboardButton
         icon={Plus}
-        title="Nueva visita"
-        subtitle="Generar QR para visitante"
-        href="/dashboard/visits/new"
+        title="Visita"
+        subtitle="Invitado personal"
+        href="/dashboard/visits/new?mode=visit"
+        highlight
+      />
+      <DashboardButton
+        icon={Package}
+        title="Delivery"
+        subtitle="Comida, paquetes o entregas"
+        href="/dashboard/visits/new?mode=delivery"
+        highlight
+      />
+      <DashboardButton
+        icon={CalendarDays}
+        title="Evento"
+        subtitle="Invitaciones grupales"
+        href="/dashboard/events"
         highlight
       />
       <DashboardButton
