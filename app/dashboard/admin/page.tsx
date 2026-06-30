@@ -3,19 +3,25 @@
 export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
+import { useEffect, useMemo, useState } from 'react'
 import {
-  Calendar,
-  Clock,
-  LogIn,
-  LogOut,
-  Shield,
+  BarChart3,
+  CalendarDays,
+  ClipboardCheck,
+  Home,
+  HousePlus,
+  ReceiptText,
+  ShieldPlus,
   UserCheck,
+  UserPlus,
   Users,
 } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { ActivityTimeline } from './ActivityTimeline'
+import type { ActivityItem, ActivityKind } from './ActivityTimeline'
+import { AdminStatCard } from './AdminStatCard'
+import { QuickActionCard } from './QuickActionCard'
 
 type ProfileRole = 'super_admin' | 'admin' | 'resident' | 'guard'
 type ProfileStatus = 'pending' | 'approved' | 'rejected' | 'inactive'
@@ -30,98 +36,111 @@ type CurrentProfile = {
   is_residential_admin: boolean | null
 }
 
-type KpiData = {
-  visitorsInside: number
-  entriesToday: number
-  exitsToday: number
-  activeVisits: number
+type AdminKpis = {
+  houses: number
+  activeHouses: number
   approvedResidents: number
   pendingResidents: number
-  securityHouses: number
-}
-
-type RecentEntry = {
-  id: string
-  visitorName: string
-  houseLabel: string
-  entryTime: string
-  isInside: boolean
+  activeVisits: number
+  peopleInside: number
+  activeEvents: number
+  pendingReceipts: number
 }
 
 type VisitorEntryRow = {
   id: string
-  residential_id: string
   visit_id: string | null
   house_id: string
   entry_status: 'allowed' | 'denied'
   entry_time: string
   exit_time: string | null
+  updated_at: string
 }
 
-type VisitRow = { id: string; visitor_name: string }
-type HouseRow = { id: string; block: string; house_number: string }
+type VisitRow = {
+  id: string
+  visitor_name: string
+  visit_type: 'family' | 'delivery' | 'service' | 'provider' | 'other'
+}
 
-type KpiColor = 'green' | 'blue' | 'orange' | 'violet' | 'emerald' | 'amber' | 'slate'
+type HouseRow = {
+  id: string
+  block: string
+  house_number: string
+}
 
-const colorClasses: Record<
-  KpiColor,
-  { bg: string; iconBg: string; icon: string; value: string }
-> = {
-  green: {
-    bg: 'bg-white dark:bg-slate-800',
-    iconBg: 'bg-green-100 dark:bg-green-900/30',
-    icon: 'text-green-600 dark:text-green-400',
-    value: 'text-green-700 dark:text-green-300',
-  },
-  blue: {
-    bg: 'bg-white dark:bg-slate-800',
-    iconBg: 'bg-blue-100 dark:bg-blue-900/30',
-    icon: 'text-blue-600 dark:text-blue-400',
-    value: 'text-blue-700 dark:text-blue-300',
-  },
-  orange: {
-    bg: 'bg-white dark:bg-slate-800',
-    iconBg: 'bg-orange-100 dark:bg-orange-900/30',
-    icon: 'text-orange-600 dark:text-orange-400',
-    value: 'text-orange-700 dark:text-orange-300',
-  },
-  violet: {
-    bg: 'bg-white dark:bg-slate-800',
-    iconBg: 'bg-violet-100 dark:bg-violet-900/30',
-    icon: 'text-violet-600 dark:text-violet-400',
-    value: 'text-violet-700 dark:text-violet-300',
-  },
-  emerald: {
-    bg: 'bg-white dark:bg-slate-800',
-    iconBg: 'bg-emerald-100 dark:bg-emerald-900/30',
-    icon: 'text-emerald-600 dark:text-emerald-400',
-    value: 'text-emerald-700 dark:text-emerald-300',
-  },
-  amber: {
-    bg: 'bg-white dark:bg-slate-800',
-    iconBg: 'bg-amber-100 dark:bg-amber-900/30',
-    icon: 'text-amber-600 dark:text-amber-400',
-    value: 'text-amber-700 dark:text-amber-300',
-  },
-  slate: {
-    bg: 'bg-white dark:bg-slate-800',
-    iconBg: 'bg-slate-100 dark:bg-slate-700',
-    icon: 'text-slate-600 dark:text-slate-300',
-    value: 'text-slate-700 dark:text-slate-200',
-  },
+type EventGuestEntryRow = {
+  id: string
+  event_id: string
+  event_guest_id: string
+  action: 'entry' | 'exit' | string
+  occurred_at: string
+}
+
+type EventRow = {
+  id: string
+  title: string
+}
+
+type EventGuestRow = {
+  id: string
+  guest_name: string
+}
+
+type ResidentActivityRow = {
+  id: string
+  first_name: string
+  last_name: string
+  status: ProfileStatus
+  created_at: string
+  updated_at: string
+  house_id: string | null
+}
+
+const residentPassGreen = '#15936A'
+
+function isAdminProfile(profile: CurrentProfile): boolean {
+  return (
+    profile.status === 'approved' &&
+    (profile.role === 'super_admin' ||
+      profile.role === 'admin' ||
+      Boolean(profile.is_residential_admin))
+  )
+}
+
+function getHouseLabel(house: HouseRow | undefined): string {
+  return house ? `Casa ${house.block}-${house.house_number}` : 'Casa no disponible'
+}
+
+function getFullName(profile: ResidentActivityRow): string {
+  return `${profile.first_name} ${profile.last_name}`.trim() || 'Residente'
+}
+
+function byNewestActivity(a: ActivityItem, b: ActivityItem): number {
+  return (
+    new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime()
+  )
 }
 
 export default function AdminDashboardPage() {
   const [profile, setProfile] = useState<CurrentProfile | null>(null)
-  const [kpis, setKpis] = useState<KpiData | null>(null)
-  const [recentEntries, setRecentEntries] = useState<RecentEntry[]>([])
+  const [kpis, setKpis] = useState<AdminKpis | null>(null)
+  const [activities, setActivities] = useState<ActivityItem[]>([])
   const [loading, setLoading] = useState(true)
 
+  const isSuperAdmin = profile?.role === 'super_admin'
+  const scopeLabel = useMemo(() => {
+    if (!profile) return 'Administracion'
+    return isSuperAdmin ? 'Vista global' : 'Panel administrativo'
+  }, [isSuperAdmin, profile])
+
   const loadData = async () => {
+    setLoading(true)
+
     const { data: sessionData } = await supabase.auth.getSession()
 
     if (!sessionData.session) {
-      toast.error('Inicia sesión para continuar')
+      toast.error('Inicia sesion para continuar')
       setLoading(false)
       return
     }
@@ -133,7 +152,7 @@ export default function AdminDashboardPage() {
       .single()
 
     if (profileError || !profileData) {
-      console.error('Error loading profile:', profileError)
+      console.error('Error loading admin profile:', profileError)
       toast.error('No se pudo cargar tu perfil')
       setLoading(false)
       return
@@ -142,193 +161,135 @@ export default function AdminDashboardPage() {
     const currentProfile = profileData as CurrentProfile
     setProfile(currentProfile)
 
-    const isDelegatedAdmin = Boolean(currentProfile.is_residential_admin)
-    const isAdminLike =
-      currentProfile.role === 'admin' || isDelegatedAdmin
-
-    if (
-      !(isAdminLike || currentProfile.role === 'super_admin') ||
-      currentProfile.status !== 'approved'
-    ) {
+    if (!isAdminProfile(currentProfile)) {
       setLoading(false)
       return
     }
 
-    if (isAdminLike && !currentProfile.residential_id) {
+    const isGlobal = currentProfile.role === 'super_admin'
+    const residentialId = currentProfile.residential_id
+
+    if (!isGlobal && !residentialId) {
       toast.error('Tu perfil no tiene residencial asignado')
       setLoading(false)
       return
     }
 
-    const isSuperAdmin = currentProfile.role === 'super_admin'
-    const rid = currentProfile.residential_id
-
-    const todayStart = new Date()
-    todayStart.setHours(0, 0, 0, 0)
-    const todayISO = todayStart.toISOString()
+    const nowIso = new Date().toISOString()
 
     const [
-      insideResult,
-      entriesTodayResult,
-      exitsTodayResult,
+      housesResult,
+      activeHousesResult,
+      approvedResidentsResult,
+      pendingResidentsResult,
       activeVisitsResult,
-      approvedResult,
-      pendingResult,
-      securityResult,
+      peopleInsideResult,
+      activeEventsResult,
     ] = await Promise.all([
       (() => {
-        let q = supabase
-          .from('visitor_entries')
+        let query = supabase
+          .from('houses')
           .select('id', { count: 'exact', head: true })
-          .is('exit_time', null)
-          .eq('entry_status', 'allowed')
-        if (!isSuperAdmin && rid) q = q.eq('residential_id', rid)
-        return q
+        if (!isGlobal && residentialId) {
+          query = query.eq('residential_id', residentialId)
+        }
+        return query
       })(),
       (() => {
-        let q = supabase
-          .from('visitor_entries')
+        let query = supabase
+          .from('houses')
           .select('id', { count: 'exact', head: true })
-          .gte('entry_time', todayISO)
-        if (!isSuperAdmin && rid) q = q.eq('residential_id', rid)
-        return q
+          .eq('is_active', true)
+        if (!isGlobal && residentialId) {
+          query = query.eq('residential_id', residentialId)
+        }
+        return query
       })(),
       (() => {
-        let q = supabase
-          .from('visitor_entries')
-          .select('id', { count: 'exact', head: true })
-          .gte('exit_time', todayISO)
-        if (!isSuperAdmin && rid) q = q.eq('residential_id', rid)
-        return q
-      })(),
-      (() => {
-        let q = supabase
-          .from('visits')
-          .select('id', { count: 'exact', head: true })
-          .eq('status', 'active')
-        if (!isSuperAdmin && rid) q = q.eq('residential_id', rid)
-        return q
-      })(),
-      (() => {
-        let q = supabase
+        let query = supabase
           .from('profiles')
           .select('id', { count: 'exact', head: true })
           .eq('role', 'resident')
           .eq('status', 'approved')
-        if (!isSuperAdmin && rid) q = q.eq('residential_id', rid)
-        return q
+        if (!isGlobal && residentialId) {
+          query = query.eq('residential_id', residentialId)
+        }
+        return query
       })(),
       (() => {
-        let q = supabase
+        let query = supabase
           .from('profiles')
           .select('id', { count: 'exact', head: true })
           .eq('role', 'resident')
           .eq('status', 'pending')
-        if (!isSuperAdmin && rid) q = q.eq('residential_id', rid)
-        return q
+        if (!isGlobal && residentialId) {
+          query = query.eq('residential_id', residentialId)
+        }
+        return query
       })(),
       (() => {
-        let q = supabase
-          .from('houses')
+        let query = supabase
+          .from('visits')
           .select('id', { count: 'exact', head: true })
-          .eq('pays_security', true)
-        if (!isSuperAdmin && rid) q = q.eq('residential_id', rid)
-        return q
+          .eq('status', 'active')
+          .gt('valid_until', nowIso)
+        if (!isGlobal && residentialId) {
+          query = query.eq('residential_id', residentialId)
+        }
+        return query
+      })(),
+      (() => {
+        let query = supabase
+          .from('visitor_entries')
+          .select('id', { count: 'exact', head: true })
+          .eq('entry_status', 'allowed')
+          .is('exit_time', null)
+        if (!isGlobal && residentialId) {
+          query = query.eq('residential_id', residentialId)
+        }
+        return query
+      })(),
+      (() => {
+        let query = supabase
+          .from('events')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'active')
+          .gt('valid_until', nowIso)
+        if (!isGlobal && residentialId) {
+          query = query.eq('residential_id', residentialId)
+        }
+        return query
       })(),
     ])
 
     const kpiErrors = [
-      insideResult.error,
-      entriesTodayResult.error,
-      exitsTodayResult.error,
+      housesResult.error,
+      activeHousesResult.error,
+      approvedResidentsResult.error,
+      pendingResidentsResult.error,
       activeVisitsResult.error,
-      approvedResult.error,
-      pendingResult.error,
-      securityResult.error,
+      peopleInsideResult.error,
+      activeEventsResult.error,
     ].filter(Boolean)
 
     if (kpiErrors.length > 0) {
-      console.error('KPI query errors:', kpiErrors)
+      console.error('Admin KPI errors:', kpiErrors)
       toast.error('Algunos indicadores no pudieron cargarse')
     }
 
     setKpis({
-      visitorsInside: insideResult.count ?? 0,
-      entriesToday: entriesTodayResult.count ?? 0,
-      exitsToday: exitsTodayResult.count ?? 0,
+      houses: housesResult.count ?? 0,
+      activeHouses: activeHousesResult.count ?? 0,
+      approvedResidents: approvedResidentsResult.count ?? 0,
+      pendingResidents: pendingResidentsResult.count ?? 0,
       activeVisits: activeVisitsResult.count ?? 0,
-      approvedResidents: approvedResult.count ?? 0,
-      pendingResidents: pendingResult.count ?? 0,
-      securityHouses: securityResult.count ?? 0,
+      peopleInside: peopleInsideResult.count ?? 0,
+      activeEvents: activeEventsResult.count ?? 0,
+      pendingReceipts: 0,
     })
 
-    let recentQuery = supabase
-      .from('visitor_entries')
-      .select('id,residential_id,visit_id,house_id,entry_status,entry_time,exit_time')
-      .order('entry_time', { ascending: false })
-      .limit(8)
-
-    if (!isSuperAdmin && rid) {
-      recentQuery = recentQuery.eq('residential_id', rid)
-    }
-
-    const { data: entriesData, error: entriesError } = await recentQuery
-
-    if (entriesError) {
-      console.error('Error loading recent entries:', entriesError)
-      toast.error('No se pudieron cargar los últimos ingresos')
-      setLoading(false)
-      return
-    }
-
-    const loadedEntries = (entriesData ?? []) as VisitorEntryRow[]
-
-    const visitIds = Array.from(
-      new Set(
-        loadedEntries
-          .map((e) => e.visit_id)
-          .filter((id): id is string => Boolean(id)),
-      ),
-    )
-    const houseIds = Array.from(
-      new Set(loadedEntries.map((e) => e.house_id).filter(Boolean)),
-    )
-
-    const [visitsResult, housesResult] = await Promise.all([
-      visitIds.length > 0
-        ? supabase.from('visits').select('id,visitor_name').in('id', visitIds)
-        : Promise.resolve({ data: [] as VisitRow[], error: null }),
-      houseIds.length > 0
-        ? supabase
-            .from('houses')
-            .select('id,block,house_number')
-            .in('id', houseIds)
-        : Promise.resolve({ data: [] as HouseRow[], error: null }),
-    ])
-
-    const visitsById = new Map(
-      ((visitsResult.data ?? []) as VisitRow[]).map((v) => [v.id, v]),
-    )
-    const housesById = new Map(
-      ((housesResult.data ?? []) as HouseRow[]).map((h) => [h.id, h]),
-    )
-
-    setRecentEntries(
-      loadedEntries.map((entry) => {
-        const visit = entry.visit_id ? visitsById.get(entry.visit_id) : undefined
-        const house = housesById.get(entry.house_id)
-        return {
-          id: entry.id,
-          visitorName: visit?.visitor_name ?? 'Visitante desconocido',
-          houseLabel: house
-            ? `${house.block}-${house.house_number}`
-            : 'Casa no disponible',
-          entryTime: entry.entry_time,
-          isInside: !entry.exit_time && entry.entry_status === 'allowed',
-        }
-      }),
-    )
-
+    const nextActivities = await loadActivities(isGlobal, residentialId)
+    setActivities(nextActivities)
     setLoading(false)
   }
 
@@ -340,27 +301,19 @@ export default function AdminDashboardPage() {
     return <DashboardSkeleton />
   }
 
-  if (
-    !profile ||
-    !(
-      ['admin', 'super_admin'].includes(profile.role) ||
-      profile.is_residential_admin
-    ) ||
-    profile.status !== 'approved'
-  ) {
+  if (!profile || !isAdminProfile(profile)) {
     return (
-      <main className="min-h-screen bg-slate-100 dark:bg-slate-900 px-5 py-6">
-        <div className="mx-auto max-w-sm rounded-2xl bg-white dark:bg-slate-800 p-6 shadow-sm">
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+      <main className="min-h-screen bg-[#F3F8F5] px-5 py-6 dark:bg-slate-950">
+        <div className="mx-auto max-w-md rounded-3xl border border-white/70 bg-white/85 p-6 shadow-sm backdrop-blur-xl dark:border-slate-700 dark:bg-slate-800/85">
+          <h1 className="text-xl font-black text-slate-950 dark:text-white">
             Acceso restringido
           </h1>
-          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-            Solo administradores y super administradores aprobados pueden ver
-            este dashboard.
+          <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+            Solo administradores aprobados pueden ver este dashboard.
           </p>
           <Link
             href="/dashboard"
-            className="mt-6 block min-h-12 rounded-2xl bg-slate-950 dark:bg-slate-700 px-4 py-3 text-center font-semibold text-white active:scale-[0.99]"
+            className="mt-6 flex min-h-12 items-center justify-center rounded-2xl bg-slate-950 px-4 py-3 text-sm font-bold text-white transition-all duration-200 active:scale-[0.98] dark:bg-slate-700"
           >
             Volver al dashboard
           </Link>
@@ -370,183 +323,435 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 dark:bg-slate-900 px-5 py-6">
-      <div className="mx-auto max-w-sm space-y-5">
+    <main className="min-h-screen overflow-x-hidden bg-[#F3F8F5] px-4 py-5 dark:bg-slate-950 sm:px-6">
+      <div className="mx-auto max-w-6xl space-y-6">
         <Link
           href="/dashboard"
-          className="block text-sm font-semibold text-slate-600 dark:text-slate-300"
+          className="inline-flex min-h-11 items-center rounded-full px-1 text-sm font-bold text-slate-600 transition-colors hover:text-slate-950 dark:text-slate-300 dark:hover:text-white"
         >
-          ← Volver al dashboard
+          Volver al dashboard
         </Link>
 
-        <header className="rounded-2xl bg-slate-950 dark:bg-slate-800 p-6 text-white shadow-lg">
-          <p className="text-sm text-slate-300">
-            {profile.role === 'super_admin' ? 'Vista global' : 'Administración'}
-          </p>
-          <h1 className="mt-1 text-2xl font-bold">Dashboard</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-300">
-            Resumen operativo{' '}
-            {profile.role === 'super_admin'
-              ? 'de todos los residenciales'
-              : 'del residencial'}
-            .
-          </p>
+        <header className="overflow-hidden rounded-[2rem] bg-slate-950 p-6 text-white shadow-xl shadow-slate-300/60 dark:bg-slate-900 dark:shadow-black/30 sm:p-8">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-bold" style={{ color: residentPassGreen }}>
+                ResidentPass
+              </p>
+              <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
+                Dashboard administrativo
+              </h1>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
+                {scopeLabel} para revisar operacion, accesos y solicitudes en menos de 5 segundos.
+              </p>
+            </div>
+            <div className="rounded-3xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur-xl">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+                Administrador
+              </p>
+              <p className="mt-1 text-sm font-bold">
+                {profile.first_name} {profile.last_name}
+              </p>
+            </div>
+          </div>
         </header>
 
-        {kpis !== null && (
-          <section className="grid grid-cols-2 gap-3">
-            <KpiCard
-              icon={Users}
-              label="Dentro ahora"
-              value={kpis.visitorsInside}
-              color="green"
+        {kpis && (
+          <section aria-labelledby="kpis-title" className="space-y-3">
+            <SectionTitle
+              id="kpis-title"
+              title="Estado general"
+              subtitle="Indicadores clave del residencial."
             />
-            <KpiCard
-              icon={LogIn}
-              label="Ingresos hoy"
-              value={kpis.entriesToday}
-              color="blue"
-            />
-            <KpiCard
-              icon={LogOut}
-              label="Salidas hoy"
-              value={kpis.exitsToday}
-              color="orange"
-            />
-            <KpiCard
-              icon={Calendar}
-              label="Visitas activas"
-              value={kpis.activeVisits}
-              color="violet"
-            />
-            <KpiCard
-              icon={UserCheck}
-              label="Residentes aprobados"
-              value={kpis.approvedResidents}
-              color="emerald"
-            />
-            <KpiCard
-              icon={Clock}
-              label="Residentes pendientes"
-              value={kpis.pendingResidents}
-              color="amber"
-            />
-            <KpiCard
-              icon={Shield}
-              label="Casas con seguridad activa"
-              value={kpis.securityHouses}
-              color="slate"
-              wide
-            />
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              <AdminStatCard icon={Home} label="Casas" value={kpis.houses} />
+              <AdminStatCard
+                icon={ClipboardCheck}
+                label="Casas activas"
+                value={kpis.activeHouses}
+              />
+              <AdminStatCard
+                icon={UserCheck}
+                label="Residentes aprobados"
+                value={kpis.approvedResidents}
+                tone="blue"
+              />
+              <AdminStatCard
+                icon={UserPlus}
+                label="Residentes pendientes"
+                value={kpis.pendingResidents}
+                tone={kpis.pendingResidents > 0 ? 'amber' : 'slate'}
+              />
+              <AdminStatCard
+                icon={Users}
+                label="Visitas activas"
+                value={kpis.activeVisits}
+              />
+              <AdminStatCard
+                icon={ShieldPlus}
+                label="Personas dentro"
+                value={kpis.peopleInside}
+                tone={kpis.peopleInside > 0 ? 'green' : 'slate'}
+              />
+              <AdminStatCard
+                icon={CalendarDays}
+                label="Eventos activos"
+                value={kpis.activeEvents}
+                tone="blue"
+              />
+              <AdminStatCard
+                icon={ReceiptText}
+                label="Comprobantes pendientes"
+                value={kpis.pendingReceipts}
+                helper="Modulo pendiente"
+                tone="slate"
+              />
+            </div>
           </section>
         )}
 
-        <section className="space-y-3">
-          <h2 className="px-1 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Últimos ingresos
-          </h2>
+        <section aria-labelledby="quick-actions-title" className="space-y-3">
+          <SectionTitle
+            id="quick-actions-title"
+            title="Acciones rapidas"
+            subtitle="Atajos operativos para tareas frecuentes."
+          />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <QuickActionCard
+              href="/dashboard/residents"
+              icon={UserCheck}
+              title="Aprobar residentes"
+              subtitle="Revisar solicitudes pendientes"
+            />
+            <QuickActionCard
+              href="/dashboard/guards"
+              icon={ShieldPlus}
+              title="Registrar guardia"
+              subtitle="Crear o administrar seguridad"
+            />
+            <QuickActionCard
+              href="/dashboard/houses"
+              icon={HousePlus}
+              title="Crear casa"
+              subtitle="Gestionar viviendas"
+            />
+            <QuickActionCard
+              href="/dashboard/reports"
+              icon={BarChart3}
+              title="Ver reportes"
+              subtitle="Incidencias y seguimiento"
+            />
+          </div>
+        </section>
 
-          {recentEntries.length === 0 ? (
-            <div className="rounded-2xl bg-white dark:bg-slate-800 p-6 text-sm text-slate-500 dark:text-slate-400 shadow-sm">
-              No hay ingresos registrados aún.
-            </div>
-          ) : (
-            recentEntries.map((entry) => (
-              <EntryCard key={entry.id} entry={entry} />
-            ))
-          )}
+        <section aria-labelledby="activity-title" className="space-y-3 pb-6">
+          <SectionTitle
+            id="activity-title"
+            title="Actividad reciente"
+            subtitle="Ultimos 20 movimientos del residencial."
+          />
+          <ActivityTimeline items={activities} />
         </section>
       </div>
     </main>
   )
 }
 
-function KpiCard({
-  icon: Icon,
-  label,
-  value,
-  color,
-  wide = false,
-}: {
-  icon: LucideIcon
-  label: string
-  value: number
-  color: KpiColor
-  wide?: boolean
-}) {
-  const c = colorClasses[color]
-  return (
-    <article
-      className={`rounded-2xl p-4 shadow-sm ${c.bg} ${wide ? 'col-span-2' : ''}`}
-    >
-      <span
-        className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${c.iconBg}`}
-      >
-        <Icon className={`h-5 w-5 ${c.icon}`} />
-      </span>
-      <p className={`mt-3 text-3xl font-bold ${c.value}`}>{value}</p>
-      <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
-        {label}
-      </p>
-    </article>
-  )
+async function loadActivities(
+  isGlobal: boolean,
+  residentialId: string | null,
+): Promise<ActivityItem[]> {
+  const [visitorActivities, eventActivities, residentActivities] =
+    await Promise.all([
+      loadVisitorActivities(isGlobal, residentialId),
+      loadEventActivities(isGlobal, residentialId),
+      loadResidentActivities(isGlobal, residentialId),
+    ])
+
+  return [...visitorActivities, ...eventActivities, ...residentActivities]
+    .sort(byNewestActivity)
+    .slice(0, 20)
 }
 
-function EntryCard({ entry }: { entry: RecentEntry }) {
-  const formattedTime = new Intl.DateTimeFormat('es-HN', {
-    hour: 'numeric',
-    minute: '2-digit',
-    day: 'numeric',
-    month: 'short',
-  }).format(new Date(entry.entryTime))
+async function loadVisitorActivities(
+  isGlobal: boolean,
+  residentialId: string | null,
+): Promise<ActivityItem[]> {
+  let entriesQuery = supabase
+    .from('visitor_entries')
+    .select('id,visit_id,house_id,entry_status,entry_time,exit_time,updated_at')
+    .order('updated_at', { ascending: false })
+    .limit(24)
 
+  if (!isGlobal && residentialId) {
+    entriesQuery = entriesQuery.eq('residential_id', residentialId)
+  }
+
+  const { data: entriesData, error: entriesError } = await entriesQuery
+
+  if (entriesError) {
+    console.error('Error loading visitor activities:', entriesError)
+    return []
+  }
+
+  const entries = (entriesData ?? []) as VisitorEntryRow[]
+  const visitIds = Array.from(
+    new Set(
+      entries
+        .map((entry) => entry.visit_id)
+        .filter((visitId): visitId is string => Boolean(visitId)),
+    ),
+  )
+  const houseIds = Array.from(new Set(entries.map((entry) => entry.house_id)))
+
+  const [visitsResult, housesResult] = await Promise.all([
+    visitIds.length > 0
+      ? supabase
+          .from('visits')
+          .select('id,visitor_name,visit_type')
+          .in('id', visitIds)
+      : Promise.resolve({ data: [] as VisitRow[], error: null }),
+    houseIds.length > 0
+      ? supabase
+          .from('houses')
+          .select('id,block,house_number')
+          .in('id', houseIds)
+      : Promise.resolve({ data: [] as HouseRow[], error: null }),
+  ])
+
+  if (visitsResult.error || housesResult.error) {
+    console.error('Error enriching visitor activities:', {
+      visitsError: visitsResult.error,
+      housesError: housesResult.error,
+    })
+  }
+
+  const visitsById = new Map(
+    ((visitsResult.data ?? []) as VisitRow[]).map((visit) => [visit.id, visit]),
+  )
+  const housesById = new Map(
+    ((housesResult.data ?? []) as HouseRow[]).map((house) => [house.id, house]),
+  )
+
+  return entries.flatMap((entry) => {
+    const visit = entry.visit_id ? visitsById.get(entry.visit_id) : undefined
+    const houseLabel = getHouseLabel(housesById.get(entry.house_id))
+    const visitorName = visit?.visitor_name ?? 'Visitante'
+    const isDelivery = visit?.visit_type === 'delivery'
+    const items: ActivityItem[] = []
+
+    if (entry.entry_status === 'allowed') {
+      items.push({
+        id: `${entry.id}-entry`,
+        kind: isDelivery ? 'delivery' : 'visit_entry',
+        title: isDelivery ? 'Delivery registrado' : 'Ingreso registrado',
+        description: `${visitorName} - ${houseLabel}`,
+        occurredAt: entry.entry_time,
+      })
+    }
+
+    if (entry.exit_time) {
+      items.push({
+        id: `${entry.id}-exit`,
+        kind: isDelivery ? 'delivery' : 'visit_exit',
+        title: isDelivery ? 'Delivery finalizado' : 'Salida registrada',
+        description: `${visitorName} - ${houseLabel}`,
+        occurredAt: entry.exit_time,
+      })
+    }
+
+    return items
+  })
+}
+
+async function loadEventActivities(
+  isGlobal: boolean,
+  residentialId: string | null,
+): Promise<ActivityItem[]> {
+  let eventEntriesQuery = supabase
+    .from('event_guest_entries')
+    .select('id,event_id,event_guest_id,action,occurred_at')
+    .order('occurred_at', { ascending: false })
+    .limit(20)
+
+  if (!isGlobal && residentialId) {
+    eventEntriesQuery = eventEntriesQuery.eq('residential_id', residentialId)
+  }
+
+  const { data: entriesData, error: entriesError } = await eventEntriesQuery
+
+  if (entriesError) {
+    console.error('Error loading event activities:', entriesError)
+    return []
+  }
+
+  const entries = (entriesData ?? []) as EventGuestEntryRow[]
+  const eventIds = Array.from(new Set(entries.map((entry) => entry.event_id)))
+  const guestIds = Array.from(
+    new Set(entries.map((entry) => entry.event_guest_id)),
+  )
+
+  const [eventsResult, guestsResult] = await Promise.all([
+    eventIds.length > 0
+      ? supabase.from('events').select('id,title').in('id', eventIds)
+      : Promise.resolve({ data: [] as EventRow[], error: null }),
+    guestIds.length > 0
+      ? supabase.from('event_guests').select('id,guest_name').in('id', guestIds)
+      : Promise.resolve({ data: [] as EventGuestRow[], error: null }),
+  ])
+
+  if (eventsResult.error || guestsResult.error) {
+    console.error('Error enriching event activities:', {
+      eventsError: eventsResult.error,
+      guestsError: guestsResult.error,
+    })
+  }
+
+  const eventsById = new Map(
+    ((eventsResult.data ?? []) as EventRow[]).map((event) => [event.id, event]),
+  )
+  const guestsById = new Map(
+    ((guestsResult.data ?? []) as EventGuestRow[]).map((guest) => [
+      guest.id,
+      guest,
+    ]),
+  )
+
+  return entries.map((entry) => {
+    const event = eventsById.get(entry.event_id)
+    const guest = guestsById.get(entry.event_guest_id)
+    const action = entry.action === 'exit' ? 'salio del evento' : 'ingreso al evento'
+
+    return {
+      id: `event-${entry.id}`,
+      kind: 'event',
+      title: event?.title ?? 'Evento',
+      description: `${guest?.guest_name ?? 'Invitado'} ${action}`,
+      occurredAt: entry.occurred_at,
+    }
+  })
+}
+
+async function loadResidentActivities(
+  isGlobal: boolean,
+  residentialId: string | null,
+): Promise<ActivityItem[]> {
+  let residentsQuery = supabase
+    .from('profiles')
+    .select('id,first_name,last_name,status,created_at,updated_at,house_id')
+    .eq('role', 'resident')
+    .order('updated_at', { ascending: false })
+    .limit(20)
+
+  if (!isGlobal && residentialId) {
+    residentsQuery = residentsQuery.eq('residential_id', residentialId)
+  }
+
+  const { data: residentsData, error: residentsError } = await residentsQuery
+
+  if (residentsError) {
+    console.error('Error loading resident activities:', residentsError)
+    return []
+  }
+
+  const residents = (residentsData ?? []) as ResidentActivityRow[]
+  const houseIds = Array.from(
+    new Set(
+      residents
+        .map((resident) => resident.house_id)
+        .filter((houseId): houseId is string => Boolean(houseId)),
+    ),
+  )
+
+  const { data: housesData, error: housesError } =
+    houseIds.length > 0
+      ? await supabase
+          .from('houses')
+          .select('id,block,house_number')
+          .in('id', houseIds)
+      : { data: [] as HouseRow[], error: null }
+
+  if (housesError) {
+    console.error('Error enriching resident activities:', housesError)
+  }
+
+  const housesById = new Map(
+    ((housesData ?? []) as HouseRow[]).map((house) => [house.id, house]),
+  )
+
+  return residents.flatMap((resident) => {
+    const houseLabel = resident.house_id
+      ? getHouseLabel(housesById.get(resident.house_id))
+      : 'Casa pendiente'
+    const name = getFullName(resident)
+    const activities: ActivityItem[] = [
+      {
+        id: `resident-registration-${resident.id}`,
+        kind: 'resident_registration' as ActivityKind,
+        title: 'Nuevo registro de residente',
+        description: `${name} - ${houseLabel}`,
+        occurredAt: resident.created_at,
+      },
+    ]
+
+    if (resident.status === 'approved' && resident.updated_at !== resident.created_at) {
+      activities.push({
+        id: `resident-approval-${resident.id}`,
+        kind: 'resident_approval',
+        title: 'Residente aprobado',
+        description: `${name} - ${houseLabel}`,
+        occurredAt: resident.updated_at,
+      })
+    }
+
+    return activities
+  })
+}
+
+function SectionTitle({
+  id,
+  title,
+  subtitle,
+}: {
+  id: string
+  title: string
+  subtitle: string
+}) {
   return (
-    <article className="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate font-semibold text-slate-900 dark:text-white">
-            {entry.visitorName}
-          </p>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Casa {entry.houseLabel} · {formattedTime}
-          </p>
-        </div>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-            entry.isInside
-              ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
-              : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
-          }`}
-        >
-          {entry.isInside ? 'Dentro' : 'Salió'}
-        </span>
-      </div>
-    </article>
+    <div className="px-1">
+      <h2 id={id} className="text-base font-black text-slate-950 dark:text-white">
+        {title}
+      </h2>
+      <p className="mt-1 text-sm leading-5 text-slate-500 dark:text-slate-400">
+        {subtitle}
+      </p>
+    </div>
   )
 }
 
 function DashboardSkeleton() {
   return (
-    <main className="min-h-screen bg-slate-100 dark:bg-slate-900 px-5 py-6">
-      <div className="mx-auto max-w-sm space-y-5">
-        <div className="h-4 w-32 animate-pulse rounded-full bg-slate-300 dark:bg-slate-600" />
-        <div className="h-32 animate-pulse rounded-2xl bg-slate-300 dark:bg-slate-600" />
-        <div className="grid grid-cols-2 gap-3">
-          {Array.from({ length: 6 }).map((_, i) => (
+    <main className="min-h-screen overflow-x-hidden bg-[#F3F8F5] px-4 py-5 dark:bg-slate-950 sm:px-6">
+      <div className="mx-auto max-w-6xl space-y-6">
+        <div className="h-11 w-36 animate-pulse rounded-full bg-white/80 dark:bg-slate-800" />
+        <div className="h-48 animate-pulse rounded-[2rem] bg-slate-900/90 dark:bg-slate-800" />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, index) => (
             <div
-              key={i}
-              className="h-28 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-700"
+              key={index}
+              className="h-32 animate-pulse rounded-3xl bg-white/80 dark:bg-slate-800"
             />
           ))}
-          <div className="col-span-2 h-28 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-700" />
         </div>
-        <div className="h-4 w-28 animate-pulse rounded-full bg-slate-300 dark:bg-slate-600" />
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-16 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-700"
-          />
-        ))}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div
+              key={index}
+              className="h-24 animate-pulse rounded-3xl bg-white/80 dark:bg-slate-800"
+            />
+          ))}
+        </div>
+        <div className="h-80 animate-pulse rounded-3xl bg-white/80 dark:bg-slate-800" />
       </div>
     </main>
   )

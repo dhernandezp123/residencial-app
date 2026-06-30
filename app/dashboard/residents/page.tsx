@@ -8,6 +8,14 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 
 type ResidentStatus = 'pending' | 'approved' | 'rejected' | 'inactive'
+type ProfileRole = 'super_admin' | 'admin' | 'resident' | 'guard'
+
+type CurrentProfile = {
+  id: string
+  role: ProfileRole
+  status: ResidentStatus
+  is_residential_admin: boolean | null
+}
 
 type ResidentProfile = {
   id: string
@@ -38,7 +46,12 @@ type HouseSummary = {
   resident_limit: number | null
 }
 
-type ResidentAction = 'approve' | 'reject' | 'deactivate'
+type ResidentAction = 'approve' | 'reject' | 'deactivate' | 'editName'
+
+type NameEditForm = {
+  first_name: string
+  last_name: string
+}
 
 const filters: { label: string; value: ResidentStatus }[] = [
   { label: 'Pendientes', value: 'pending' },
@@ -48,10 +61,20 @@ const filters: { label: string; value: ResidentStatus }[] = [
 ]
 
 export default function ResidentsPage() {
+  const [currentProfile, setCurrentProfile] = useState<CurrentProfile | null>(
+    null,
+  )
   const [residents, setResidents] = useState<ResidentProfile[]>([])
   const [selectedStatus, setSelectedStatus] = useState<ResidentStatus>('pending')
   const [loading, setLoading] = useState(true)
   const [savingResidentId, setSavingResidentId] = useState<string | null>(null)
+  const [editingNameResidentId, setEditingNameResidentId] = useState<
+    string | null
+  >(null)
+  const [nameEditForm, setNameEditForm] = useState<NameEditForm>({
+    first_name: '',
+    last_name: '',
+  })
   const [confirmingResidentAction, setConfirmingResidentAction] = useState<{
     residentId: string
     action: ResidentAction
@@ -59,6 +82,29 @@ export default function ResidentsPage() {
 
   const loadResidents = async () => {
     setLoading(true)
+
+    const { data: sessionData } = await supabase.auth.getSession()
+
+    if (!sessionData.session) {
+      toast.error('Inicia sesiÃ³n para continuar')
+      setLoading(false)
+      return
+    }
+
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('id,role,status,is_residential_admin')
+      .eq('user_id', sessionData.session.user.id)
+      .single()
+
+    if (profileError || !profileData) {
+      console.error('Error loading current profile:', profileError)
+      toast.error('No se pudo cargar tu perfil')
+      setLoading(false)
+      return
+    }
+
+    setCurrentProfile(profileData as CurrentProfile)
 
     const { data, error } = await supabase
       .from('profiles')
@@ -179,6 +225,85 @@ export default function ResidentsPage() {
     setConfirmingResidentAction({ residentId, action })
     toast.warning(message)
     return false
+  }
+
+  const startEditingResidentName = (resident: ResidentProfile) => {
+    setEditingNameResidentId(resident.id)
+    setNameEditForm({
+      first_name: resident.first_name,
+      last_name: resident.last_name,
+    })
+    setConfirmingResidentAction(null)
+  }
+
+  const updateNameEditForm = (nextForm: NameEditForm) => {
+    setNameEditForm(nextForm)
+
+    if (confirmingResidentAction?.action === 'editName') {
+      setConfirmingResidentAction(null)
+    }
+  }
+
+  const cancelEditingResidentName = () => {
+    setEditingNameResidentId(null)
+    setNameEditForm({ first_name: '', last_name: '' })
+    setConfirmingResidentAction(null)
+  }
+
+  const handleUpdateResidentName = async (resident: ResidentProfile) => {
+    if (currentProfile?.role !== 'super_admin') {
+      toast.error('Solo superadmin puede editar nombres de residentes')
+      return
+    }
+
+    const firstName = nameEditForm.first_name.trim()
+    const lastName = nameEditForm.last_name.trim()
+
+    if (!firstName || !lastName) {
+      toast.error('Nombre y apellido son obligatorios')
+      return
+    }
+
+    if (
+      firstName === resident.first_name.trim() &&
+      lastName === resident.last_name.trim()
+    ) {
+      toast.info('No hay cambios para guardar')
+      return
+    }
+
+    if (
+      !requestResidentConfirmation(
+        resident.id,
+        'editName',
+        'Toca de nuevo para confirmar el cambio de nombre',
+      )
+    ) {
+      return
+    }
+
+    setSavingResidentId(resident.id)
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        first_name: firstName,
+        last_name: lastName,
+      })
+      .eq('id', resident.id)
+      .eq('role', 'resident')
+
+    setSavingResidentId(null)
+
+    if (error) {
+      console.error('Error updating resident name:', error)
+      toast.error('No se pudo actualizar el nombre')
+      return
+    }
+
+    toast.success('Nombre de residente actualizado')
+    cancelEditingResidentName()
+    loadResidents()
   }
 
   const handleUpdateStatus = async (
@@ -331,6 +456,7 @@ export default function ResidentsPage() {
   const filteredResidents = residents.filter(
     (resident) => resident.status === selectedStatus
   )
+  const canEditResidentNames = currentProfile?.role === 'super_admin'
 
   return (
     <main className="min-h-screen bg-slate-100 dark:bg-slate-900 px-5 py-6">
@@ -392,6 +518,13 @@ export default function ResidentsPage() {
                   onReject={() => handleUpdateStatus(resident, 'rejected')}
                   onDeactivate={() => handleDeactivateResident(resident)}
                   onSendPasswordReset={() => handleSendPasswordReset(resident)}
+                  canEditName={canEditResidentNames}
+                  isEditingName={editingNameResidentId === resident.id}
+                  nameEditForm={nameEditForm}
+                  onStartEditName={() => startEditingResidentName(resident)}
+                  onCancelEditName={cancelEditingResidentName}
+                  onNameEditFormChange={updateNameEditForm}
+                  onSaveName={() => handleUpdateResidentName(resident)}
                 />
               )
             })}
@@ -410,6 +543,13 @@ function ResidentCard({
   onReject,
   onDeactivate,
   onSendPasswordReset,
+  canEditName,
+  isEditingName,
+  nameEditForm,
+  onStartEditName,
+  onCancelEditName,
+  onNameEditFormChange,
+  onSaveName,
 }: {
   resident: ResidentProfile
   saving: boolean
@@ -418,6 +558,13 @@ function ResidentCard({
   onReject: () => void
   onDeactivate: () => void
   onSendPasswordReset: () => void
+  canEditName: boolean
+  isEditingName: boolean
+  nameEditForm: NameEditForm
+  onStartEditName: () => void
+  onCancelEditName: () => void
+  onNameEditFormChange: (nextForm: NameEditForm) => void
+  onSaveName: () => void
 }) {
   const fullName = `${resident.first_name} ${resident.last_name}`.trim()
   const houseLabel = resident.house
@@ -450,6 +597,84 @@ function ResidentCard({
           {getStatusLabel(resident.status)}
         </span>
       </div>
+
+      {canEditName && (
+        <div className="mt-4">
+          {isEditingName ? (
+            <div className="space-y-3 rounded-2xl bg-slate-50 p-4 dark:bg-slate-700/60">
+              <div className="grid gap-3">
+                <label className="block space-y-1">
+                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                    Nombre
+                  </span>
+                  <input
+                    value={nameEditForm.first_name}
+                    onChange={(event) =>
+                      onNameEditFormChange({
+                        ...nameEditForm,
+                        first_name: event.target.value,
+                      })
+                    }
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                    required
+                  />
+                </label>
+                <label className="block space-y-1">
+                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                    Apellido
+                  </span>
+                  <input
+                    value={nameEditForm.last_name}
+                    onChange={(event) =>
+                      onNameEditFormChange({
+                        ...nameEditForm,
+                        last_name: event.target.value,
+                      })
+                    }
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                    required
+                  />
+                </label>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={onCancelEditName}
+                  disabled={saving}
+                  className="min-h-11 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-60 active:scale-[0.99] dark:border-slate-600 dark:text-slate-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={onSaveName}
+                  disabled={saving}
+                  className={`min-h-11 rounded-xl px-3 py-2 text-sm font-semibold text-white disabled:opacity-60 active:scale-[0.99] ${
+                    confirmingAction === 'editName'
+                      ? 'bg-amber-500'
+                      : 'bg-slate-950 dark:bg-slate-600'
+                  }`}
+                >
+                  {saving
+                    ? 'Guardando...'
+                    : confirmingAction === 'editName'
+                      ? 'Confirmar cambio'
+                      : 'Guardar nombre'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onStartEditName}
+              disabled={saving}
+              className="min-h-11 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-60 active:scale-[0.99] dark:border-slate-700 dark:text-slate-200"
+            >
+              Editar nombre
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
         <p>
