@@ -1,6 +1,7 @@
 'use client'
 
 import type { LucideIcon } from 'lucide-react'
+import { GlassCard } from '@/components/ui'
 
 type AdminStatCardProps = {
   icon: LucideIcon
@@ -46,7 +47,10 @@ export function AdminStatCard({
   const colors = toneClasses[tone]
 
   return (
-    <article className="min-h-32 rounded-3xl border border-white/70 bg-white/85 p-4 shadow-sm shadow-slate-200/70 backdrop-blur-xl transition-all duration-200 hover:shadow-md active:scale-[0.98] dark:border-slate-700 dark:bg-slate-800/85 dark:shadow-black/20">
+    <GlassCard
+      as="article"
+      className="min-h-32 rounded-3xl border border-white/70 bg-white/85 p-4 shadow-sm shadow-slate-200/70 backdrop-blur-xl transition-all duration-200 hover:shadow-md active:scale-[0.98] dark:border-slate-700 dark:bg-slate-800/85 dark:shadow-black/20"
+    >
       <div
         className={`flex h-11 w-11 items-center justify-center rounded-2xl ${colors.iconBg} shadow-inner dark:bg-slate-700`}
       >
@@ -63,6 +67,6 @@ export function AdminStatCard({
           {helper}
         </p>
       )}
-    </article>
+    </GlassCard>
   )
 }

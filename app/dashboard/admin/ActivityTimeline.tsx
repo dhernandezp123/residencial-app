@@ -10,6 +10,7 @@ import {
   UserPlus,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { EmptyState, GlassCard } from '@/components/ui'
 
 export type ActivityKind =
   | 'visit_entry'
@@ -81,14 +82,15 @@ function formatActivityTime(value: string): string {
 export function ActivityTimeline({ items }: { items: ActivityItem[] }) {
   if (items.length === 0) {
     return (
-      <section className="rounded-3xl border border-dashed border-slate-200 bg-white/80 p-6 text-sm leading-6 text-slate-500 shadow-sm backdrop-blur-xl dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-400">
-        Aun no hay actividad reciente para mostrar.
-      </section>
+      <EmptyState
+        className="rounded-3xl border border-dashed border-slate-200 bg-white/80 p-6 text-sm leading-6 text-slate-500 shadow-sm backdrop-blur-xl dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-400"
+        description="Aun no hay actividad reciente para mostrar."
+      />
     )
   }
 
   return (
-    <section className="rounded-3xl border border-white/70 bg-white/85 p-4 shadow-sm shadow-slate-200/70 backdrop-blur-xl dark:border-slate-700 dark:bg-slate-800/85 dark:shadow-black/20">
+    <GlassCard className="rounded-3xl border border-white/70 bg-white/85 p-4 shadow-sm shadow-slate-200/70 backdrop-blur-xl dark:border-slate-700 dark:bg-slate-800/85 dark:shadow-black/20">
       <ol className="space-y-1">
         {items.map((item, index) => {
           const meta = activityMeta[item.kind]
@@ -127,6 +129,6 @@ export function ActivityTimeline({ items }: { items: ActivityItem[] }) {
           )
         })}
       </ol>
-    </section>
+    </GlassCard>
   )
 }

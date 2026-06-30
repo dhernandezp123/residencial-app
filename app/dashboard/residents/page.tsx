@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { DashboardHeader, EmptyState, StatusBadge } from '@/components/ui'
 
 type ResidentStatus = 'pending' | 'approved' | 'rejected' | 'inactive'
 type ProfileRole = 'super_admin' | 'admin' | 'resident' | 'guard'
@@ -468,14 +469,11 @@ export default function ResidentsPage() {
           ← Volver al dashboard
         </Link>
 
-        <header className="rounded-2xl bg-slate-950 dark:bg-slate-800 p-6 text-white shadow-lg">
-          <p className="text-sm text-slate-300">Administración</p>
-          <h1 className="mt-1 text-2xl font-bold">Residentes</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-300">
-            Revisa solicitudes y controla quién puede anunciar visitas desde la
-            app.
-          </p>
-        </header>
+        <DashboardHeader
+          eyebrow="Administracion"
+          title="Residentes"
+          subtitle="Revisa solicitudes y controla quien puede anunciar visitas desde la app."
+        />
 
         <section className="grid grid-cols-2 gap-2 rounded-2xl bg-white dark:bg-slate-800 p-2 shadow-sm">
           {filters.map((filter) => (
@@ -497,9 +495,7 @@ export default function ResidentsPage() {
         {loading ? (
           <ResidentsSkeleton />
         ) : filteredResidents.length === 0 ? (
-          <section className="rounded-2xl bg-white dark:bg-slate-800 p-6 text-sm leading-6 text-slate-500 dark:text-slate-400 shadow-sm">
-            No hay residentes en este estado.
-          </section>
+          <EmptyState description="No hay residentes en este estado." />
         ) : (
           <section className="space-y-3">
             {filteredResidents.map((resident) => {
@@ -583,19 +579,9 @@ function ResidentCard({
           </p>
         </div>
 
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-            resident.status === 'approved'
-              ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
-              : resident.status === 'rejected'
-                ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
-                : resident.status === 'inactive'
-                  ? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
-                  : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
-          }`}
-        >
+        <StatusBadge tone={getResidentStatusTone(resident.status)}>
           {getStatusLabel(resident.status)}
-        </span>
+        </StatusBadge>
       </div>
 
       {canEditName && (
@@ -797,4 +783,11 @@ function getStatusLabel(status: ResidentStatus) {
   }
 
   return 'Pendiente'
+}
+
+function getResidentStatusTone(status: ResidentStatus) {
+  if (status === 'approved') return 'green'
+  if (status === 'rejected') return 'red'
+  if (status === 'inactive') return 'slate'
+  return 'amber'
 }

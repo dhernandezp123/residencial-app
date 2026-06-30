@@ -22,6 +22,7 @@ import { ActivityTimeline } from './ActivityTimeline'
 import type { ActivityItem, ActivityKind } from './ActivityTimeline'
 import { AdminStatCard } from './AdminStatCard'
 import { QuickActionCard } from './QuickActionCard'
+import { LoadingSkeleton, SectionHeader } from '@/components/ui'
 
 type ProfileRole = 'super_admin' | 'admin' | 'resident' | 'guard'
 type ProfileStatus = 'pending' | 'approved' | 'rejected' | 'inactive'
@@ -358,7 +359,7 @@ export default function AdminDashboardPage() {
 
         {kpis && (
           <section aria-labelledby="kpis-title" className="space-y-3">
-            <SectionTitle
+            <SectionHeader
               id="kpis-title"
               title="Estado general"
               subtitle="Indicadores clave del residencial."
@@ -411,7 +412,7 @@ export default function AdminDashboardPage() {
         )}
 
         <section aria-labelledby="quick-actions-title" className="space-y-3">
-          <SectionTitle
+          <SectionHeader
             id="quick-actions-title"
             title="Acciones rapidas"
             subtitle="Atajos operativos para tareas frecuentes."
@@ -445,7 +446,7 @@ export default function AdminDashboardPage() {
         </section>
 
         <section aria-labelledby="activity-title" className="space-y-3 pb-6">
-          <SectionTitle
+          <SectionHeader
             id="activity-title"
             title="Actividad reciente"
             subtitle="Ultimos 20 movimientos del residencial."
@@ -708,36 +709,15 @@ async function loadResidentActivities(
   })
 }
 
-function SectionTitle({
-  id,
-  title,
-  subtitle,
-}: {
-  id: string
-  title: string
-  subtitle: string
-}) {
-  return (
-    <div className="px-1">
-      <h2 id={id} className="text-base font-black text-slate-950 dark:text-white">
-        {title}
-      </h2>
-      <p className="mt-1 text-sm leading-5 text-slate-500 dark:text-slate-400">
-        {subtitle}
-      </p>
-    </div>
-  )
-}
-
 function DashboardSkeleton() {
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#F3F8F5] px-4 py-5 dark:bg-slate-950 sm:px-6">
       <div className="mx-auto max-w-6xl space-y-6">
-        <div className="h-11 w-36 animate-pulse rounded-full bg-white/80 dark:bg-slate-800" />
-        <div className="h-48 animate-pulse rounded-[2rem] bg-slate-900/90 dark:bg-slate-800" />
+        <LoadingSkeleton className="h-11 w-36 animate-pulse rounded-full bg-white/80 dark:bg-slate-800" />
+        <LoadingSkeleton className="h-48 animate-pulse rounded-[2rem] bg-slate-900/90 dark:bg-slate-800" />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, index) => (
-            <div
+            <LoadingSkeleton
               key={index}
               className="h-32 animate-pulse rounded-3xl bg-white/80 dark:bg-slate-800"
             />
@@ -745,13 +725,13 @@ function DashboardSkeleton() {
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div
+            <LoadingSkeleton
               key={index}
               className="h-24 animate-pulse rounded-3xl bg-white/80 dark:bg-slate-800"
             />
           ))}
         </div>
-        <div className="h-80 animate-pulse rounded-3xl bg-white/80 dark:bg-slate-800" />
+        <LoadingSkeleton className="h-80 animate-pulse rounded-3xl bg-white/80 dark:bg-slate-800" />
       </div>
     </main>
   )
