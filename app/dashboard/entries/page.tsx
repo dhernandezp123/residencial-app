@@ -17,6 +17,7 @@ type CurrentProfile = {
   residential_id: string | null
   role: ProfileRole
   status: ProfileStatus
+  is_residential_admin: boolean | null
 }
 
 type VisitorEntry = {
@@ -112,9 +113,10 @@ type EntryListItem = VisitEntryCard | EventEntryGroup
 
 const canViewEntries = (profile: CurrentProfile | null) =>
   Boolean(
-    profile &&
+      profile &&
       profile.status === 'approved' &&
-      ['guard', 'admin', 'super_admin'].includes(profile.role),
+      (['guard', 'admin', 'super_admin'].includes(profile.role) ||
+        Boolean(profile.is_residential_admin)),
   )
 
 const uniqueIds = (ids: Array<string | null>) =>
@@ -141,7 +143,7 @@ export default function EntriesPage() {
 
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .select('id,residential_id,role,status')
+      .select('id,residential_id,role,status,is_residential_admin')
       .eq('user_id', sessionData.session.user.id)
       .single()
 

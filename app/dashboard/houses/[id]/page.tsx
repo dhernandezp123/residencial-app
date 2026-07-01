@@ -43,6 +43,16 @@ type ResidentProfile = {
   status: 'pending' | 'approved' | 'rejected' | 'inactive'
 }
 
+type SecurityNotification = {
+  residential_id: string
+  house_id: string
+  recipient_profile_id: string
+  actor_profile_id: string | null
+  type: 'system'
+  title: string
+  message: string
+}
+
 type HousePageProps = {
   params: Promise<{ id: string }>
 }
@@ -55,6 +65,7 @@ export default function HouseDetailPage({ params }: HousePageProps) {
   const [residents, setResidents] = useState<ResidentProfile[]>([])
   const [loadingResidents, setLoadingResidents] = useState(true)
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
+  const [currentProfileId, setCurrentProfileId] = useState<string | null>(null)
   const [currentUserIsResidentialAdmin, setCurrentUserIsResidentialAdmin] =
     useState(false)
   const [togglingSecurity, setTogglingSecurity] = useState(false)
@@ -140,13 +151,49 @@ export default function HouseDetailPage({ params }: HousePageProps) {
 
     const { data } = await supabase
       .from('profiles')
-      .select('role,is_residential_admin')
+      .select('id,role,is_residential_admin')
       .eq('user_id', sessionData.session.user.id)
       .single()
 
     if (data) {
+      setCurrentProfileId(data.id)
       setCurrentUserRole(data.role)
       setCurrentUserIsResidentialAdmin(Boolean(data.is_residential_admin))
+    }
+  }
+
+  const notifyResidentsAboutSecurity = async (
+    nextSecurityValue: boolean,
+    currentHouse: HouseDetail,
+  ) => {
+    const approvedResidents = residents.filter(
+      (resident) => resident.status === 'approved',
+    )
+
+    if (approvedResidents.length === 0) return
+
+    const houseLabel = `${currentHouse.block}-${currentHouse.house_number}`
+    const notifications: SecurityNotification[] = approvedResidents.map(
+      (resident) => ({
+        residential_id: currentHouse.residential_id,
+        house_id: currentHouse.id,
+        recipient_profile_id: resident.id,
+        actor_profile_id: currentProfileId,
+        type: 'system',
+        title: nextSecurityValue
+          ? 'Seguridad activa'
+          : 'Seguridad inactiva',
+        message: nextSecurityValue
+          ? `La seguridad de tu casa ${houseLabel} está activa. Ya puedes crear visitas.`
+          : `La seguridad de tu casa ${houseLabel} está inactiva por falta de pago. No podrás crear visitas hasta que se reactive.`,
+      }),
+    )
+
+    const { error } = await supabase.from('notifications').insert(notifications)
+
+    if (error) {
+      console.error('Error creating security notifications:', error)
+      toast.error('Seguridad actualizada, pero no se notificó al residente')
     }
   }
 
@@ -191,6 +238,7 @@ export default function HouseDetailPage({ params }: HousePageProps) {
     }
 
     setHouse({ ...house, pays_security: data.pays_security })
+    await notifyResidentsAboutSecurity(data.pays_security, house)
     toast.success(newValue ? 'Acceso activado' : 'Acceso desactivado')
     setTogglingSecurity(false)
   }
