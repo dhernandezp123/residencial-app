@@ -69,8 +69,15 @@ export default function EventsPage() {
   const [events, setEvents] = useState<EventWithMeta[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
+  const [addingGuestEventId, setAddingGuestEventId] = useState<string | null>(
+    null,
+  )
+  const [newGuestName, setNewGuestName] = useState('')
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
+  const [savingGuestEventId, setSavingGuestEventId] = useState<string | null>(
+    null,
+  )
   const [hostName, setHostName] = useState('Residente')
   const [houseLabel, setHouseLabel] = useState('Casa')
   const [qrImagesByEventId, setQrImagesByEventId] = useState<Record<string, string>>(
@@ -221,6 +228,57 @@ export default function EventsPage() {
     await loadEvents()
   }
 
+  const handleToggleAddGuest = (event: EventWithMeta) => {
+    const effectiveStatus = getEffectiveStatus(event)
+
+    if (effectiveStatus !== 'active') {
+      toast.error('Este evento ya no esta activo')
+      return
+    }
+
+    setAddingGuestEventId((current) => {
+      const nextValue = current === event.id ? null : event.id
+      setNewGuestName('')
+      return nextValue
+    })
+  }
+
+  const handleAddGuest = async (event: EventWithMeta) => {
+    const guestName = newGuestName.trim()
+    const effectiveStatus = getEffectiveStatus(event)
+
+    if (effectiveStatus !== 'active') {
+      toast.error('Este evento ya no esta activo')
+      return
+    }
+
+    if (!guestName) {
+      toast.error('Escribe el nombre del invitado')
+      return
+    }
+
+    setSavingGuestEventId(event.id)
+
+    const { error } = await supabase.from('event_guests').insert({
+      event_id: event.id,
+      guest_name: guestName,
+      status: 'pending',
+    })
+
+    if (error) {
+      console.error('Error adding event guest:', error)
+      toast.error('No se pudo agregar el invitado')
+      setSavingGuestEventId(null)
+      return
+    }
+
+    toast.success('Invitado agregado')
+    setNewGuestName('')
+    setAddingGuestEventId(null)
+    setSavingGuestEventId(null)
+    await loadEvents()
+  }
+
   const handleToggleQr = async (event: EventWithMeta) => {
     const effectiveStatus = getEffectiveStatus(event)
 
@@ -357,6 +415,57 @@ export default function EventsPage() {
                   </div>
 
                   <div className="mt-4 grid gap-2">
+                    {effectiveStatus === 'active' && (
+                      <button
+                        type="button"
+                        onClick={() => handleToggleAddGuest(event)}
+                        className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#EAF6F0] px-4 py-3 font-semibold text-[#15936A] transition-all duration-200 active:scale-[0.98]"
+                      >
+                        <Plus className="h-5 w-5" />
+                        {addingGuestEventId === event.id
+                          ? 'Ocultar formulario'
+                          : 'Agregar invitado'}
+                      </button>
+                    )}
+
+                    {addingGuestEventId === event.id && (
+                      <form
+                        className="space-y-3 rounded-2xl bg-slate-50 p-4 dark:bg-slate-700/50"
+                        onSubmit={(submitEvent) => {
+                          submitEvent.preventDefault()
+                          void handleAddGuest(event)
+                        }}
+                      >
+                        <label className="block space-y-1">
+                          <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                            Nombre del invitado
+                          </span>
+                          <input
+                            value={newGuestName}
+                            onChange={(inputEvent) =>
+                              setNewGuestName(inputEvent.target.value)
+                            }
+                            className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition-all duration-200 focus:border-[#15936A] dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                            autoComplete="off"
+                          />
+                        </label>
+                        <button
+                          type="submit"
+                          disabled={savingGuestEventId === event.id}
+                          className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#15936A] px-4 py-3 font-semibold text-white transition-all duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.98]"
+                        >
+                          {savingGuestEventId === event.id ? (
+                            <>
+                              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                              Guardando...
+                            </>
+                          ) : (
+                            'Guardar invitado'
+                          )}
+                        </button>
+                      </form>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => void handleToggleQr(event)}
