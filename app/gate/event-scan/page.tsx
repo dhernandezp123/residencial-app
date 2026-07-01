@@ -58,6 +58,27 @@ type AccessProfile = {
   residential_id: string | null
 }
 
+type EntryPhotoKind = 'identity' | 'vehicle' | 'plate'
+
+type EntryPhotoFiles = Record<EntryPhotoKind, File | null>
+
+type EventGuestPhotoFiles = Record<string, EntryPhotoFiles>
+
+type EventGuestPhotoUpload = {
+  guest: EventGuest
+  kind: EntryPhotoKind
+  bucket: string
+  file: File | null
+}
+
+const maxEntryPhotoSizeBytes = 8 * 1024 * 1024
+
+const emptyEntryPhotoFiles = (): EntryPhotoFiles => ({
+  identity: null,
+  vehicle: null,
+  plate: null,
+})
+
 type ScanState =
   | { status: 'loading' }
   | { status: 'error'; title: string }
@@ -103,11 +124,54 @@ export default function EventScanPage() {
   )
 }
 
+function EntryPhotoInput({
+  id,
+  label,
+  file,
+  onChange,
+}: {
+  id: string
+  label: string
+  file: File | null
+  onChange: (fileList: FileList | null) => void
+}) {
+  return (
+    <div className="rounded-2xl bg-white p-4 dark:bg-slate-800">
+      <label
+        htmlFor={id}
+        className="block text-sm font-black text-slate-950 dark:text-white"
+      >
+        {label}
+      </label>
+      <p className="mt-1 text-sm font-semibold text-slate-500">Requerida</p>
+      <input
+        id={id}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={(event) => onChange(event.target.files)}
+        className="mt-3 block w-full text-sm font-semibold text-slate-700 file:mr-3 file:min-h-12 file:rounded-xl file:border-0 file:bg-slate-950 file:px-4 file:py-3 file:font-black file:text-white dark:text-slate-200"
+      />
+      {file && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={URL.createObjectURL(file)}
+          alt={`Vista previa ${label}`}
+          className="mt-3 h-32 w-full rounded-xl object-cover"
+        />
+      )}
+    </div>
+  )
+}
+
 function EventScanContent() {
   const searchParams = useSearchParams()
   const tokenValue = searchParams.get('token')?.trim() || ''
   const [state, setState] = useState<ScanState>({ status: 'loading' })
   const [savingGuestId, setSavingGuestId] = useState<string | null>(null)
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null)
+  const [photoFilesByGuestId, setPhotoFilesByGuestId] =
+    useState<EventGuestPhotoFiles>({})
 
   const loadEvent = useCallback(async () => {
     if (!tokenValue) {
@@ -200,8 +264,89 @@ function EventScanContent() {
     void Promise.resolve().then(loadEvent)
   }, [loadEvent])
 
+  const handleEntryPhotoChange = (
+    guestId: string,
+    kind: EntryPhotoKind,
+    fileList: FileList | null,
+  ) => {
+    const selectedFile = fileList?.[0] || null
+
+    if (selectedFile && selectedFile.size > maxEntryPhotoSizeBytes) {
+      toast.error('La foto debe pesar menos de 8 MB')
+      setPhotoFilesByGuestId((current) => ({
+        ...current,
+        [guestId]: {
+          ...(current[guestId] || emptyEntryPhotoFiles()),
+          [kind]: null,
+        },
+      }))
+      return
+    }
+
+    setPhotoFilesByGuestId((current) => ({
+      ...current,
+      [guestId]: {
+        ...(current[guestId] || emptyEntryPhotoFiles()),
+        [kind]: selectedFile,
+      },
+    }))
+  }
+
+  const buildEntryPhotoPath = (
+    event: EventRecord,
+    guest: EventGuest,
+    kind: EntryPhotoKind,
+    file: File,
+  ) => {
+    const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+    const safeExtension = extension.replace(/[^a-z0-9]/g, '') || 'jpg'
+    const uniqueId =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+    return `${event.residential_id}/${event.id}/${guest.id}/${kind}-${uniqueId}.${safeExtension}`
+  }
+
+  const uploadEntryPhoto = async ({
+    guest,
+    kind,
+    bucket,
+    file,
+  }: EventGuestPhotoUpload) => {
+    if (!file || state.status !== 'success') {
+      return null
+    }
+
+    const path = buildEntryPhotoPath(state.event, guest, kind, file)
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(path, file, {
+        cacheControl: '3600',
+        contentType: file.type || 'image/jpeg',
+        upsert: false,
+      })
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    return data.path
+  }
+
   const updateGuestStatus = async (guest: EventGuest) => {
     if (state.status !== 'success') return
+
+    const isEntry = guest.status !== 'inside'
+    const photoFiles = photoFilesByGuestId[guest.id] || emptyEntryPhotoFiles()
+
+    if (
+      isEntry &&
+      (!photoFiles.identity || !photoFiles.vehicle || !photoFiles.plate)
+    ) {
+      toast.error('Completa la evidencia fotográfica.')
+      return
+    }
 
     setSavingGuestId(guest.id)
 
@@ -240,6 +385,47 @@ function EventScanContent() {
       return
     }
 
+    let identityPhotoUrl: string | null = null
+    let vehiclePhotoUrl: string | null = null
+    let platePhotoUrl: string | null = null
+
+    if (isEntry) {
+      try {
+        setUploadStatus('Subiendo identidad (1/3)...')
+        identityPhotoUrl = await uploadEntryPhoto({
+          guest,
+          kind: 'identity',
+          bucket: 'visitor-identities',
+          file: photoFiles.identity,
+        })
+        setUploadStatus('Subiendo vehiculo (2/3)...')
+        vehiclePhotoUrl = await uploadEntryPhoto({
+          guest,
+          kind: 'vehicle',
+          bucket: 'visitor-vehicles',
+          file: photoFiles.vehicle,
+        })
+        setUploadStatus('Subiendo placa (3/3)...')
+        platePhotoUrl = await uploadEntryPhoto({
+          guest,
+          kind: 'plate',
+          bucket: 'visitor-plates',
+          file: photoFiles.plate,
+        })
+        setUploadStatus(null)
+      } catch (error) {
+        console.error('Error uploading event guest entry photo:', error)
+        setUploadStatus(null)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'No se pudo subir la evidencia fotografica',
+        )
+        setSavingGuestId(null)
+        return
+      }
+    }
+
     const now = new Date().toISOString()
     const action = guest.status === 'inside' ? 'exit' : 'entry'
     const nextPayload =
@@ -275,6 +461,9 @@ function EventScanContent() {
         guard_id: accessProfile.id,
         action,
         occurred_at: now,
+        identity_photo_url: identityPhotoUrl,
+        vehicle_photo_url: vehiclePhotoUrl,
+        plate_photo_url: platePhotoUrl,
       })
 
     if (auditError) {
@@ -287,6 +476,10 @@ function EventScanContent() {
     toast.success(
       guest.status === 'inside' ? 'Salida registrada' : 'Ingreso registrado',
     )
+    setPhotoFilesByGuestId((current) => ({
+      ...current,
+      [guest.id]: emptyEntryPhotoFiles(),
+    }))
     setSavingGuestId(null)
     await loadEvent()
   }
@@ -388,6 +581,8 @@ function EventScanContent() {
           {state.guests.map((guest) => {
             const canCheckIn = guest.status === 'pending'
             const canCheckOut = guest.status === 'inside'
+            const photoFiles =
+              photoFilesByGuestId[guest.id] || emptyEntryPhotoFiles()
 
             return (
               <article
@@ -416,6 +611,43 @@ function EventScanContent() {
                   </StatusBadge>
                 </div>
 
+                {canCheckIn && (
+                  <section className="mt-4 space-y-3 rounded-2xl bg-slate-50 p-4 dark:bg-slate-700/50">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        Evidencia fotografica
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-slate-600 dark:text-slate-300">
+                        Requerida antes de registrar ingreso.
+                      </p>
+                    </div>
+                    <EntryPhotoInput
+                      id={`event-${guest.id}-identity-photo`}
+                      label="Foto identidad"
+                      file={photoFiles.identity}
+                      onChange={(fileList) =>
+                        handleEntryPhotoChange(guest.id, 'identity', fileList)
+                      }
+                    />
+                    <EntryPhotoInput
+                      id={`event-${guest.id}-vehicle-photo`}
+                      label="Foto vehiculo"
+                      file={photoFiles.vehicle}
+                      onChange={(fileList) =>
+                        handleEntryPhotoChange(guest.id, 'vehicle', fileList)
+                      }
+                    />
+                    <EntryPhotoInput
+                      id={`event-${guest.id}-plate-photo`}
+                      label="Foto placa"
+                      file={photoFiles.plate}
+                      onChange={(fileList) =>
+                        handleEntryPhotoChange(guest.id, 'plate', fileList)
+                      }
+                    />
+                  </section>
+                )}
+
                 {(canCheckIn || canCheckOut) && (
                   <button
                     type="button"
@@ -433,7 +665,7 @@ function EventScanContent() {
                       <LogIn className="h-5 w-5" />
                     )}
                     {savingGuestId === guest.id
-                      ? 'Guardando...'
+                      ? uploadStatus || 'Registrando...'
                       : canCheckOut
                         ? 'Registrar salida'
                         : 'Registrar ingreso'}
