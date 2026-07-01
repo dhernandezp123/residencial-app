@@ -47,23 +47,54 @@ type Profile = {
   is_residential_admin: boolean | null
 }
 
-const roleLabels: Record<Profile['role'], string> = {
+type ActiveRole = 'super_admin' | 'admin' | 'resident' | 'guard'
+
+const roleLabels: Record<ActiveRole, string> = {
   super_admin: 'Super Admin',
   admin: 'Administrador',
   resident: 'Residente',
   guard: 'Guardia',
 }
 
-const roleBadgeClass: Record<Profile['role'], string> = {
+const roleBadgeClass: Record<ActiveRole, string> = {
   super_admin: 'bg-violet-500/20 text-violet-300',
   admin: 'bg-blue-500/20 text-blue-300',
   resident: 'bg-emerald-500/20 text-emerald-300',
   guard: 'bg-amber-500/20 text-amber-300',
 }
 
+const roleStorageKey = 'residentpass-active-role'
+
+function getAvailableRoles(profile: Profile): ActiveRole[] {
+  const roles: ActiveRole[] = []
+
+  if (profile.role === 'resident') {
+    roles.push('resident')
+  }
+
+  if (profile.role === 'admin' || profile.is_residential_admin) {
+    roles.push('admin')
+  }
+
+  if (profile.role === 'super_admin') {
+    roles.push('super_admin')
+  }
+
+  if (profile.role === 'guard') {
+    roles.push('guard')
+  }
+
+  if (roles.length === 0) {
+    roles.push(profile.role)
+  }
+
+  return Array.from(new Set(roles))
+}
+
 export default function HomePage() {
   const router = useRouter()
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [activeRole, setActiveRole] = useState<ActiveRole | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -81,7 +112,22 @@ export default function HomePage() {
         .eq('user_id', sessionData.session.user.id)
         .single()
 
-      setProfile(data)
+      if (data) {
+        const availableRoles = getAvailableRoles(data)
+        const storedRole = window.localStorage.getItem(
+          roleStorageKey,
+        ) as ActiveRole | null
+        const nextRole =
+          storedRole && availableRoles.includes(storedRole)
+            ? storedRole
+            : availableRoles[0]
+
+        setProfile(data)
+        setActiveRole(nextRole)
+      } else {
+        setProfile(null)
+        setActiveRole(null)
+      }
       setLoading(false)
     }
 
@@ -91,6 +137,11 @@ export default function HomePage() {
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push('/login')
+  }
+
+  const handleRoleChange = (role: ActiveRole) => {
+    setActiveRole(role)
+    window.localStorage.setItem(roleStorageKey, role)
   }
 
   if (loading) {
@@ -128,13 +179,15 @@ export default function HomePage() {
     )
   }
 
+  const availableRoles = getAvailableRoles(profile)
+  const selectedRole =
+    activeRole && availableRoles.includes(activeRole)
+      ? activeRole
+      : availableRoles[0]
+
   return (
     <main className="min-h-screen bg-slate-100 dark:bg-slate-900 px-5 py-6">
-      <div
-        className={`mx-auto max-w-sm space-y-3 ${
-          profile.role === 'resident' ? 'pb-28' : ''
-        }`}
-      >
+      <div className="mx-auto max-w-sm space-y-3 pb-28">
 
         {/* Profile card */}
         <div className="rounded-2xl bg-[#14231C] p-5 text-white shadow-sm">
@@ -147,11 +200,9 @@ export default function HomePage() {
                 {profile.first_name} {profile.last_name}
               </h1>
               <span
-                className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${roleBadgeClass[profile.role]}`}
+                className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${roleBadgeClass[selectedRole]}`}
               >
-                {profile.role === 'resident' && profile.is_residential_admin
-                  ? 'Residente + Admin'
-                  : roleLabels[profile.role]}
+                {roleLabels[selectedRole]}
               </span>
             </div>
             <button
@@ -162,33 +213,69 @@ export default function HomePage() {
               Salir
             </button>
           </div>
+          {availableRoles.length > 1 && (
+            <RoleSwitcher
+              activeRole={selectedRole}
+              roles={availableRoles}
+              onChange={handleRoleChange}
+            />
+          )}
         </div>
 
         <PwaInstallHint />
 
-        {/* Role dashboards */}
-        {profile.role === 'super_admin' && (
-          <SuperAdminDashboard onLogout={handleLogout} />
-        )}
-        {(profile.role === 'admin' || profile.is_residential_admin) && (
-          <AdminDashboard onLogout={handleLogout} />
-        )}
-        {profile.role === 'resident' && (
+        {selectedRole === 'super_admin' && <SuperAdminDashboard />}
+        {selectedRole === 'admin' && <AdminDashboard />}
+        {selectedRole === 'resident' && (
           <ResidentDashboard
             profileId={profile.id}
             residentialId={profile.residential_id}
           />
         )}
-        {profile.role === 'guard' && (
-          <GuardDashboard onLogout={handleLogout} />
-        )}
+        {selectedRole === 'guard' && <GuardDashboard />}
+
+        <MobileNavigation activeRole={selectedRole} />
 
       </div>
     </main>
   )
 }
 
-function SuperAdminDashboard({ onLogout }: { onLogout: () => void }) {
+function RoleSwitcher({
+  activeRole,
+  roles,
+  onChange,
+}: {
+  activeRole: ActiveRole
+  roles: ActiveRole[]
+  onChange: (role: ActiveRole) => void
+}) {
+  return (
+    <div className="mt-4 rounded-2xl bg-white/10 p-1">
+      <div
+        className="grid gap-1"
+        style={{ gridTemplateColumns: `repeat(${roles.length}, minmax(0, 1fr))` }}
+      >
+        {roles.map((role) => (
+          <button
+            key={role}
+            type="button"
+            onClick={() => onChange(role)}
+            className={`min-h-10 rounded-xl px-2 py-2 text-xs font-bold transition-all duration-200 active:scale-[0.98] ${
+              activeRole === role
+                ? 'bg-white text-[#14231C] shadow-sm'
+                : 'text-slate-300 hover:bg-white/10'
+            }`}
+          >
+            {roleLabels[role]}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function SuperAdminDashboard() {
   return (
     <div className="space-y-3">
       <DashboardButton
@@ -233,12 +320,11 @@ function SuperAdminDashboard({ onLogout }: { onLogout: () => void }) {
         subtitle="Asignar admins por residencial"
         comingSoon
       />
-      <LogoutButton onLogout={onLogout} />
     </div>
   )
 }
 
-function AdminDashboard({ onLogout }: { onLogout: () => void }) {
+function AdminDashboard() {
   return (
     <div className="space-y-3">
       <DashboardButton
@@ -271,7 +357,6 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         subtitle="Dar seguimiento a reportes"
         href="/dashboard/reports"
       />
-      <LogoutButton onLogout={onLogout} />
     </div>
   )
 }
@@ -311,21 +396,13 @@ function ResidentDashboard({
           profileId={profileId}
           residentialId={residentialId}
         />
-      </div>
-
-      <MobileNavigation />
-    </>
+      </div></>
   )
 }
 
-function MobileNavigation() {
+function MobileNavigation({ activeRole }: { activeRole: ActiveRole }) {
   const pathname = usePathname()
-  const items: {
-    href: string
-    label: string
-    ariaLabel: string
-    icon: LucideIcon
-  }[] = [
+  const residentItems = [
     {
       href: '/dashboard/visits',
       label: 'Visitas',
@@ -346,16 +423,85 @@ function MobileNavigation() {
       icon: MessageSquareWarning,
     },
   ]
+  const adminItems = [
+    {
+      href: '/dashboard/admin',
+      label: 'Admin',
+      ariaLabel: 'Dashboard administrativo',
+      icon: BarChart3,
+    },
+    { href: '/dashboard/houses', label: 'Casas', ariaLabel: 'Casas', icon: Home },
+    {
+      href: '/dashboard/residents',
+      label: 'Vecinos',
+      ariaLabel: 'Residentes',
+      icon: UserCheck,
+    },
+    {
+      href: '/dashboard/guards',
+      label: 'Guardias',
+      ariaLabel: 'Guardias',
+      icon: Shield,
+    },
+  ]
+  const superAdminItems = [
+    {
+      href: '/dashboard/admin',
+      label: 'Admin',
+      ariaLabel: 'Dashboard administrativo',
+      icon: BarChart3,
+    },
+    {
+      href: '/dashboard/residentials',
+      label: 'Resid.',
+      ariaLabel: 'Residenciales',
+      icon: Building2,
+    },
+    { href: '/dashboard/houses', label: 'Casas', ariaLabel: 'Casas', icon: Home },
+    {
+      href: '/dashboard/guards',
+      label: 'Guardias',
+      ariaLabel: 'Guardias',
+      icon: Shield,
+    },
+  ]
+  const guardItems = [
+    {
+      href: '/gate/scan',
+      label: 'Escanear',
+      ariaLabel: 'Escanear QR',
+      icon: Camera,
+    },
+    {
+      href: '/dashboard/entries',
+      label: 'Entradas',
+      ariaLabel: 'Entradas recientes',
+      icon: ClipboardList,
+    },
+    {
+      href: '/dashboard/inside',
+      label: 'Dentro',
+      ariaLabel: 'Personas dentro',
+      icon: Users,
+    },
+  ]
+  const items =
+    activeRole === 'resident'
+      ? residentItems
+      : activeRole === 'super_admin'
+        ? superAdminItems
+        : activeRole === 'guard'
+          ? guardItems
+          : adminItems
 
   return (
     <FloatingBottomNavigation
-      ariaLabel="Navegación residente"
+      ariaLabel={`Navegacion ${roleLabels[activeRole]}`}
       activeHref={pathname}
       items={items}
     />
   )
 }
-
 function ResidentNotificationCard({
   icon: Icon,
   title,
@@ -407,7 +553,7 @@ function ResidentNotificationCard({
   return <div className={className}>{content}</div>
 }
 
-function GuardDashboard({ onLogout }: { onLogout: () => void }) {
+function GuardDashboard() {
   return (
     <div className="space-y-3">
       <DashboardButton
@@ -429,7 +575,6 @@ function GuardDashboard({ onLogout }: { onLogout: () => void }) {
         subtitle="Ver visitantes actualmente dentro"
         href="/dashboard/inside"
       />
-      <LogoutButton onLogout={onLogout} />
     </div>
   )
 }
@@ -780,34 +925,3 @@ function DashboardButton({
   )
 }
 
-function LogoutButton({ onLogout }: { onLogout: () => void }) {
-  const [confirming, setConfirming] = useState(false)
-
-  useEffect(() => {
-    if (!confirming) return
-    const timer = setTimeout(() => setConfirming(false), 4000)
-    return () => clearTimeout(timer)
-  }, [confirming])
-
-  const handleClick = () => {
-    if (!confirming) {
-      setConfirming(true)
-      return
-    }
-    onLogout()
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={handleClick}
-      className={`min-h-12 w-full rounded-2xl px-4 py-3 font-semibold text-white active:scale-[0.99] transition-colors ${
-        confirming
-          ? 'bg-red-700 hover:bg-red-800'
-          : 'bg-red-600 hover:bg-red-700'
-      }`}
-    >
-      {confirming ? '¿Confirmar cierre de sesión?' : 'Cerrar sesión'}
-    </button>
-  )
-}
