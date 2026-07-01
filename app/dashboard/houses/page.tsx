@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Home } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/app/components/PageHeader'
@@ -74,6 +74,17 @@ type HouseAction =
   | 'deactivate-house'
   | 'activate-security'
   | 'deactivate-security'
+
+type HouseGroup = {
+  key: string
+  label: string
+  sortResidentialName: string
+  sortBlock: string
+  houses: House[]
+  activeCount: number
+  securityCount: number
+  pendingResidents: number
+}
 
 function getResidentialName(
   residentials: HouseRow['residentials'],
@@ -419,6 +430,56 @@ export default function AdminHousesPage() {
       profile.role === 'super_admin' ||
       profile.is_residential_admin)
 
+  const groupedHouses = useMemo<HouseGroup[]>(() => {
+    const isGlobalView = profile?.role === 'super_admin'
+    const groups = new Map<string, HouseGroup>()
+
+    houses.forEach((house) => {
+      const normalizedBlock = house.block.trim() || 'Sin bloque'
+      const blockLabel =
+        normalizedBlock === 'Sin bloque'
+          ? normalizedBlock
+          : `Bloque ${normalizedBlock}`
+      const key = `${isGlobalView ? house.residential_id : 'residential'}:${normalizedBlock.toUpperCase()}`
+      const existingGroup = groups.get(key)
+
+      if (existingGroup) {
+        existingGroup.houses.push(house)
+        existingGroup.activeCount += house.is_active ? 1 : 0
+        existingGroup.securityCount += house.pays_security ? 1 : 0
+        existingGroup.pendingResidents += house.pendingResidents
+        return
+      }
+
+      groups.set(key, {
+        key,
+        label: isGlobalView
+          ? `${house.residentialName} - ${blockLabel}`
+          : blockLabel,
+        sortResidentialName: isGlobalView ? house.residentialName : '',
+        sortBlock: normalizedBlock,
+        houses: [house],
+        activeCount: house.is_active ? 1 : 0,
+        securityCount: house.pays_security ? 1 : 0,
+        pendingResidents: house.pendingResidents,
+      })
+    })
+
+    return Array.from(groups.values()).sort((firstGroup, secondGroup) => {
+      const residentialOrder = firstGroup.sortResidentialName.localeCompare(
+        secondGroup.sortResidentialName,
+        'es',
+        { numeric: true },
+      )
+
+      if (residentialOrder !== 0) return residentialOrder
+
+      return firstGroup.sortBlock.localeCompare(secondGroup.sortBlock, 'es', {
+        numeric: true,
+      })
+    })
+  }, [houses, profile?.role])
+
   if (loading) {
     return (
       <main className="min-h-screen bg-slate-100 dark:bg-slate-900 px-5 py-6">
@@ -620,13 +681,50 @@ export default function AdminHousesPage() {
             }
           />
         ) : (
-          <section className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              {houses.length} casa{houses.length !== 1 ? 's' : ''} registrada
-              {houses.length !== 1 ? 's' : ''}
-            </p>
-            {houses.map((house) => (
-              (() => {
+          <section className="space-y-5">
+            <div className="flex items-end justify-between gap-3 px-1">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Casas registradas
+                </p>
+                <p className="mt-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  {houses.length} casa{houses.length !== 1 ? 's' : ''} en{' '}
+                  {groupedHouses.length} grupo
+                  {groupedHouses.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+            </div>
+
+            {groupedHouses.map((group) => (
+              <section key={group.key} className="space-y-3">
+                <div className="rounded-2xl border border-white/70 bg-white/70 px-4 py-3 shadow-sm backdrop-blur-xl dark:border-slate-700 dark:bg-slate-800/80">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-base font-black text-slate-950 dark:text-white">
+                        {group.label}
+                      </h2>
+                      <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                        {group.houses.length} casa
+                        {group.houses.length !== 1 ? 's' : ''} -{' '}
+                        {group.activeCount} activa
+                        {group.activeCount !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    <div className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      <p>{group.securityCount} con seguridad</p>
+                      {group.pendingResidents > 0 && (
+                        <p className="mt-1 text-amber-700 dark:text-amber-300">
+                          {group.pendingResidents} pendiente
+                          {group.pendingResidents !== 1 ? 's' : ''}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {group.houses.map((house) => (
+                    (() => {
                 const activeAction: HouseAction = house.is_active
                   ? 'deactivate-house'
                   : 'activate-house'
@@ -642,7 +740,7 @@ export default function AdminHousesPage() {
                   securityAction,
                 )
 
-                return (
+                      return (
               <article
                 key={house.id}
                 className={`rounded-2xl bg-white dark:bg-slate-800 p-5 shadow-sm ${
@@ -754,8 +852,11 @@ export default function AdminHousesPage() {
                   </button>
                 </div>
               </article>
-                )
-              })()
+                      )
+                    })()
+                  ))}
+                </div>
+              </section>
             ))}
           </section>
         )}
