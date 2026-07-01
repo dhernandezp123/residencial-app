@@ -7,8 +7,21 @@ import { toast } from 'sonner'
 type EventQrCardProps = {
   qrDataUrl: string
   eventTitle: string
+  hostName: string
+  houseLabel: string
+  eventDate: string
+  validUntil: string
+  guestCount: number
   shareUrl: string
 }
+
+type CardLine = {
+  label: string
+  value: string
+}
+
+const cardWidth = 1086
+const cardHeight = 1536
 
 function downloadBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob)
@@ -21,22 +34,115 @@ function downloadBlob(blob: Blob, fileName: string) {
   URL.revokeObjectURL(url)
 }
 
-function dataUrlToBlob(dataUrl: string) {
-  const [metadata, data] = dataUrl.split(',')
-  const mime = metadata.match(/:(.*?);/)?.[1] || 'image/png'
-  const binary = atob(data)
-  const bytes = new Uint8Array(binary.length)
+function loadImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new window.Image()
+    image.crossOrigin = 'anonymous'
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error('No se pudo cargar el QR'))
+    image.src = src
+  })
+}
 
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index)
+function normalizeDisplayName(value: string) {
+  return value.replace(/\s+/g, ' ').trim()
+}
+
+function formatCardDate(value: string) {
+  return new Intl.DateTimeFormat('es-HN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
+function setResponsiveFont(
+  context: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  fontWeight: number,
+  maxSize: number,
+  minSize: number,
+) {
+  let fontSize = maxSize
+
+  while (fontSize > minSize) {
+    context.font = `${fontWeight} ${fontSize}px Arial`
+
+    if (context.measureText(text).width <= maxWidth) {
+      return fontSize
+    }
+
+    fontSize -= 1
   }
 
-  return new Blob([bytes], { type: mime })
+  context.font = `${fontWeight} ${minSize}px Arial`
+  return minSize
+}
+
+function drawWrappedText(
+  context: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+  maxLines: number,
+) {
+  const words = text.split(' ')
+  const lines: string[] = []
+  let currentLine = ''
+
+  words.forEach((word) => {
+    const testLine = currentLine ? `${currentLine} ${word}` : word
+
+    if (context.measureText(testLine).width <= maxWidth) {
+      currentLine = testLine
+      return
+    }
+
+    if (currentLine) {
+      lines.push(currentLine)
+    }
+    currentLine = word
+  })
+
+  if (currentLine) {
+    lines.push(currentLine)
+  }
+
+  lines.slice(0, maxLines).forEach((line, index) => {
+    const renderedLine =
+      index === maxLines - 1 && lines.length > maxLines
+        ? `${line.replace(/\.$/, '')}...`
+        : line
+    context.fillText(renderedLine, x, y + index * lineHeight)
+  })
+}
+
+function fillRoundRect(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+) {
+  context.beginPath()
+  context.roundRect(x, y, width, height, radius)
+  context.fill()
 }
 
 export function EventQrCard({
   qrDataUrl,
   eventTitle,
+  hostName,
+  houseLabel,
+  eventDate,
+  validUntil,
+  guestCount,
   shareUrl,
 }: EventQrCardProps) {
   const [sharing, setSharing] = useState(false)
@@ -45,11 +151,99 @@ export function EventQrCard({
     .replace(/[^a-z0-9]+/gi, '-')
     .toLowerCase()}.png`
 
+  const generateEventCardBlob = async () => {
+    const qrImage = await loadImage(qrDataUrl)
+    const canvas = document.createElement('canvas')
+    canvas.width = cardWidth
+    canvas.height = cardHeight
+    const context = canvas.getContext('2d')
+
+    if (!context) {
+      throw new Error('No se pudo preparar la imagen')
+    }
+
+    context.fillStyle = '#F3F8F5'
+    context.fillRect(0, 0, cardWidth, cardHeight)
+
+    context.fillStyle = '#15936A'
+    fillRoundRect(context, 76, 76, cardWidth - 152, cardHeight - 152, 56)
+
+    context.fillStyle = '#FFFFFF'
+    fillRoundRect(context, 126, 126, cardWidth - 252, cardHeight - 252, 44)
+
+    context.textAlign = 'center'
+    context.fillStyle = '#15936A'
+    context.font = '800 44px Arial'
+    context.fillText('ResidentPass', cardWidth / 2, 214)
+
+    context.fillStyle = '#14231C'
+    setResponsiveFont(context, eventTitle, 760, 800, 54, 34)
+    drawWrappedText(
+      context,
+      normalizeDisplayName(eventTitle),
+      cardWidth / 2,
+      300,
+      760,
+      60,
+      2,
+    )
+
+    const qrSize = 520
+    const qrX = (cardWidth - qrSize) / 2
+    const qrY = 440
+    context.fillStyle = '#F8FAFC'
+    fillRoundRect(context, qrX - 28, qrY - 28, qrSize + 56, qrSize + 56, 34)
+    context.drawImage(qrImage, qrX, qrY, qrSize, qrSize)
+
+    context.fillStyle = '#15936A'
+    context.font = '800 30px Arial'
+    context.fillText('Presenta este codigo en garita', cardWidth / 2, 1030)
+
+    const lines: CardLine[] = [
+      { label: 'Anfitrion', value: normalizeDisplayName(hostName) },
+      { label: 'Casa', value: houseLabel },
+      { label: 'Fecha del evento', value: formatCardDate(eventDate) },
+      { label: 'Valido hasta', value: formatCardDate(validUntil) },
+      { label: 'Invitados', value: String(guestCount) },
+    ]
+
+    context.textAlign = 'left'
+    const firstColumnX = 190
+    const secondColumnX = 565
+    const firstRowY = 1120
+    const rowGap = 74
+    const columnWidth = 330
+
+    lines.forEach((line, index) => {
+      const isSecondColumn = index % 2 === 1
+      const columnX = isSecondColumn ? secondColumnX : firstColumnX
+      const rowY = firstRowY + Math.floor(index / 2) * rowGap
+
+      context.font = '800 18px Arial'
+      context.fillStyle = '#15936A'
+      context.fillText(line.label.toUpperCase(), columnX, rowY)
+      context.fillStyle = '#14231C'
+      setResponsiveFont(context, line.value, columnWidth, 700, 25, 17)
+      drawWrappedText(context, line.value, columnX, rowY + 30, columnWidth, 28, 2)
+    })
+
+    return new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error('No se pudo generar la tarjeta del evento'))
+          return
+        }
+
+        resolve(blob)
+      }, 'image/png')
+    })
+  }
+
   const handleShare = async () => {
     setSharing(true)
 
     try {
-      const blob = dataUrlToBlob(qrDataUrl)
+      const blob = await generateEventCardBlob()
       const file = new File([blob], fileName, { type: 'image/png' })
 
       if (
@@ -87,15 +281,64 @@ export function EventQrCard({
 
   return (
     <div className="qr-reveal space-y-3 pb-[env(safe-area-inset-bottom)]">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 ease-out">
-        <Image
-          src={qrDataUrl}
-          alt="Código QR del evento"
-          width={256}
-          height={256}
-          unoptimized
-          className="mx-auto aspect-square w-full max-w-64"
-        />
+      <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-white shadow-lg shadow-slate-200/80 transition-all duration-200 ease-out dark:border-slate-700 dark:bg-slate-800 dark:shadow-black/20">
+        <div className="bg-[#15936A] px-5 py-4 text-center text-white">
+          <p className="text-sm font-black tracking-wide">ResidentPass</p>
+          <p className="mt-1 text-xs font-semibold text-white/80">
+            Presenta este codigo en garita
+          </p>
+        </div>
+
+        <div className="space-y-4 p-5">
+          <div className="text-center">
+            <p className="text-xs font-bold uppercase text-[#15936A]">Evento</p>
+            <h2 className="mt-1 text-xl font-black leading-tight text-slate-950 dark:text-white">
+              {eventTitle}
+            </h2>
+          </div>
+
+          <div className="rounded-3xl bg-slate-50 p-4 dark:bg-slate-700/50">
+            <Image
+              src={qrDataUrl}
+              alt="Codigo QR del evento"
+              width={320}
+              height={320}
+              unoptimized
+              className="mx-auto aspect-square w-full max-w-72"
+            />
+          </div>
+
+          <dl className="grid grid-cols-2 gap-3 text-sm">
+            <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-700/50">
+              <dt className="text-xs font-bold text-slate-500">Anfitrion</dt>
+              <dd className="mt-1 font-black text-slate-950 dark:text-white">
+                {hostName}
+              </dd>
+            </div>
+            <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-700/50">
+              <dt className="text-xs font-bold text-slate-500">Casa</dt>
+              <dd className="mt-1 font-black text-slate-950 dark:text-white">
+                {houseLabel}
+              </dd>
+            </div>
+            <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-700/50">
+              <dt className="text-xs font-bold text-slate-500">Fecha</dt>
+              <dd className="mt-1 font-black text-slate-950 dark:text-white">
+                {formatCardDate(eventDate)}
+              </dd>
+            </div>
+            <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-700/50">
+              <dt className="text-xs font-bold text-slate-500">Valido hasta</dt>
+              <dd className="mt-1 font-black text-slate-950 dark:text-white">
+                {formatCardDate(validUntil)}
+              </dd>
+            </div>
+          </dl>
+
+          <p className="rounded-2xl bg-[#EAF6F0] px-4 py-3 text-center text-sm font-black text-[#15936A]">
+            {guestCount} invitados
+          </p>
+        </div>
       </div>
 
       <button

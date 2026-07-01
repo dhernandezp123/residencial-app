@@ -229,14 +229,24 @@ function GateScanContent() {
     try {
       const decodedUrl = new URL(trimmedText, window.location.origin)
 
+      if (decodedUrl.pathname === '/gate/event-scan') {
+        return {
+          type: 'event' as const,
+          token: decodedUrl.searchParams.get('token')?.trim() || '',
+        }
+      }
+
       if (decodedUrl.pathname === '/gate/scan') {
-        return decodedUrl.searchParams.get('token')?.trim() || ''
+        return {
+          type: 'visit' as const,
+          token: decodedUrl.searchParams.get('token')?.trim() || '',
+        }
       }
     } catch {
-      return trimmedText
+      return { type: 'visit' as const, token: trimmedText }
     }
 
-    return trimmedText
+    return { type: 'visit' as const, token: trimmedText }
   }
 
   const stopScanner = useCallback(async () => {
@@ -293,12 +303,19 @@ function GateScanContent() {
           })
 
           if (code?.data) {
-            const scannedToken = extractTokenFromQr(code.data)
-            if (scannedToken) {
+            const scannedQr = extractTokenFromQr(code.data)
+            if (scannedQr.token) {
               scannedRef.current = true
               signal('scan_success')
               void stopScanner().then(() => {
-                router.push(`/gate/scan?token=${encodeURIComponent(scannedToken)}`)
+                if (scannedQr.type === 'event') {
+                  router.push(
+                    `/gate/event-scan?token=${encodeURIComponent(scannedQr.token)}`,
+                  )
+                  return
+                }
+
+                router.push(`/gate/scan?token=${encodeURIComponent(scannedQr.token)}`)
               })
               return
             }
@@ -333,10 +350,19 @@ function GateScanContent() {
       return
     }
 
+    const scannedQr = extractTokenFromQr(token)
+
+    if (scannedQr.type === 'event') {
+      router.replace(
+        `/gate/event-scan?token=${encodeURIComponent(scannedQr.token)}`,
+      )
+      return
+    }
+
     const { data: qrTokenData, error: qrTokenError } = await supabase
       .from('qr_tokens')
       .select('id,visit_id,residential_id,token,expires_at,status')
-      .eq('token', token)
+      .eq('token', scannedQr.token)
       .single()
 
     if (qrTokenError || !qrTokenData) {
@@ -452,7 +478,7 @@ function GateScanContent() {
       openEntry: currentOpenEntry,
     })
     signal('scan_success')
-  }, [setErrorResult, signal, token])
+  }, [router, setErrorResult, signal, token])
 
   const handleEntryPhotoChange = (
     kind: EntryPhotoKind,

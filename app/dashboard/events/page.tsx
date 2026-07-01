@@ -14,6 +14,9 @@ import { EmptyState, StatusBadge } from '@/components/ui'
 
 type Profile = {
   id: string
+  first_name: string
+  last_name: string
+  house_id: string | null
   role: 'super_admin' | 'admin' | 'resident' | 'guard'
   status: 'pending' | 'approved' | 'rejected' | 'inactive'
 }
@@ -68,6 +71,8 @@ export default function EventsPage() {
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
+  const [hostName, setHostName] = useState('Residente')
+  const [houseLabel, setHouseLabel] = useState('Casa')
   const [qrImagesByEventId, setQrImagesByEventId] = useState<Record<string, string>>(
     {},
   )
@@ -85,7 +90,7 @@ export default function EventsPage() {
 
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .select('id,role,status')
+      .select('id,first_name,last_name,house_id,role,status')
       .eq('user_id', sessionData.session.user.id)
       .single()
 
@@ -97,6 +102,19 @@ export default function EventsPage() {
     }
 
     setProfile(profileData)
+    setHostName(`${profileData.first_name} ${profileData.last_name}`)
+
+    if (profileData.house_id) {
+      const { data: houseData, error: houseError } = await supabase
+        .from('houses')
+        .select('block,house_number')
+        .eq('id', profileData.house_id)
+        .single()
+
+      if (!houseError && houseData) {
+        setHouseLabel(`Casa ${houseData.block}-${houseData.house_number}`)
+      }
+    }
 
     const { data: eventsData, error: eventsError } = await supabase
       .from('events')
@@ -370,6 +388,11 @@ export default function EventsPage() {
                       <EventQrCard
                         qrDataUrl={qrDataUrl}
                         eventTitle={event.title}
+                        hostName={hostName}
+                        houseLabel={houseLabel}
+                        eventDate={event.event_date}
+                        validUntil={event.valid_until}
+                        guestCount={event.guestCount}
                         shareUrl={shareUrl}
                       />
                     </div>

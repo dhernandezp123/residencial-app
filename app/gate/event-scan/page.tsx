@@ -51,7 +51,7 @@ type Host = {
   last_name: string
 }
 
-type GuardProfile = {
+type AccessProfile = {
   id: string
   role: 'super_admin' | 'admin' | 'resident' | 'guard'
   status: 'pending' | 'approved' | 'rejected' | 'inactive'
@@ -226,14 +226,16 @@ function EventScanContent() {
       return
     }
 
-    const guardProfile = guardData as GuardProfile
+    const accessProfile = guardData as AccessProfile
 
-    if (
-      guardProfile.status !== 'approved' ||
-      guardProfile.role !== 'guard' ||
-      guardProfile.residential_id !== state.event.residential_id
-    ) {
-      toast.error('Tu perfil de guardia no está habilitado para este evento')
+    const canValidateEvent =
+      accessProfile.status === 'approved' &&
+      (accessProfile.role === 'super_admin' ||
+        ((accessProfile.role === 'guard' || accessProfile.role === 'admin') &&
+          accessProfile.residential_id === state.event.residential_id))
+
+    if (!canValidateEvent) {
+      toast.error('Tu perfil no esta habilitado para este evento')
       setSavingGuestId(null)
       return
     }
@@ -270,7 +272,7 @@ function EventScanContent() {
         residential_id: state.event.residential_id,
         event_id: state.event.id,
         event_guest_id: guest.id,
-        guard_id: guardProfile.id,
+        guard_id: accessProfile.id,
         action,
         occurred_at: now,
       })

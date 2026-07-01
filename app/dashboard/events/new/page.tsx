@@ -32,6 +32,11 @@ type CreatedEvent = {
   title: string
   shareUrl: string
   qrDataUrl: string
+  hostName: string
+  houseLabel: string
+  eventDate: string
+  validUntil: string
+  guestCount: number
 }
 
 function toLocalDateTimeInput(date: Date) {
@@ -65,6 +70,7 @@ export default function NewEventPage() {
     buildInitialFormData(),
   )
   const [createdEvent, setCreatedEvent] = useState<CreatedEvent | null>(null)
+  const [houseLabel, setHouseLabel] = useState('Casa')
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -92,6 +98,19 @@ export default function NewEventPage() {
       }
 
       setProfile(data)
+
+      if (data.house_id) {
+        const { data: houseData, error: houseError } = await supabase
+          .from('houses')
+          .select('block,house_number')
+          .eq('id', data.house_id)
+          .single()
+
+        if (!houseError && houseData) {
+          setHouseLabel(`Casa ${houseData.block}-${houseData.house_number}`)
+        }
+      }
+
       setLoading(false)
     }
 
@@ -232,6 +251,11 @@ export default function NewEventPage() {
       title: eventData.title,
       shareUrl,
       qrDataUrl,
+      hostName: `${profile.first_name} ${profile.last_name}`,
+      houseLabel,
+      eventDate: eventDate.toISOString(),
+      validUntil: validUntil.toISOString(),
+      guestCount: cleanGuests.length,
     })
     setFormData(buildInitialFormData())
     setSaving(false)
@@ -288,6 +312,11 @@ export default function NewEventPage() {
               <EventQrCard
                 qrDataUrl={createdEvent.qrDataUrl}
                 eventTitle={createdEvent.title}
+                hostName={createdEvent.hostName}
+                houseLabel={createdEvent.houseLabel}
+                eventDate={createdEvent.eventDate}
+                validUntil={createdEvent.validUntil}
+                guestCount={createdEvent.guestCount}
                 shareUrl={createdEvent.shareUrl}
               />
             </div>
