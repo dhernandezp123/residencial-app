@@ -13,26 +13,26 @@ Estados permitidos: `PENDIENTE`, `PASÓ`, `FALLÓ`, `BLOQUEADO`.
 | ANO-005 | Anónimo | Registro con casa válida | Completar registro con casa válida, seguridad activa y cupo disponible. | Solicitud se crea correctamente y queda pendiente de aprobación. | PENDIENTE |  |
 | ANO-006 | Anónimo | Registro con casa sin seguridad | Intentar registrarse en una casa con seguridad desactivada. | El sistema bloquea o explica que la casa no está habilitada para uso de la app. | PENDIENTE |  |
 | ANO-007 | Anónimo | Registro con cupo lleno | Intentar registrarse en una casa que ya alcanzó el cupo de residentes app. | El sistema impide crear la solicitud y muestra mensaje claro. | PENDIENTE |  |
-| RES-001 | Residente | Login | Iniciar sesión con residente aprobado. | Redirige a `/dashboard` con acciones principales visibles. | PENDIENTE |  |
-| RES-002 | Residente | Crear visita | Desde dashboard tocar Visita, llenar nombre y vencimiento, crear. | Se crea visita, aparece QR, botón compartir imagen y fallback de link. | PENDIENTE |  |
-| RES-003 | Residente | Crear delivery | Desde dashboard tocar Delivery, revisar tipo prellenado, crear. | Se crea delivery con vencimiento sugerido de 2 horas y QR compartible. | PENDIENTE |  |
-| RES-004 | Residente | Crear evento | Desde dashboard tocar Evento, crear evento con varios invitados. | Se crea evento, invitados quedan registrados y se genera un solo QR del evento. | PENDIENTE |  |
-| RES-005 | Residente | Compartir QR imagen | En QR de visita y evento tocar Compartir imagen QR. | En dispositivo compatible abre share sheet; si no, descarga imagen o mantiene fallback. | PENDIENTE |  |
-| RES-006 | Residente | Ver mis visitas | Abrir `/dashboard/visits`. | Lista visitas en cards, muestra estado correcto, QR activo y empty state si no hay datos. | PENDIENTE |  |
-| RES-007 | Residente | Ver mis eventos | Abrir `/dashboard/events`. | Lista eventos con fecha, cantidad de invitados, estado y acción para ver/compartir QR. | PENDIENTE |  |
-| RES-008 | Residente | Notificaciones | Abrir `/dashboard/notifications`. | Muestra notificaciones, permite marcar leídas y muestra empty state profesional si no hay. | PENDIENTE |  |
-| RES-009 | Residente | Mi casa | Abrir `/dashboard/my-house`. | Muestra información de casa, residentes aprobados y datos relacionados sin exponer otra casa. | PENDIENTE |  |
-| RES-010 | Residente | Activar PWA/push | Instalar app o abrir desde navegador compatible y activar notificaciones. | Solicita permisos, guarda suscripción y oculta aviso si ya están activas. | PENDIENTE |  |
-| RES-011 | Residente | Cerrar sesión | Usar botón Salir del header. | Cierra sesión y redirige a login sin mantener acceso al dashboard. | PENDIENTE |  |
-| GUA-001 | Guardia | Login | Iniciar sesión con guardia aprobado. | Redirige al dashboard/flujo de guardia permitido. | PENDIENTE |  |
-| GUA-002 | Guardia | Escanear QR visita | Abrir `/gate/scan` y escanear QR activo de visita. | Valida QR, muestra visitante, casa, residente y acciones disponibles. | PENDIENTE |  |
-| GUA-003 | Guardia | Evidencia obligatoria | Intentar registrar ingreso sin evidencia requerida. | El sistema bloquea el ingreso e indica la evidencia faltante. | PENDIENTE |  |
-| GUA-004 | Guardia | Registrar ingreso | Escanear QR válido, cargar evidencia requerida y registrar ingreso. | Se registra entrada, se guardan evidencias y aparece confirmación. | PENDIENTE |  |
-| GUA-005 | Guardia | Registrar salida | Escanear visita dentro y registrar salida con confirmación si aplica. | Se registra salida y el visitante deja de aparecer como dentro. | PENDIENTE |  |
+| RES-001 | Residente | Login | Iniciar sesión con residente aprobado. | Redirige a `/dashboard` con acciones principales visibles. | PAS� | Validado QA manual. |
+| RES-002 | Residente | Crear visita | Desde dashboard tocar Visita, llenar nombre y vencimiento, crear. | Se crea visita, aparece QR, botón compartir imagen y fallback de link. | PAS� | Validado QA manual. |
+| RES-003 | Residente | Crear delivery | Desde dashboard tocar Delivery, revisar tipo prellenado, crear. | Se crea delivery con vencimiento sugerido de 2 horas y QR compartible. | PAS� | Validado QA manual. |
+| RES-004 | Residente | Crear evento | Desde dashboard tocar Evento, crear evento con varios invitados. | Se crea evento, invitados quedan registrados y se genera un solo QR del evento. | PAS� | Validado QA manual. |
+| RES-005 | Residente | Compartir QR imagen | En QR de visita y evento tocar Compartir imagen QR. | En dispositivo compatible abre share sheet; si no, descarga imagen o mantiene fallback. | PAS� | Validado QA manual. |
+| RES-006 | Residente | Ver mis visitas | Abrir `/dashboard/visits`. | Lista visitas en cards, muestra estado correcto, QR activo y empty state si no hay datos. | PAS� | Validado QA manual. |
+| RES-007 | Residente | Ver mis eventos | Abrir `/dashboard/events`. | Lista eventos con fecha, cantidad de invitados, estado y acción para ver/compartir QR. | PAS� | Validado QA manual. |
+| RES-008 | Residente | Notificaciones | Abrir `/dashboard/notifications`. | Muestra notificaciones, permite marcar leídas y muestra empty state profesional si no hay. | PAS� | Validado QA manual. |
+| RES-009 | Residente | Mi casa | Abrir `/dashboard/my-house`. | Muestra información de casa, residentes aprobados y datos relacionados sin exponer otra casa. | PAS� | Validado QA manual. |
+| RES-010 | Residente | Activar PWA/push | Instalar app o abrir desde navegador compatible y activar notificaciones. | Solicita permisos, guarda suscripción y oculta aviso si ya están activas. | PAS� | Validado QA manual. |
+| RES-011 | Residente | Cerrar sesión | Usar botón Salir del header. | Cierra sesión y redirige a login sin mantener acceso al dashboard. | PAS� | Validado QA manual. |
+| GUA-001 | Guardia | Login | Iniciar sesión con guardia aprobado. | Redirige al dashboard/flujo de guardia permitido. | PAS� | Validado QA manual. |
+| GUA-002 | Guardia | Escanear QR visita | Abrir `/gate/scan` y escanear QR activo de visita. | Valida QR, muestra visitante, casa, residente y acciones disponibles. | PAS� | Validado QA manual. |
+| GUA-003 | Guardia | Evidencia obligatoria | Intentar registrar ingreso sin evidencia requerida. | El sistema bloquea el ingreso e indica la evidencia faltante. | PAS� | Validado QA manual. |
+| GUA-004 | Guardia | Registrar ingreso | Escanear QR válido, cargar evidencia requerida y registrar ingreso. | Se registra entrada, se guardan evidencias y aparece confirmación. | PAS� | Validado QA manual. |
+| GUA-005 | Guardia | Registrar salida | Escanear visita dentro y registrar salida con confirmación si aplica. | Se registra salida y el visitante deja de aparecer como dentro. | PAS� | Validado QA manual. |
 | GUA-006 | Guardia | QR vencido | Escanear QR con `expires_at` vencido. | Muestra error claro de QR vencido y no registra acceso. | PENDIENTE |  |
 | GUA-007 | Guardia | QR usado | Escanear QR single-use ya usado. | Muestra error claro de QR usado/no disponible y no registra nuevo ingreso. | PENDIENTE |  |
 | GUA-008 | Guardia | QR evento | Abrir `/gate/event-scan?token=<token>` con QR de evento activo. | Muestra evento, casa, anfitrión y lista de invitados. | PENDIENTE |  |
-| GUA-009 | Guardia | Entrada/salida por invitado | En evento registrar ingreso de un invitado y luego salida. | Cambia estado por invitado, sin registrar el evento completo de una vez. | PENDIENTE |  |
+| GUA-009 | Guardia | Entrada/salida por invitado | En evento registrar ingreso de un invitado y luego salida. | Cambia estado por invitado, sin registrar el evento completo de una vez. | PENDIENTE | Revalidar salida con confirmaci�n de segundo tap y hora de salida visible. |
 | GUA-010 | Guardia | Entradas recientes | Abrir `/dashboard/entries`. | Muestra últimas entradas en cards con estado Dentro/Salió y empty state si no hay. | PENDIENTE |  |
 | GUA-011 | Guardia | Personas dentro | Abrir `/dashboard/inside`. | Lista visitantes sin salida registrada y respeta residencial del guardia. | PENDIENTE |  |
 | GUA-012 | Guardia | Cerrar sesión | Usar acción de salir/logout disponible. | Cierra sesión y bloquea acceso posterior a rutas protegidas. | PENDIENTE |  |

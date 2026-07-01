@@ -178,6 +178,9 @@ function EventScanContent() {
   const [savingGuestId, setSavingGuestId] = useState<string | null>(null)
   const [uploadStatus, setUploadStatus] = useState<string | null>(null)
   const [expandedGuestId, setExpandedGuestId] = useState<string | null>(null)
+  const [confirmingExitGuestId, setConfirmingExitGuestId] = useState<
+    string | null
+  >(null)
   const [photoFilesByGuestId, setPhotoFilesByGuestId] =
     useState<EventGuestPhotoFiles>({})
 
@@ -348,6 +351,12 @@ function EventScanContent() {
     const isEntry = guest.status !== 'inside'
     const photoFiles = photoFilesByGuestId[guest.id] || emptyEntryPhotoFiles()
 
+    if (!isEntry && confirmingExitGuestId !== guest.id) {
+      setConfirmingExitGuestId(guest.id)
+      toast.message('Toca nuevamente para confirmar la salida')
+      return
+    }
+
     if (
       isEntry &&
       (!photoFiles.identity || !photoFiles.vehicle || !photoFiles.plate)
@@ -490,6 +499,7 @@ function EventScanContent() {
       [guest.id]: emptyEntryPhotoFiles(),
     }))
     setExpandedGuestId(null)
+    setConfirmingExitGuestId(null)
     setSavingGuestId(null)
     await loadEvent()
   }
@@ -599,6 +609,7 @@ function EventScanContent() {
               photoFiles.plate,
             ].filter(Boolean).length
             const isExpanded = expandedGuestId === guest.id
+            const isConfirmingExit = confirmingExitGuestId === guest.id
 
             return (
               <article
@@ -613,6 +624,11 @@ function EventScanContent() {
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                       {guestStatusLabel(guest.status)}
                     </p>
+                    {guest.checked_out_at && (
+                      <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                        Salida: {formatDate(guest.checked_out_at)}
+                      </p>
+                    )}
                   </div>
                   <StatusBadge
                     tone={
@@ -707,7 +723,11 @@ function EventScanContent() {
                     onClick={() => void updateGuestStatus(guest)}
                     disabled={savingGuestId === guest.id}
                     className={`mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 font-semibold text-white transition-all duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.98] ${
-                      canCheckOut ? 'bg-slate-950' : 'bg-[#15936A]'
+                      canCheckOut
+                        ? isConfirmingExit
+                          ? 'bg-amber-500 text-amber-950'
+                          : 'bg-slate-950'
+                        : 'bg-[#15936A]'
                     }`}
                   >
                     {savingGuestId === guest.id ? (
@@ -720,7 +740,9 @@ function EventScanContent() {
                     {savingGuestId === guest.id
                       ? uploadStatus || 'Registrando...'
                       : canCheckOut
-                        ? 'Registrar salida'
+                        ? isConfirmingExit
+                          ? 'Confirmar salida'
+                          : 'Registrar salida'
                         : 'Registrar ingreso'}
                   </button>
                 )}
