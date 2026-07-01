@@ -29,13 +29,13 @@ Estados permitidos: `PENDIENTE`, `PAS√ì`, `FALL√ì`, `BLOQUEADO`.
 | GUA-003 | Guardia | Evidencia obligatoria | Intentar registrar ingreso sin evidencia requerida. | El sistema bloquea el ingreso e indica la evidencia faltante. | PAS” | Validado QA manual. |
 | GUA-004 | Guardia | Registrar ingreso | Escanear QR v√°lido, cargar evidencia requerida y registrar ingreso. | Se registra entrada, se guardan evidencias y aparece confirmaci√≥n. | PAS” | Validado QA manual. |
 | GUA-005 | Guardia | Registrar salida | Escanear visita dentro y registrar salida con confirmaci√≥n si aplica. | Se registra salida y el visitante deja de aparecer como dentro. | PAS” | Validado QA manual. |
-| GUA-006 | Guardia | QR vencido | Escanear QR con `expires_at` vencido. | Muestra error claro de QR vencido y no registra acceso. | PENDIENTE |  |
-| GUA-007 | Guardia | QR usado | Escanear QR single-use ya usado. | Muestra error claro de QR usado/no disponible y no registra nuevo ingreso. | PENDIENTE |  |
-| GUA-008 | Guardia | QR evento | Abrir `/gate/event-scan?token=<token>` con QR de evento activo. | Muestra evento, casa, anfitri√≥n y lista de invitados. | PENDIENTE |  |
-| GUA-009 | Guardia | Entrada/salida por invitado | En evento registrar ingreso de un invitado y luego salida. | Cambia estado por invitado, sin registrar el evento completo de una vez. | PENDIENTE | Revalidar salida con confirmaciÛn de segundo tap y hora de salida visible. |
-| GUA-010 | Guardia | Entradas recientes | Abrir `/dashboard/entries`. | Muestra √∫ltimas entradas en cards con estado Dentro/Sali√≥ y empty state si no hay. | PENDIENTE |  |
-| GUA-011 | Guardia | Personas dentro | Abrir `/dashboard/inside`. | Lista visitantes sin salida registrada y respeta residencial del guardia. | PENDIENTE |  |
-| GUA-012 | Guardia | Cerrar sesi√≥n | Usar acci√≥n de salir/logout disponible. | Cierra sesi√≥n y bloquea acceso posterior a rutas protegidas. | PENDIENTE |  |
+| GUA-006 | Guardia | QR vencido | Escanear QR con `expires_at` vencido. | Muestra error claro de QR vencido y no registra acceso. | PAS” | Validado QA manual. |
+| GUA-007 | Guardia | QR usado | Escanear QR single-use ya usado. | Muestra error claro de QR usado/no disponible y no registra nuevo ingreso. | PAS” | Validado QA manual. |
+| GUA-008 | Guardia | QR evento | Abrir `/gate/event-scan?token=<token>` con QR de evento activo. | Muestra evento, casa, anfitri√≥n y lista de invitados. | PAS” | Validado QA manual. |
+| GUA-009 | Guardia | Entrada/salida por invitado | En evento registrar ingreso de un invitado y luego salida. | Cambia estado por invitado, sin registrar el evento completo de una vez. | PAS” | Validado QA manual. |
+| GUA-010 | Guardia | Entradas recientes | Abrir `/dashboard/entries`. | Muestra √∫ltimas entradas en cards con estado Dentro/Sali√≥ y empty state si no hay. | PAS” | Validado QA manual; corregido para incluir entradas de eventos agrupadas por evento. |
+| GUA-011 | Guardia | Personas dentro | Abrir `/dashboard/inside`. | Lista visitantes sin salida registrada y respeta residencial del guardia. | PAS” | Validado QA manual. |
+| GUA-012 | Guardia | Cerrar sesi√≥n | Usar acci√≥n de salir/logout disponible. | Cierra sesi√≥n y bloquea acceso posterior a rutas protegidas. | PAS” | Validado QA manual. |
 | ADM-001 | Admin | Dashboard admin | Iniciar sesi√≥n como admin y abrir `/dashboard/admin`. | Dashboard carga en menos de 5 segundos con KPIs, activity feed y acciones r√°pidas. | PENDIENTE |  |
 | ADM-002 | Admin | KPIs | Revisar cards de Casas, Casas activas, Residentes, Visitas, Personas dentro, Eventos y Comprobantes. | Cada KPI muestra conteo correcto para el residencial del admin. | PENDIENTE |  |
 | ADM-003 | Admin | Activity feed | Revisar timeline de √∫ltimas actividades. | Muestra hasta 20 actividades mezcladas, ordenadas por fecha descendente. | PENDIENTE |  |

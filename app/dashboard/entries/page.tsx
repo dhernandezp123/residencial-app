@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ClipboardList } from 'lucide-react'
+import { ChevronDown, ClipboardList } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { EmptyState, StatusBadge } from '@/components/ui'
@@ -31,9 +31,31 @@ type VisitorEntry = {
   created_at: string
 }
 
+type EventGuestEntry = {
+  id: string
+  residential_id: string
+  event_id: string
+  event_guest_id: string
+  guard_id: string
+  action: 'entry' | 'exit'
+  occurred_at: string
+  created_at: string
+}
+
 type VisitSummary = {
   id: string
   visitor_name: string
+}
+
+type EventSummary = {
+  id: string
+  title: string
+  house_id: string
+}
+
+type EventGuestSummary = {
+  id: string
+  guest_name: string
 }
 
 type HouseSummary = {
@@ -53,12 +75,40 @@ type GuardSummary = {
   last_name: string
 }
 
-type EntryCard = VisitorEntry & {
+type VisitEntryCard = VisitorEntry & {
+  kind: 'visit'
+  sortTime: string
   visit: VisitSummary | null
   house: HouseSummary | null
   residential: ResidentialSummary | null
   guard: GuardSummary | null
 }
+
+type EventEntryCard = EventGuestEntry & {
+  kind: 'event'
+  sortTime: string
+  event: EventSummary | null
+  guest: EventGuestSummary | null
+  house: HouseSummary | null
+  residential: ResidentialSummary | null
+  guard: GuardSummary | null
+}
+
+type EntryCard = VisitEntryCard | EventEntryCard
+
+type EventEntryGroup = {
+  kind: 'event_group'
+  id: string
+  sortTime: string
+  event: EventSummary | null
+  house: HouseSummary | null
+  residential: ResidentialSummary | null
+  entries: EventEntryCard[]
+  entryCount: number
+  exitCount: number
+}
+
+type EntryListItem = VisitEntryCard | EventEntryGroup
 
 const canViewEntries = (profile: CurrentProfile | null) =>
   Boolean(
@@ -73,6 +123,9 @@ const uniqueIds = (ids: Array<string | null>) =>
 export default function EntriesPage() {
   const [profile, setProfile] = useState<CurrentProfile | null>(null)
   const [entries, setEntries] = useState<EntryCard[]>([])
+  const [expandedEventGroupId, setExpandedEventGroupId] = useState<
+    string | null
+  >(null)
   const [loading, setLoading] = useState(true)
 
   const loadEntries = useCallback(async () => {
@@ -116,6 +169,14 @@ export default function EntriesPage() {
       .order('entry_time', { ascending: false })
       .limit(40)
 
+    let eventEntriesQuery = supabase
+      .from('event_guest_entries')
+      .select(
+        'id,residential_id,event_id,event_guest_id,guard_id,action,occurred_at,created_at',
+      )
+      .order('occurred_at', { ascending: false })
+      .limit(40)
+
     if (currentProfile.role !== 'super_admin') {
       if (!currentProfile.residential_id) {
         toast.error('Tu perfil no tiene residencial asignado')
@@ -128,9 +189,16 @@ export default function EntriesPage() {
         'residential_id',
         currentProfile.residential_id,
       )
+      eventEntriesQuery = eventEntriesQuery.eq(
+        'residential_id',
+        currentProfile.residential_id,
+      )
     }
 
-    const { data: entriesData, error: entriesError } = await entriesQuery
+    const [
+      { data: entriesData, error: entriesError },
+      { data: eventEntriesData, error: eventEntriesError },
+    ] = await Promise.all([entriesQuery, eventEntriesQuery])
 
     if (entriesError) {
       console.error('Error loading visitor entries:', entriesError)
@@ -140,15 +208,34 @@ export default function EntriesPage() {
       return
     }
 
+    if (eventEntriesError) {
+      console.error('Error loading event entries:', eventEntriesError)
+      toast.error(eventEntriesError.message)
+    }
+
     const loadedEntries = (entriesData || []) as VisitorEntry[]
+    const loadedEventEntries = (eventEntriesData || []) as EventGuestEntry[]
     const visitIds = uniqueIds(loadedEntries.map((entry) => entry.visit_id))
-    const houseIds = uniqueIds(loadedEntries.map((entry) => entry.house_id))
-    const residentialIds = uniqueIds(
-      loadedEntries.map((entry) => entry.residential_id),
+    const eventIds = uniqueIds(
+      loadedEventEntries.map((entry) => entry.event_id),
     )
-    const guardIds = uniqueIds(loadedEntries.map((entry) => entry.guard_id))
+    const eventGuestIds = uniqueIds(
+      loadedEventEntries.map((entry) => entry.event_guest_id),
+    )
+    const residentialIds = uniqueIds(
+      [
+        ...loadedEntries.map((entry) => entry.residential_id),
+        ...loadedEventEntries.map((entry) => entry.residential_id),
+      ],
+    )
+    const guardIds = uniqueIds([
+      ...loadedEntries.map((entry) => entry.guard_id),
+      ...loadedEventEntries.map((entry) => entry.guard_id),
+    ])
 
     const visitsById: Record<string, VisitSummary> = {}
+    const eventsById: Record<string, EventSummary> = {}
+    const eventGuestsById: Record<string, EventGuestSummary> = {}
     const housesById: Record<string, HouseSummary> = {}
     const residentialsById: Record<string, ResidentialSummary> = {}
     const guardsById: Record<string, GuardSummary> = {}
@@ -168,6 +255,43 @@ export default function EntriesPage() {
         })
       }
     }
+
+    if (eventGuestIds.length > 0) {
+      const { data: eventGuestsData, error: eventGuestsError } = await supabase
+        .from('event_guests')
+        .select('id,guest_name')
+        .in('id', eventGuestIds)
+
+      if (eventGuestsError) {
+        console.error('Error loading event guests:', eventGuestsError)
+        toast.error('No se pudieron cargar los invitados de eventos')
+      } else {
+        ;((eventGuestsData || []) as EventGuestSummary[]).forEach((guest) => {
+          eventGuestsById[guest.id] = guest
+        })
+      }
+    }
+
+    if (eventIds.length > 0) {
+      const { data: eventsData, error: eventsError } = await supabase
+        .from('events')
+        .select('id,title,house_id')
+        .in('id', eventIds)
+
+      if (eventsError) {
+        console.error('Error loading entry events:', eventsError)
+        toast.error('No se pudieron cargar los eventos')
+      } else {
+        ;((eventsData || []) as EventSummary[]).forEach((event) => {
+          eventsById[event.id] = event
+        })
+      }
+    }
+
+    const houseIds = uniqueIds([
+      ...loadedEntries.map((entry) => entry.house_id),
+      ...Object.values(eventsById).map((event) => event.house_id),
+    ])
 
     if (houseIds.length > 0) {
       const { data: housesData, error: housesError } = await supabase
@@ -220,14 +344,39 @@ export default function EntriesPage() {
       }
     }
 
-    setEntries(
-      loadedEntries.map((entry) => ({
+    const visitCards: VisitEntryCard[] = loadedEntries.map((entry) => ({
+      ...entry,
+      kind: 'visit',
+      sortTime: entry.entry_time,
+      visit: entry.visit_id ? visitsById[entry.visit_id] || null : null,
+      house: housesById[entry.house_id] || null,
+      residential: residentialsById[entry.residential_id] || null,
+      guard: guardsById[entry.guard_id] || null,
+    }))
+
+    const eventCards: EventEntryCard[] = loadedEventEntries.map((entry) => {
+      const event = eventsById[entry.event_id] || null
+
+      return {
         ...entry,
-        visit: entry.visit_id ? visitsById[entry.visit_id] || null : null,
-        house: housesById[entry.house_id] || null,
+        kind: 'event',
+        sortTime: entry.occurred_at,
+        event,
+        guest: eventGuestsById[entry.event_guest_id] || null,
+        house: event?.house_id ? housesById[event.house_id] || null : null,
         residential: residentialsById[entry.residential_id] || null,
         guard: guardsById[entry.guard_id] || null,
-      })),
+      }
+    })
+
+    setEntries(
+      [...visitCards, ...eventCards]
+        .sort(
+          (first, second) =>
+            new Date(second.sortTime).getTime() -
+            new Date(first.sortTime).getTime(),
+        )
+        .slice(0, 40),
     )
     setLoading(false)
   }, [])
@@ -237,6 +386,61 @@ export default function EntriesPage() {
   }, [loadEntries])
 
   const isAllowed = useMemo(() => canViewEntries(profile), [profile])
+  const groupedEntries = useMemo<EntryListItem[]>(() => {
+    const items: EntryListItem[] = []
+    const eventGroups = new Map<string, EventEntryGroup>()
+
+    entries.forEach((entry) => {
+      if (entry.kind === 'visit') {
+        items.push(entry)
+        return
+      }
+
+      const groupId = `event-${entry.event_id}`
+      const currentGroup = eventGroups.get(groupId)
+
+      if (!currentGroup) {
+        eventGroups.set(groupId, {
+          kind: 'event_group',
+          id: groupId,
+          sortTime: entry.sortTime,
+          event: entry.event,
+          house: entry.house,
+          residential: entry.residential,
+          entries: [entry],
+          entryCount: entry.action === 'entry' ? 1 : 0,
+          exitCount: entry.action === 'exit' ? 1 : 0,
+        })
+        return
+      }
+
+      currentGroup.entries.push(entry)
+      currentGroup.entryCount += entry.action === 'entry' ? 1 : 0
+      currentGroup.exitCount += entry.action === 'exit' ? 1 : 0
+
+      if (
+        new Date(entry.sortTime).getTime() >
+        new Date(currentGroup.sortTime).getTime()
+      ) {
+        currentGroup.sortTime = entry.sortTime
+      }
+    })
+
+    eventGroups.forEach((group) => {
+      group.entries.sort(
+        (first, second) =>
+          new Date(second.sortTime).getTime() -
+          new Date(first.sortTime).getTime(),
+      )
+      items.push(group)
+    })
+
+    return items.sort(
+      (first, second) =>
+        new Date(second.sortTime).getTime() -
+        new Date(first.sortTime).getTime(),
+    )
+  }, [entries])
 
   if (loading) {
     return (
@@ -309,15 +513,138 @@ export default function EntriesPage() {
           />
         ) : (
           <section className="space-y-3">
-            {entries.map((entry) => {
+            {groupedEntries.map((entry) => {
+              if (entry.kind === 'event_group') {
+                const isExpanded = expandedEventGroupId === entry.id
+                const lastActivityDate = new Intl.DateTimeFormat('es-HN', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                }).format(new Date(entry.sortTime))
+                const houseLabel = entry.house
+                  ? `${entry.house.block}-${entry.house.house_number}`
+                  : 'Casa no disponible'
+
+                return (
+                  <article
+                    key={entry.id}
+                    className="rounded-2xl bg-white p-5 shadow-sm dark:bg-slate-800"
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedEventGroupId((current) =>
+                          current === entry.id ? null : entry.id,
+                        )
+                      }
+                      className="flex min-h-12 w-full items-start justify-between gap-3 text-left transition-all duration-200 ease-out active:scale-[0.98]"
+                      aria-expanded={isExpanded}
+                    >
+                      <span className="min-w-0">
+                        <span className="text-sm font-semibold text-[#15936A]">
+                          Evento
+                        </span>
+                        <span className="mt-1 block text-xl font-bold text-slate-950 dark:text-white">
+                          {entry.event?.title || 'Evento no disponible'}
+                        </span>
+                        <span className="mt-1 block text-sm text-slate-500 dark:text-slate-400">
+                          {entry.entryCount} ingresos · {entry.exitCount} salidas
+                        </span>
+                      </span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        <StatusBadge tone="blue" className="shrink-0">
+                          {entry.entries.length}
+                        </StatusBadge>
+                        <ChevronDown
+                          className={`h-5 w-5 text-slate-500 transition-transform duration-200 ${
+                            isExpanded ? 'rotate-180' : ''
+                          }`}
+                          aria-hidden="true"
+                        />
+                      </span>
+                    </button>
+
+                    <div className="mt-4 grid gap-3">
+                      <InfoBlock label="Casa" value={houseLabel} />
+                      <InfoBlock
+                        label="Residencial"
+                        value={entry.residential?.name || 'No disponible'}
+                      />
+                      <InfoBlock
+                        label="Ultima actividad"
+                        value={lastActivityDate}
+                      />
+                    </div>
+
+                    {isExpanded && (
+                      <div className="mt-4 space-y-2">
+                        {entry.entries.map((eventEntry) => {
+                          const activityDate = new Intl.DateTimeFormat(
+                            'es-HN',
+                            {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit',
+                            },
+                          ).format(new Date(eventEntry.occurred_at))
+
+                          return (
+                            <div
+                              key={eventEntry.id}
+                              className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-700/50"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="font-bold text-slate-950 dark:text-white">
+                                    {eventEntry.guest?.guest_name ||
+                                      'Invitado no disponible'}
+                                  </p>
+                                  <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                    {activityDate}
+                                  </p>
+                                </div>
+                                <StatusBadge
+                                  tone={
+                                    eventEntry.action === 'entry'
+                                      ? 'green'
+                                      : 'slate'
+                                  }
+                                >
+                                  {eventEntry.action === 'entry'
+                                    ? 'Ingreso'
+                                    : 'Salida'}
+                                </StatusBadge>
+                              </div>
+                              <p className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                Guardia:{' '}
+                                {eventEntry.guard
+                                  ? `${eventEntry.guard.first_name} ${eventEntry.guard.last_name}`
+                                  : 'No disponible'}
+                              </p>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </article>
+                )
+              }
+
+              const occurredAt =
+                entry.entry_time
               const entryDate = new Intl.DateTimeFormat('es-HN', {
                 day: 'numeric',
                 month: 'short',
                 year: 'numeric',
                 hour: 'numeric',
                 minute: '2-digit',
-              }).format(new Date(entry.entry_time))
-              const exitDate = entry.exit_time
+              }).format(new Date(occurredAt))
+              const exitDate =
+                entry.exit_time
                 ? new Intl.DateTimeFormat('es-HN', {
                     day: 'numeric',
                     month: 'short',
@@ -329,8 +656,19 @@ export default function EntriesPage() {
               const houseLabel = entry.house
                 ? `${entry.house.block}-${entry.house.house_number}`
                 : 'Casa no disponible'
-              const isInside = !entry.exit_time && entry.entry_status === 'allowed'
-              const exitLabel = exitDate || 'Pendiente'
+              const isInside =
+                !entry.exit_time && entry.entry_status === 'allowed'
+              const exitLabel =
+                exitDate || 'Pendiente'
+              const title =
+                entry.visit?.visitor_name || 'No disponible'
+              const typeLabel = 'Visitante'
+              const statusLabel =
+                isInside ? 'Dentro' : 'Salió'
+              const statusTone =
+                isInside
+                    ? 'green'
+                    : 'amber'
 
               return (
                 <article
@@ -340,17 +678,17 @@ export default function EntriesPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-                        Visitante
+                        {typeLabel}
                       </p>
                       <h2 className="mt-1 text-xl font-bold text-slate-950 dark:text-white">
-                        {entry.visit?.visitor_name || 'No disponible'}
+                        {title}
                       </h2>
                     </div>
                     <StatusBadge
-                      tone={isInside ? 'green' : 'amber'}
+                      tone={statusTone}
                       className="shrink-0"
                     >
-                      {isInside ? 'Dentro' : 'Salió'}
+                      {statusLabel}
                     </StatusBadge>
                   </div>
 
