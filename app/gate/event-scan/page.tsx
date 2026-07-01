@@ -5,7 +5,14 @@ export const dynamic = 'force-dynamic'
 import { Suspense, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { CheckCircle, LogIn, LogOut, XCircle } from 'lucide-react'
+import {
+  Camera,
+  CheckCircle,
+  ChevronDown,
+  LogIn,
+  LogOut,
+  XCircle,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { StatusBadge } from '@/components/ui'
@@ -170,6 +177,7 @@ function EventScanContent() {
   const [state, setState] = useState<ScanState>({ status: 'loading' })
   const [savingGuestId, setSavingGuestId] = useState<string | null>(null)
   const [uploadStatus, setUploadStatus] = useState<string | null>(null)
+  const [expandedGuestId, setExpandedGuestId] = useState<string | null>(null)
   const [photoFilesByGuestId, setPhotoFilesByGuestId] =
     useState<EventGuestPhotoFiles>({})
 
@@ -344,7 +352,8 @@ function EventScanContent() {
       isEntry &&
       (!photoFiles.identity || !photoFiles.vehicle || !photoFiles.plate)
     ) {
-      toast.error('Completa la evidencia fotográfica.')
+      setExpandedGuestId(guest.id)
+      toast.error('Completa la evidencia fotografica.')
       return
     }
 
@@ -480,6 +489,7 @@ function EventScanContent() {
       ...current,
       [guest.id]: emptyEntryPhotoFiles(),
     }))
+    setExpandedGuestId(null)
     setSavingGuestId(null)
     await loadEvent()
   }
@@ -583,6 +593,12 @@ function EventScanContent() {
             const canCheckOut = guest.status === 'inside'
             const photoFiles =
               photoFilesByGuestId[guest.id] || emptyEntryPhotoFiles()
+            const completedPhotoCount = [
+              photoFiles.identity,
+              photoFiles.vehicle,
+              photoFiles.plate,
+            ].filter(Boolean).length
+            const isExpanded = expandedGuestId === guest.id
 
             return (
               <article
@@ -612,7 +628,44 @@ function EventScanContent() {
                 </div>
 
                 {canCheckIn && (
-                  <section className="mt-4 space-y-3 rounded-2xl bg-slate-50 p-4 dark:bg-slate-700/50">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedGuestId((current) =>
+                        current === guest.id ? null : guest.id,
+                      )
+                    }
+                    className="mt-4 flex min-h-12 w-full items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-left transition-all duration-200 ease-out active:scale-[0.98] dark:bg-slate-700/50"
+                    aria-expanded={isExpanded}
+                    aria-controls={`event-${guest.id}-evidence`}
+                  >
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#15936A] shadow-sm dark:bg-slate-800">
+                        <Camera className="h-5 w-5" aria-hidden="true" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-black text-slate-950 dark:text-white">
+                          Evidencia
+                        </span>
+                        <span className="block text-xs font-semibold text-slate-500 dark:text-slate-300">
+                          {completedPhotoCount}/3 fotos cargadas
+                        </span>
+                      </span>
+                    </span>
+                    <ChevronDown
+                      className={`h-5 w-5 shrink-0 text-slate-500 transition-transform duration-200 ${
+                        isExpanded ? 'rotate-180' : ''
+                      }`}
+                      aria-hidden="true"
+                    />
+                  </button>
+                )}
+
+                {canCheckIn && isExpanded && (
+                  <section
+                    id={`event-${guest.id}-evidence`}
+                    className="mt-3 space-y-3 rounded-2xl bg-slate-50 p-4 dark:bg-slate-700/50"
+                  >
                     <div>
                       <p className="text-xs font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">
                         Evidencia fotografica
