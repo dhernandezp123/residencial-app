@@ -69,12 +69,6 @@ const initialForm: FormData = {
   notes: '',
 }
 
-type HouseAction =
-  | 'activate-house'
-  | 'deactivate-house'
-  | 'activate-security'
-  | 'deactivate-security'
-
 type HouseGroup = {
   key: string
   label: string
@@ -103,11 +97,6 @@ export default function AdminHousesPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [updatingHouseId, setUpdatingHouseId] = useState<string | null>(null)
-  const [confirmingHouseAction, setConfirmingHouseAction] = useState<{
-    houseId: string
-    action: HouseAction
-  } | null>(null)
   const [formData, setFormData] = useState<FormData>(initialForm)
 
   const loadData = async () => {
@@ -265,23 +254,6 @@ export default function AdminHousesPage() {
     void Promise.resolve().then(loadData)
   }, [])
 
-  useEffect(() => {
-    if (!confirmingHouseAction) return
-
-    const timer = window.setTimeout(() => {
-      setConfirmingHouseAction(null)
-    }, 5000)
-
-    return () => window.clearTimeout(timer)
-  }, [confirmingHouseAction])
-
-  const isConfirmingHouseAction = (
-    houseId: string,
-    action: HouseAction,
-  ): boolean =>
-    confirmingHouseAction?.houseId === houseId &&
-    confirmingHouseAction.action === action
-
   const handleCreateHouse = async (event: React.FormEvent) => {
     event.preventDefault()
 
@@ -331,97 +303,6 @@ export default function AdminHousesPage() {
     setShowForm(false)
     await loadData()
     setSaving(false)
-  }
-
-  const handleToggleActive = async (house: House) => {
-    const nextValue = !house.is_active
-    const action: HouseAction = nextValue ? 'activate-house' : 'deactivate-house'
-
-    if (!isConfirmingHouseAction(house.id, action)) {
-      setConfirmingHouseAction({ houseId: house.id, action })
-      toast.warning(
-        nextValue
-          ? 'Toca de nuevo para activar esta casa'
-          : 'Toca de nuevo para desactivar esta casa y quitar seguridad',
-      )
-      return
-    }
-
-    setConfirmingHouseAction(null)
-    setUpdatingHouseId(house.id)
-    const payload = nextValue
-      ? { is_active: true }
-      : { is_active: false, pays_security: false }
-
-    const { data, error } = await supabase
-      .from('houses')
-      .update(payload)
-      .eq('id', house.id)
-      .select('is_active,pays_security')
-      .single()
-
-    setUpdatingHouseId(null)
-
-    if (error || !data) {
-      console.error('Error updating house active state:', error)
-      toast.error('No se pudo actualizar la casa')
-      return
-    }
-
-    toast.success(nextValue ? 'Casa activada' : 'Casa desactivada')
-    setHouses((prev) =>
-      prev.map((h) =>
-        h.id === house.id
-          ? {
-              ...h,
-              is_active: data.is_active,
-              pays_security: data.pays_security,
-            }
-          : h,
-      ),
-    )
-  }
-
-  const handleToggleSecurity = async (house: House) => {
-    const nextValue = !house.pays_security
-    const action: HouseAction = nextValue
-      ? 'activate-security'
-      : 'deactivate-security'
-
-    if (!isConfirmingHouseAction(house.id, action)) {
-      setConfirmingHouseAction({ houseId: house.id, action })
-      toast.warning(
-        nextValue
-          ? 'Toca de nuevo para activar seguridad'
-          : 'Toca de nuevo para quitar seguridad',
-      )
-      return
-    }
-
-    setConfirmingHouseAction(null)
-    setUpdatingHouseId(house.id)
-
-    const { data, error } = await supabase
-      .from('houses')
-      .update({ pays_security: nextValue })
-      .eq('id', house.id)
-      .select('pays_security')
-      .single()
-
-    setUpdatingHouseId(null)
-
-    if (error || !data) {
-      console.error('Error updating house security:', error)
-      toast.error('No se pudo actualizar la seguridad')
-      return
-    }
-
-    toast.success(nextValue ? 'Seguridad activada' : 'Seguridad desactivada')
-    setHouses((prev) =>
-      prev.map((h) =>
-        h.id === house.id ? { ...h, pays_security: data.pays_security } : h,
-      ),
-    )
   }
 
   const canManageHouses =
@@ -696,165 +577,67 @@ export default function AdminHousesPage() {
             </div>
 
             {groupedHouses.map((group) => (
-              <section key={group.key} className="space-y-3">
-                <div className="rounded-2xl border border-white/70 bg-white/70 px-4 py-3 shadow-sm backdrop-blur-xl dark:border-slate-700 dark:bg-slate-800/80">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h2 className="text-base font-black text-slate-950 dark:text-white">
-                        {group.label}
-                      </h2>
-                      <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                        {group.houses.length} casa
-                        {group.houses.length !== 1 ? 's' : ''} -{' '}
-                        {group.activeCount} activa
-                        {group.activeCount !== 1 ? 's' : ''}
-                      </p>
-                    </div>
-                    <div className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400">
-                      <p>{group.securityCount} con seguridad</p>
-                      {group.pendingResidents > 0 && (
-                        <p className="mt-1 text-amber-700 dark:text-amber-300">
-                          {group.pendingResidents} pendiente
-                          {group.pendingResidents !== 1 ? 's' : ''}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  {group.houses.map((house) => (
-                    (() => {
-                const activeAction: HouseAction = house.is_active
-                  ? 'deactivate-house'
-                  : 'activate-house'
-                const securityAction: HouseAction = house.pays_security
-                  ? 'deactivate-security'
-                  : 'activate-security'
-                const isConfirmingActive = isConfirmingHouseAction(
-                  house.id,
-                  activeAction,
-                )
-                const isConfirmingSecurity = isConfirmingHouseAction(
-                  house.id,
-                  securityAction,
-                )
-
-                      return (
-              <article
-                key={house.id}
-                className={`rounded-2xl bg-white dark:bg-slate-800 p-5 shadow-sm ${
-                  !house.is_active ? 'opacity-70' : ''
-                }`}
+              <section
+                key={group.key}
+                className="rounded-2xl bg-white p-5 shadow-sm dark:bg-slate-800"
               >
-                <div className="flex items-start justify-between gap-3">
+                <div className="mb-3 flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      {profile?.role === 'super_admin'
-                        ? house.residentialName
-                        : 'Casa'}
-                    </p>
-                    <h2 className="mt-1 text-xl font-black text-slate-950 dark:text-white">
-                      {house.block}-{house.house_number}
+                    <h2 className="font-bold text-slate-900 dark:text-white">
+                      {group.label}
                     </h2>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      {group.houses.length} casa
+                      {group.houses.length !== 1 ? 's' : ''} -{' '}
+                      {group.activeCount} activa
+                      {group.activeCount !== 1 ? 's' : ''}
+                    </p>
                   </div>
-                  <div className="flex flex-col items-end gap-1.5">
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                        house.is_active
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
-                          : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300'
-                      }`}
-                    >
-                      {house.is_active ? 'Activa' : 'Inactiva'}
-                    </span>
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                        house.pays_security
-                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-                          : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
-                      }`}
-                    >
-                      {house.pays_security ? 'Seguridad sí' : 'Sin seguridad'}
-                    </span>
+                  <div className="text-right text-xs font-semibold text-slate-400 dark:text-slate-500">
+                    <p>{group.securityCount} con seguridad</p>
+                    {group.pendingResidents > 0 && (
+                      <p className="mt-1 text-amber-700 dark:text-amber-300">
+                        {group.pendingResidents} pendiente
+                        {group.pendingResidents !== 1 ? 's' : ''}
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  <div className="rounded-xl bg-slate-50 dark:bg-slate-700/50 p-3">
-                    <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
-                      Aprobados
-                    </p>
-                    <p className="mt-1 text-lg font-black text-slate-950 dark:text-white">
-                      {house.approvedResidents}/{house.resident_limit || 3}
-                    </p>
-                  </div>
-                  <div className="rounded-xl bg-slate-50 dark:bg-slate-700/50 p-3">
-                    <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
-                      Pendientes
-                    </p>
-                    <p className="mt-1 text-lg font-black text-slate-950 dark:text-white">
-                      {house.pendingResidents}
-                    </p>
-                  </div>
-                </div>
-
-                {house.notes && (
-                  <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-                    {house.notes}
-                  </p>
-                )}
-
-                <div className="mt-4 grid gap-2">
-                  <Link
-                    href={`/dashboard/houses/${house.id}`}
-                    className="min-h-10 w-full rounded-xl bg-slate-950 dark:bg-slate-700 px-4 py-2 text-center text-sm font-semibold text-white active:scale-[0.99]"
-                  >
-                    Ver y administrar
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => void handleToggleSecurity(house)}
-                    disabled={updatingHouseId === house.id}
-                    className={`min-h-10 w-full rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-60 active:scale-[0.99] ${
-                      isConfirmingSecurity
-                        ? 'bg-amber-500 text-white'
-                        : 'border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300'
-                    }`}
-                  >
-                    {isConfirmingSecurity
-                      ? house.pays_security
-                        ? 'Confirmar quitar seguridad'
-                        : 'Confirmar activar seguridad'
+                <div className="flex flex-wrap gap-2">
+                  {group.houses.map((house) => {
+                    const statusDot = !house.is_active
+                      ? 'bg-slate-400'
                       : house.pays_security
-                        ? 'Quitar seguridad'
-                        : 'Activar seguridad'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleToggleActive(house)}
-                    disabled={updatingHouseId === house.id}
-                    className={`min-h-10 w-full rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-60 active:scale-[0.99] ${
-                      isConfirmingActive
-                        ? 'bg-red-600 text-white'
-                        : house.is_active
-                        ? 'border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300'
-                        : 'bg-slate-950 dark:bg-slate-700 text-white'
-                    }`}
-                  >
-                    {isConfirmingActive
-                      ? house.is_active
-                        ? 'Confirmar desactivar casa'
-                        : 'Confirmar activar casa'
-                      : house.is_active
-                        ? 'Desactivar casa'
-                        : 'Activar casa'}
-                  </button>
-                </div>
-              </article>
-                      )
-                    })()
-                  ))}
+                        ? 'bg-green-500'
+                        : 'bg-amber-400'
+                    const statusLabel = !house.is_active
+                      ? 'Inactiva'
+                      : house.pays_security
+                        ? 'Activa con seguridad'
+                        : 'Activa sin seguridad'
+
+                    return (
+                      <Link
+                        key={house.id}
+                        href={`/dashboard/houses/${house.id}`}
+                        aria-label={`Casa ${house.block}-${house.house_number}: ${statusLabel}`}
+                        title={`Casa ${house.block}-${house.house_number}: ${statusLabel}`}
+                        className={`flex min-h-10 items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold transition-all duration-200 active:scale-[0.97] ${
+                          house.is_active
+                            ? 'border-slate-200 text-slate-800 shadow-sm dark:border-slate-700 dark:text-slate-100'
+                            : 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400'
+                        }`}
+                      >
+                        <span
+                          className={`h-2 w-2 flex-shrink-0 rounded-full ${statusDot}`}
+                        />
+                        <span className="whitespace-nowrap">
+                          {house.house_number}
+                        </span>
+                      </Link>
+                    )
+                  })}
                 </div>
               </section>
             ))}
@@ -864,3 +647,4 @@ export default function AdminHousesPage() {
     </main>
   )
 }
+
