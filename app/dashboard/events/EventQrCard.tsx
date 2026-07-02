@@ -191,11 +191,19 @@ export function EventQrCard({
     context.fillStyle = '#ffffff'
     context.fillText(badgeText, cardWidth / 2, badgeY + 34)
 
-    const invitationText = `${normalizeDisplayName(hostName)} te ha invitado a una visita grupal, presenta este QR en la garita de Seguridad`
-    context.font = '700 24px Arial'
+    const invitationLines = [
+      `${normalizeDisplayName(hostName)} te ha invitado a una visita grupal,`,
+      'presenta este QR en la garita de Seguridad',
+    ]
+    const invitationFontSize = Math.min(
+      ...invitationLines.map((line) =>
+        setResponsiveFont(context, line, 840, 700, 24, 19),
+      ),
+    )
+    context.font = `700 ${invitationFontSize}px Arial`
     context.fillStyle = '#14231C'
-    setResponsiveFont(context, invitationText, 840, 700, 24, 19)
-    drawWrappedText(context, invitationText, cardWidth / 2, 970, 840, 30, 2)
+    context.fillText(invitationLines[0], cardWidth / 2, 970)
+    context.fillText(invitationLines[1], cardWidth / 2, 1000)
 
     const lines: CardLine[] = [
       { label: 'Anunciado por', value: normalizeDisplayName(hostName) },
