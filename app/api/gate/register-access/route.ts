@@ -2,11 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sendPushToProfile } from '@/lib/server/push'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type QrToken = {
   id: string
   visit_id: string
+  residential_id: string
   token: string
   expires_at: string
   status: 'active' | 'used' | 'expired' | 'cancelled'
@@ -42,7 +41,14 @@ type ActorProfile = {
   residential_id: string | null
 }
 
-// ─── Service client ───────────────────────────────────────────────────────────
+type RegisterAccessBody = {
+  token?: unknown
+  visit_id?: unknown
+  validation_method?: unknown
+  identity_photo_url?: unknown
+  vehicle_photo_url?: unknown
+  plate_photo_url?: unknown
+}
 
 function makeServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -53,7 +59,7 @@ function makeServiceClient() {
   })
 }
 
-// ─── Internal notifications + push ───────────────────────────────────────────
+type ServiceClient = NonNullable<ReturnType<typeof makeServiceClient>>
 
 async function notifyResidents(params: {
   residentialId: string
@@ -65,7 +71,6 @@ async function notifyResidents(params: {
   title: string
   message: string
 }): Promise<void> {
-  // Create a fresh service client — avoids generic inference issues when passing clients as args
   const db = makeServiceClient()
   if (!db) return
 
@@ -84,10 +89,10 @@ async function notifyResidents(params: {
   const residents = (residentsData ?? []) as { id: string }[]
   if (residents.length === 0) return
 
-  const notifications = residents.map((r) => ({
+  const notifications = residents.map((resident) => ({
     residential_id: params.residentialId,
     house_id: params.houseId,
-    recipient_profile_id: r.id,
+    recipient_profile_id: resident.id,
     actor_profile_id: params.actorProfileId,
     visit_id: params.visitId,
     visitor_entry_id: params.visitorEntryId,
@@ -96,26 +101,29 @@ async function notifyResidents(params: {
     message: params.message,
   }))
 
-  const { error: insertError } = await db.from('notifications').insert(notifications)
+  const { error: insertError } = await db
+    .from('notifications')
+    .insert(notifications)
   if (insertError) {
     console.error('register-access: insert notifications error', insertError)
   }
 
-  // Push is best-effort: failures are logged but never propagated
   await Promise.all(
-    residents.map((r) =>
-      sendPushToProfile(r.id, {
+    residents.map((resident) =>
+      sendPushToProfile(resident.id, {
         title: params.title,
         body: params.message,
         url: '/dashboard/notifications',
-      }).catch((err) => {
-        console.error('register-access: push error for profile', r.id, err)
+      }).catch((error) => {
+        console.error(
+          'register-access: push error for profile',
+          resident.id,
+          error,
+        )
       }),
     ),
   )
 }
-
-// ─── Route handler ────────────────────────────────────────────────────────────
 
 function canRegisterForVisit(profile: ActorProfile, visit: Visit): boolean {
   if (profile.role === 'super_admin') return true
@@ -152,39 +160,42 @@ async function verifyPhotoExists(params: {
   return !error
 }
 
-export async function POST(request: NextRequest) {
-  const db = makeServiceClient()
-  if (!db) {
-    return NextResponse.json({ error: 'Server not configured' }, { status: 503 })
-  }
-
-  // ── Validate session ──
-  const authHeader = request.headers.get('authorization')
-  const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
-  if (!jwt) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
+async function loadProfile(
+  db: ServiceClient,
+  jwt: string,
+): Promise<ActorProfile | null> {
   const {
     data: { user },
     error: userError,
   } = await db.auth.getUser(jwt)
-  if (userError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  if (userError || !user) return null
 
-  // ── Load and authorize profile ──
   const { data: profileData, error: profileError } = await db
     .from('profiles')
     .select('id,role,status,residential_id')
     .eq('user_id', user.id)
     .single()
 
-  if (profileError || !profileData) {
+  if (profileError || !profileData) return null
+  return profileData as ActorProfile
+}
+
+export async function POST(request: NextRequest) {
+  const db = makeServiceClient()
+  if (!db) {
+    return NextResponse.json({ error: 'Server not configured' }, { status: 503 })
+  }
+
+  const authHeader = request.headers.get('authorization')
+  const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+  if (!jwt) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const profile = profileData as ActorProfile
+  const profile = await loadProfile(db, jwt)
+  if (!profile) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   if (
     profile.status !== 'approved' ||
@@ -193,56 +204,73 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // ── Parse body ──
-  let body: {
-    token?: unknown
-    identity_photo_url?: unknown
-    vehicle_photo_url?: unknown
-    plate_photo_url?: unknown
-  }
+  let body: RegisterAccessBody
   try {
-    body = (await request.json()) as typeof body
+    body = (await request.json()) as RegisterAccessBody
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { token, identity_photo_url, vehicle_photo_url, plate_photo_url } = body
+  const {
+    token,
+    visit_id,
+    validation_method,
+    identity_photo_url,
+    vehicle_photo_url,
+    plate_photo_url,
+  } = body
+  const hasToken = typeof token === 'string' && token.trim().length > 0
+  const hasVisitId = typeof visit_id === 'string' && visit_id.trim().length > 0
+  const validationMethod =
+    validation_method === 'manual_search' && hasVisitId && !hasToken
+      ? 'manual_search'
+      : 'qr'
 
-  if (typeof token !== 'string' || !token.trim()) {
-    return NextResponse.json({ error: 'token is required' }, { status: 400 })
+  if (!hasToken && !hasVisitId) {
+    return NextResponse.json(
+      { error: 'token or visit_id is required' },
+      { status: 400 },
+    )
   }
 
-  // ── Load QR token ──
-  const { data: qrTokenData, error: qrError } = await db
-    .from('qr_tokens')
-    .select('id,visit_id,token,expires_at,status')
-    .eq('token', token.trim())
-    .single()
+  let qrToken: QrToken | null = null
+  let visitIdToLoad = hasVisitId ? (visit_id as string).trim() : ''
 
-  if (qrError || !qrTokenData) {
-    return NextResponse.json({ error: 'QR inválido' }, { status: 404 })
+  if (hasToken) {
+    const { data: qrTokenData, error: qrError } = await db
+      .from('qr_tokens')
+      .select('id,visit_id,residential_id,token,expires_at,status')
+      .eq('token', (token as string).trim())
+      .single()
+
+    if (qrError || !qrTokenData) {
+      return NextResponse.json({ error: 'QR invalido' }, { status: 404 })
+    }
+
+    qrToken = qrTokenData as QrToken
+    visitIdToLoad = qrToken.visit_id
   }
 
-  const qrToken = qrTokenData as QrToken
-
-  // ── Load visit ──
   const { data: visitData, error: visitError } = await db
     .from('visits')
     .select('id,residential_id,house_id,visitor_name,access_mode,valid_until,status')
-    .eq('id', qrToken.visit_id)
+    .eq('id', visitIdToLoad)
     .single()
 
   if (visitError || !visitData) {
-    return NextResponse.json({ error: 'QR inválido' }, { status: 404 })
+    return NextResponse.json({ error: 'Visita no encontrada' }, { status: 404 })
   }
 
   const visit = visitData as Visit
+
+  if (qrToken && qrToken.residential_id !== visit.residential_id) {
+    return NextResponse.json({ error: 'QR invalido' }, { status: 404 })
+  }
 
   if (!canRegisterForVisit(profile, visit)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // ── Load existing allowed entries ──
   const { data: entriesData, error: entriesError } = await db
     .from('visitor_entries')
     .select('id,entry_time,exit_time')
@@ -256,10 +284,9 @@ export async function POST(request: NextRequest) {
   }
 
   const entries = (entriesData ?? []) as EntryRow[]
-  const openEntry = entries.find((e) => e.exit_time === null) ?? null
+  const openEntry = entries.find((entry) => entry.exit_time === null) ?? null
   const now = new Date()
 
-  // ══════════════ EXIT ══════════════
   if (openEntry) {
     const { data: updatedEntry, error: exitError } = await db
       .from('visitor_entries')
@@ -270,10 +297,12 @@ export async function POST(request: NextRequest) {
 
     if (exitError) {
       console.error('register-access: exit update error', exitError)
-      return NextResponse.json({ error: 'Error al registrar salida' }, { status: 500 })
+      return NextResponse.json(
+        { error: 'Error al registrar salida' },
+        { status: 500 },
+      )
     }
 
-    // Notifications + push: awaited but never throws — errors are caught inside
     await notifyResidents({
       residentialId: visit.residential_id,
       houseId: visit.house_id,
@@ -281,29 +310,30 @@ export async function POST(request: NextRequest) {
       visitId: visit.id,
       visitorEntryId: openEntry.id,
       type: 'visitor_exited',
-      title: 'Visitante salió',
-      message: `${visit.visitor_name} salió de tu residencia.`,
-    }).catch((err) => console.error('register-access: notifyResidents error', err))
+      title: 'Visitante salio',
+      message: `${visit.visitor_name} salio de tu residencia.`,
+    }).catch((error) =>
+      console.error('register-access: notifyResidents error', error),
+    )
 
     return NextResponse.json({ action: 'exit', entry: updatedEntry as EntryRow })
   }
-
-  // ══════════════ ENTRY — validate ══════════════
 
   if (visit.access_mode === 'single_use' && entries.length > 0) {
     return NextResponse.json({ error: 'QR no disponible' }, { status: 409 })
   }
 
-  if (qrToken.status !== 'active') {
+  if (qrToken && qrToken.status !== 'active') {
     return NextResponse.json({ error: 'QR no disponible' }, { status: 409 })
   }
 
-  if (new Date(qrToken.expires_at).getTime() <= now.getTime()) {
-    return NextResponse.json({ error: 'QR vencido' }, { status: 409 })
+  const expiresAt = qrToken?.expires_at ?? visit.valid_until
+  if (new Date(expiresAt).getTime() <= now.getTime()) {
+    return NextResponse.json({ error: 'Visita vencida' }, { status: 409 })
   }
 
   if (visit.status !== 'active') {
-    return NextResponse.json({ error: 'QR no disponible' }, { status: 409 })
+    return NextResponse.json({ error: 'Visita no disponible' }, { status: 409 })
   }
 
   const { data: houseData, error: houseError } = await db
@@ -322,7 +352,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Casa sin acceso activo' }, { status: 409 })
   }
 
-  // Photos required for entry
   if (
     typeof identity_photo_url !== 'string' ||
     !identity_photo_url.trim() ||
@@ -332,12 +361,11 @@ export async function POST(request: NextRequest) {
     !plate_photo_url.trim()
   ) {
     return NextResponse.json(
-      { error: 'Se requieren las 3 evidencias fotográficas para registrar ingreso' },
+      { error: 'Se requieren las 3 evidencias fotograficas' },
       { status: 400 },
     )
   }
 
-  // ── Insert entry ──
   const identityPhotoPath = identity_photo_url.trim()
   const vehiclePhotoPath = vehicle_photo_url.trim()
   const platePhotoPath = plate_photo_url.trim()
@@ -393,10 +421,11 @@ export async function POST(request: NextRequest) {
     .insert({
       residential_id: visit.residential_id,
       visit_id: visit.id,
-      qr_token_id: qrToken.id,
+      qr_token_id: qrToken?.id ?? null,
       house_id: visit.house_id,
       guard_id: profile.id,
       entry_status: 'allowed',
+      validation_method: validationMethod,
       notes: null,
       identity_photo_url: identityPhotoPath,
       vehicle_photo_url: vehiclePhotoPath,
@@ -407,24 +436,26 @@ export async function POST(request: NextRequest) {
 
   if (entryError || !insertedEntry) {
     console.error('register-access: insert entry error', entryError)
-    return NextResponse.json({ error: 'Error al registrar ingreso' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Error al registrar ingreso' },
+      { status: 500 },
+    )
   }
 
-  // ── Single-use: mark token and visit as used ──
   if (visit.access_mode === 'single_use') {
     const usedAt = now.toISOString()
     await Promise.all([
       db
         .from('qr_tokens')
         .update({ status: 'used', used_at: usedAt })
-        .eq('id', qrToken.id),
+        .eq('visit_id', visit.id)
+        .eq('status', 'active'),
       db.from('visits').update({ status: 'used' }).eq('id', visit.id),
     ])
   }
 
   const newEntry = insertedEntry as EntryRow
 
-  // Notifications + push: awaited but never throws — errors are caught inside
   await notifyResidents({
     residentialId: visit.residential_id,
     houseId: visit.house_id,
@@ -432,9 +463,11 @@ export async function POST(request: NextRequest) {
     visitId: visit.id,
     visitorEntryId: newEntry.id,
     type: 'visitor_entered',
-    title: 'Visitante ingresó',
-    message: `${visit.visitor_name} ingresó a tu residencia.`,
-  }).catch((err) => console.error('register-access: notifyResidents error', err))
+    title: 'Visitante ingreso',
+    message: `${visit.visitor_name} ingreso a tu residencia.`,
+  }).catch((error) =>
+    console.error('register-access: notifyResidents error', error),
+  )
 
   return NextResponse.json({ action: 'entry', entry: newEntry })
 }

@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Camera, CheckCircle, ArrowRightLeft } from 'lucide-react'
+import { Camera, CheckCircle, ArrowRightLeft, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 
@@ -72,6 +72,7 @@ type EntryPhotoUpload = {
 }
 
 const maxEntryPhotoSizeBytes = 8 * 1024 * 1024
+type ValidationMethod = 'qr' | 'manual_search'
 
 type ScanResult =
   | {
@@ -83,13 +84,16 @@ type ScanResult =
     }
   | {
       status: 'success'
-      qrToken: QrToken
+      qrToken: QrToken | null
+      validationMethod: ValidationMethod
       visit: Visit
       house: House
       residential: Residential
       announcedBy: AnnouncedBy | null
       openEntry: OpenEntry | null
     }
+
+type ManualSearchResult = Extract<ScanResult, { status: 'success' }>
 
 const visitTypeLabels: Record<Visit['visit_type'], string> = {
   family: 'Familiar',
@@ -129,6 +133,11 @@ function GateScanContent() {
   const [startingCamera, setStartingCamera] = useState(false)
   const [confirmingExit, setConfirmingExit] = useState(false)
   const [uploadStatus, setUploadStatus] = useState<string | null>(null)
+  const [manualQuery, setManualQuery] = useState('')
+  const [manualSearchLoading, setManualSearchLoading] = useState(false)
+  const [manualSearchResults, setManualSearchResults] = useState<
+    ManualSearchResult[]
+  >([])
   const [entryPhotoFiles, setEntryPhotoFiles] = useState<EntryPhotoFiles>({
     identity: null,
     vehicle: null,
@@ -471,6 +480,7 @@ function GateScanContent() {
     setResult({
       status: 'success',
       qrToken,
+      validationMethod: 'qr',
       visit,
       house,
       residential: residentialData as Residential,
@@ -479,6 +489,159 @@ function GateScanContent() {
     })
     signal('scan_success')
   }, [router, setErrorResult, signal, token])
+
+  const handleManualSearch = async () => {
+    const query = manualQuery.trim()
+
+    if (query.length < 2) {
+      toast.error('Escribe al menos 2 letras del visitante')
+      return
+    }
+
+    setManualSearchLoading(true)
+    setManualSearchResults([])
+
+    const { data: visitsData, error: visitsError } = await supabase
+      .from('visits')
+      .select(
+        'id,residential_id,house_id,created_by,visitor_name,visit_type,access_mode,valid_until,status',
+      )
+      .eq('status', 'active')
+      .gt('valid_until', new Date().toISOString())
+      .ilike('visitor_name', `%${query}%`)
+      .order('valid_until', { ascending: true })
+      .limit(8)
+
+    if (visitsError) {
+      console.error('Error searching visits:', visitsError)
+      toast.error('No se pudo buscar la visita')
+      setManualSearchLoading(false)
+      return
+    }
+
+    const visits = (visitsData || []) as Visit[]
+
+    if (visits.length === 0) {
+      setManualSearchLoading(false)
+      return
+    }
+
+    const visitIds = visits.map((visit) => visit.id)
+    const houseIds = Array.from(new Set(visits.map((visit) => visit.house_id)))
+    const residentialIds = Array.from(
+      new Set(visits.map((visit) => visit.residential_id)),
+    )
+    const createdByIds = Array.from(
+      new Set(visits.map((visit) => visit.created_by)),
+    )
+
+    const [
+      { data: housesData, error: housesError },
+      { data: residentialsData, error: residentialsError },
+      { data: profilesData },
+      { data: entriesData, error: entriesError },
+    ] = await Promise.all([
+      supabase
+        .from('houses')
+        .select('id,residential_id,block,house_number')
+        .in('id', houseIds),
+      supabase.from('residentials').select('id,name').in('id', residentialIds),
+      supabase
+        .from('profiles')
+        .select('id,first_name,last_name,phone')
+        .in('id', createdByIds),
+      supabase
+        .from('visitor_entries')
+        .select('id,visit_id,entry_time,exit_time')
+        .eq('entry_status', 'allowed')
+        .in('visit_id', visitIds)
+        .order('entry_time', { ascending: false }),
+    ])
+
+    if (housesError || residentialsError || entriesError) {
+      console.error('Error loading manual search details:', {
+        housesError,
+        residentialsError,
+        entriesError,
+      })
+      toast.error('No se pudieron cargar los detalles de la visita')
+      setManualSearchLoading(false)
+      return
+    }
+
+    const housesById = new Map(
+      ((housesData || []) as House[]).map((house) => [house.id, house]),
+    )
+    const residentialsById = new Map(
+      ((residentialsData || []) as Residential[]).map((residential) => [
+        residential.id,
+        residential,
+      ]),
+    )
+    const profilesById = new Map(
+      ((profilesData || []) as AnnouncedBy[]).map((profile) => [
+        profile.id,
+        profile,
+      ]),
+    )
+    const entriesByVisitId = new Map<string, OpenEntry[]>()
+    ;(
+      (entriesData || []) as (OpenEntry & { visit_id: string })[]
+    ).forEach((entry) => {
+      const currentEntries = entriesByVisitId.get(entry.visit_id) || []
+      currentEntries.push(entry)
+      entriesByVisitId.set(entry.visit_id, currentEntries)
+    })
+
+    const results = visits.reduce<ManualSearchResult[]>((acc, visit) => {
+        const house = housesById.get(visit.house_id)
+        const residential = residentialsById.get(visit.residential_id)
+
+        if (!house || !residential) {
+          return acc
+        }
+
+        const entries = entriesByVisitId.get(visit.id) || []
+        const openEntry =
+          entries.find((entry) => entry.exit_time === null) || null
+
+        if (
+          visit.access_mode === 'single_use' &&
+          entries.length > 0 &&
+          !openEntry
+        ) {
+          return acc
+        }
+
+        acc.push({
+          status: 'success' as const,
+          qrToken: null,
+          validationMethod: 'manual_search' as const,
+          visit,
+          house,
+          residential,
+          announcedBy: profilesById.get(visit.created_by) || null,
+          openEntry,
+        })
+
+        return acc
+      }, [])
+
+    setManualSearchResults(results)
+    setManualSearchLoading(false)
+  }
+
+  const handleSelectManualResult = (manualResult: ManualSearchResult) => {
+    setResult(manualResult)
+    setRegisteredEntry(null)
+    setConfirmingExit(false)
+    setEntryPhotoFiles({
+      identity: null,
+      vehicle: null,
+      plate: null,
+    })
+    signal('scan_success')
+  }
 
   const handleEntryPhotoChange = (
     kind: EntryPhotoKind,
@@ -626,7 +789,9 @@ function GateScanContent() {
           Authorization: `Bearer ${sessionData.session.access_token}`,
         },
         body: JSON.stringify({
-          token,
+          token: result.qrToken ? token : undefined,
+          visit_id: result.qrToken ? undefined : result.visit.id,
+          validation_method: result.validationMethod,
           identity_photo_url: identityPhotoUrl,
           vehicle_photo_url: vehiclePhotoUrl,
           plate_photo_url: platePhotoUrl,
@@ -762,6 +927,82 @@ function GateScanContent() {
               Cerrar cámara
             </button>
           )}
+          <section className="space-y-4 rounded-2xl bg-white p-5 text-slate-950 shadow-2xl">
+            <div>
+              <label
+                htmlFor="manual-visit-search"
+                className="text-sm font-black text-slate-950"
+              >
+                Buscar visita por nombre
+              </label>
+              <p className="mt-1 text-sm font-semibold text-slate-500">
+                Usa esta opcion si la visita fue anunciada, pero el visitante no puede mostrar el QR.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <input
+                  id="manual-visit-search"
+                  value={manualQuery}
+                  onChange={(event) => setManualQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      void handleManualSearch()
+                    }
+                  }}
+                  className="min-h-14 min-w-0 flex-1 rounded-2xl border border-slate-200 px-4 text-base font-semibold outline-none"
+                  placeholder="Ej: Juan Perez"
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleManualSearch()}
+                  disabled={manualSearchLoading}
+                  className="inline-flex min-h-14 w-14 items-center justify-center rounded-2xl bg-slate-950 text-white disabled:opacity-60"
+                  aria-label="Buscar visita"
+                >
+                  {manualSearchLoading ? (
+                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  ) : (
+                    <Search className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {manualSearchResults.length === 0 && !manualSearchLoading && (
+              <p className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-500">
+                Los resultados activos apareceran aqui.
+              </p>
+            )}
+
+            <div className="space-y-3">
+              {manualSearchResults.map((manualResult) => {
+                const validUntilLabel = new Intl.DateTimeFormat('es-HN', {
+                  day: 'numeric',
+                  month: 'short',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                }).format(new Date(manualResult.visit.valid_until))
+
+                return (
+                  <button
+                    key={manualResult.visit.id}
+                    type="button"
+                    onClick={() => handleSelectManualResult(manualResult)}
+                    className="w-full rounded-2xl border border-slate-200 p-4 text-left active:scale-[0.99]"
+                  >
+                    <p className="text-lg font-black text-slate-950">
+                      {manualResult.visit.visitor_name}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-600">
+                      Casa {manualResult.house.block}-{manualResult.house.house_number}
+                    </p>
+                    <p className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-400">
+                      Valido hasta {validUntilLabel}
+                    </p>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
           <Link
             href="/dashboard"
             className="block min-h-14 w-full rounded-2xl border border-white/30 px-4 py-4 text-center text-lg font-black text-white active:scale-[0.99]"

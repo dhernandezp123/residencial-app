@@ -471,7 +471,7 @@ function NewVisitContent() {
                 setFormData({ ...formData, visitor_name: e.target.value })
               }
               placeholder="Ej: Juan Pérez"
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+              className="block min-w-0 max-w-full appearance-none rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-white"
               required
             />
           </label>
@@ -487,7 +487,7 @@ function NewVisitContent() {
               }
               type="datetime-local"
               min={toLocalDateTimeInput(new Date())}
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+              className="block min-w-0 max-w-full appearance-none rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-white"
               required
             />
           </label>
