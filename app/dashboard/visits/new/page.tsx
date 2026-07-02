@@ -209,16 +209,6 @@ function NewVisitContent() {
     houseIsActive === true &&
     housePaysecurity === true
 
-  const handleCopyLink = async (shareUrl: string) => {
-    try {
-      await navigator.clipboard.writeText(shareUrl)
-      toast.success('Link copiado')
-    } catch (error) {
-      console.error('Error copying invitation link:', error)
-      toast.error('No se pudo copiar el link')
-    }
-  }
-
   const handleCreateVisit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -406,22 +396,6 @@ function NewVisitContent() {
               residentialName={createdVisit.residentialName}
               houseLabel={createdVisit.houseLabel}
             />
-
-            <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-700/50">
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                Link de respaldo
-              </p>
-              <p className="mt-1 break-all text-xs leading-5 text-slate-500 dark:text-slate-300">
-                {createdVisit.shareUrl}
-              </p>
-              <button
-                type="button"
-                onClick={() => void handleCopyLink(createdVisit.shareUrl)}
-                className="mt-3 min-h-12 w-full rounded-2xl border border-slate-200 px-4 py-3 font-semibold text-slate-800 active:scale-[0.99] dark:border-slate-600 dark:text-slate-200"
-              >
-                Copiar link
-              </button>
-            </div>
 
             <button
               type="button"
