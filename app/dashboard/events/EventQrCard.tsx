@@ -21,7 +21,8 @@ type CardLine = {
 }
 
 const cardWidth = 1086
-const cardHeight = 1536
+const cardHeight = 1448
+const templatePath = '/visit-card-template.png'
 
 function downloadBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob)
@@ -122,19 +123,6 @@ function drawWrappedText(
   })
 }
 
-function fillRoundRect(
-  context: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number,
-) {
-  context.beginPath()
-  context.roundRect(x, y, width, height, radius)
-  context.fill()
-}
-
 export function EventQrCard({
   qrDataUrl,
   eventTitle,
@@ -152,7 +140,10 @@ export function EventQrCard({
     .toLowerCase()}.png`
 
   const generateEventCardBlob = async () => {
-    const qrImage = await loadImage(qrDataUrl)
+    const [templateImage, qrImage] = await Promise.all([
+      loadImage(templatePath),
+      loadImage(qrDataUrl),
+    ])
     const canvas = document.createElement('canvas')
     canvas.width = cardWidth
     canvas.height = cardHeight
@@ -162,56 +153,63 @@ export function EventQrCard({
       throw new Error('No se pudo preparar la imagen')
     }
 
-    context.fillStyle = '#F3F8F5'
-    context.fillRect(0, 0, cardWidth, cardHeight)
+    context.drawImage(templateImage, 0, 0, cardWidth, cardHeight)
 
-    context.fillStyle = '#15936A'
-    fillRoundRect(context, 76, 76, cardWidth - 152, cardHeight - 152, 56)
-
-    context.fillStyle = '#FFFFFF'
-    fillRoundRect(context, 126, 126, cardWidth - 252, cardHeight - 252, 44)
+    const qrSize = 520
+    const qrX = (cardWidth - qrSize) / 2
+    const qrY = 248
+    context.fillStyle = '#ffffff'
+    context.fillRect(qrX - 24, qrY - 24, qrSize + 48, qrSize + 48)
+    context.drawImage(qrImage, qrX, qrY, qrSize, qrSize)
 
     context.textAlign = 'center'
     context.fillStyle = '#15936A'
-    context.font = '800 44px Arial'
-    context.fillText('ResidentPass', cardWidth / 2, 214)
+    context.font = '700 22px Arial'
+    context.fillText('VISITA GRUPAL', cardWidth / 2, 805)
 
     context.fillStyle = '#14231C'
-    setResponsiveFont(context, eventTitle, 760, 800, 54, 34)
+    setResponsiveFont(context, normalizeDisplayName(eventTitle), 760, 800, 44, 31)
     drawWrappedText(
       context,
       normalizeDisplayName(eventTitle),
       cardWidth / 2,
-      300,
+      855,
       760,
-      60,
+      50,
       2,
     )
 
-    const qrSize = 520
-    const qrX = (cardWidth - qrSize) / 2
-    const qrY = 440
-    context.fillStyle = '#F8FAFC'
-    fillRoundRect(context, qrX - 28, qrY - 28, qrSize + 56, qrSize + 56, 34)
-    context.drawImage(qrImage, qrX, qrY, qrSize, qrSize)
-
+    const badgeText = `${guestCount} INVITADOS`
+    context.font = '700 26px Arial'
+    const badgeWidth = Math.max(275, context.measureText(badgeText).width + 58)
+    const badgeX = (cardWidth - badgeWidth) / 2
+    const badgeY = 895
     context.fillStyle = '#15936A'
-    context.font = '800 30px Arial'
-    context.fillText('Presenta este codigo en garita', cardWidth / 2, 1030)
+    context.beginPath()
+    context.roundRect(badgeX, badgeY, badgeWidth, 50, 25)
+    context.fill()
+    context.fillStyle = '#ffffff'
+    context.fillText(badgeText, cardWidth / 2, badgeY + 34)
+
+    const invitationText = `${normalizeDisplayName(hostName)} te ha invitado a una visita grupal, presenta este QR en la garita de Seguridad`
+    context.font = '700 24px Arial'
+    context.fillStyle = '#14231C'
+    setResponsiveFont(context, invitationText, 840, 700, 24, 19)
+    drawWrappedText(context, invitationText, cardWidth / 2, 970, 840, 30, 2)
 
     const lines: CardLine[] = [
-      { label: 'Anfitrion', value: normalizeDisplayName(hostName) },
+      { label: 'Anunciado por', value: normalizeDisplayName(hostName) },
       { label: 'Casa', value: houseLabel },
-      { label: 'Fecha del evento', value: formatCardDate(eventDate) },
+      { label: 'Fecha', value: formatCardDate(eventDate) },
       { label: 'Valido hasta', value: formatCardDate(validUntil) },
       { label: 'Invitados', value: String(guestCount) },
     ]
 
     context.textAlign = 'left'
-    const firstColumnX = 190
+    const firstColumnX = 195
     const secondColumnX = 565
-    const firstRowY = 1120
-    const rowGap = 74
+    const firstRowY = 1048
+    const rowGap = 66
     const columnWidth = 330
 
     lines.forEach((line, index) => {
@@ -219,12 +217,12 @@ export function EventQrCard({
       const columnX = isSecondColumn ? secondColumnX : firstColumnX
       const rowY = firstRowY + Math.floor(index / 2) * rowGap
 
-      context.font = '800 18px Arial'
+      context.font = '700 18px Arial'
       context.fillStyle = '#15936A'
       context.fillText(line.label.toUpperCase(), columnX, rowY)
       context.fillStyle = '#14231C'
-      setResponsiveFont(context, line.value, columnWidth, 700, 25, 17)
-      drawWrappedText(context, line.value, columnX, rowY + 30, columnWidth, 28, 2)
+      setResponsiveFont(context, line.value, columnWidth, 700, 22, 17)
+      drawWrappedText(context, line.value, columnX, rowY + 28, columnWidth, 26, 2)
     })
 
     return new Promise<Blob>((resolve, reject) => {

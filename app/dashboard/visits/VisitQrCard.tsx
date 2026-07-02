@@ -23,7 +23,7 @@ type CardLine = {
 }
 
 const cardWidth = 1086
-const cardHeight = 1536
+const cardHeight = 1448
 const templatePath = '/visit-card-template.png'
 
 const accessModeLabels: Record<AccessMode, string> = {
