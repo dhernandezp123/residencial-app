@@ -44,7 +44,6 @@ type AnnouncedBy = {
   id: string
   first_name: string
   last_name: string
-  phone: string | null
 }
 
 type RegisteredEntry = {
@@ -416,7 +415,7 @@ function GateScanContent() {
         .single(),
       supabase
         .from('profiles')
-        .select('id,first_name,last_name,phone')
+        .select('id,first_name,last_name')
         .eq('id', visit.created_by)
         .single(),
       supabase
@@ -548,7 +547,7 @@ function GateScanContent() {
       supabase.from('residentials').select('id,name').in('id', residentialIds),
       supabase
         .from('profiles')
-        .select('id,first_name,last_name,phone')
+        .select('id,first_name,last_name')
         .in('id', createdByIds),
       supabase
         .from('visitor_entries')
@@ -1191,11 +1190,6 @@ function GateScanContent() {
               <p className="mt-2 text-2xl font-black text-slate-950">
                 {result.announcedBy.first_name} {result.announcedBy.last_name}
               </p>
-              {result.announcedBy.phone && (
-                <p className="mt-1 text-lg font-bold text-slate-600">
-                  {result.announcedBy.phone}
-                </p>
-              )}
             </>
           ) : (
             <p className="mt-2 text-2xl font-black text-slate-950">

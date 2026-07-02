@@ -157,7 +157,7 @@ export function EventQrCard({
 
     const qrSize = 520
     const qrX = (cardWidth - qrSize) / 2
-    const qrY = 248
+    const qrY = 218
     context.fillStyle = '#ffffff'
     context.fillRect(qrX - 24, qrY - 24, qrSize + 48, qrSize + 48)
     context.drawImage(qrImage, qrX, qrY, qrSize, qrSize)
@@ -165,7 +165,7 @@ export function EventQrCard({
     context.textAlign = 'center'
     context.fillStyle = '#15936A'
     context.font = '700 22px Arial'
-    context.fillText('VISITA GRUPAL', cardWidth / 2, 805)
+    context.fillText('VISITA GRUPAL', cardWidth / 2, 775)
 
     context.fillStyle = '#14231C'
     setResponsiveFont(context, normalizeDisplayName(eventTitle), 760, 800, 44, 31)
@@ -173,17 +173,17 @@ export function EventQrCard({
       context,
       normalizeDisplayName(eventTitle),
       cardWidth / 2,
-      855,
+      825,
       760,
       50,
       2,
     )
 
-    const badgeText = `${guestCount} INVITADOS`
+    const badgeText = 'CODIGO DE EVENTO'
     context.font = '700 26px Arial'
     const badgeWidth = Math.max(275, context.measureText(badgeText).width + 58)
     const badgeX = (cardWidth - badgeWidth) / 2
-    const badgeY = 895
+    const badgeY = 865
     context.fillStyle = '#15936A'
     context.beginPath()
     context.roundRect(badgeX, badgeY, badgeWidth, 50, 25)
@@ -202,21 +202,20 @@ export function EventQrCard({
     )
     context.font = `700 ${invitationFontSize}px Arial`
     context.fillStyle = '#14231C'
-    context.fillText(invitationLines[0], cardWidth / 2, 970)
-    context.fillText(invitationLines[1], cardWidth / 2, 1000)
+    context.fillText(invitationLines[0], cardWidth / 2, 940)
+    context.fillText(invitationLines[1], cardWidth / 2, 970)
 
     const lines: CardLine[] = [
       { label: 'Anunciado por', value: normalizeDisplayName(hostName) },
       { label: 'Casa', value: houseLabel },
       { label: 'Fecha', value: formatCardDate(eventDate) },
       { label: 'Valido hasta', value: formatCardDate(validUntil) },
-      { label: 'Invitados', value: String(guestCount) },
     ]
 
     context.textAlign = 'left'
     const firstColumnX = 195
     const secondColumnX = 565
-    const firstRowY = 1048
+    const firstRowY = 1018
     const rowGap = 66
     const columnWidth = 330
 

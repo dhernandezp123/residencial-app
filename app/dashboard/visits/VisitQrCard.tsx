@@ -179,7 +179,7 @@ export function VisitQrCard({
 
     const qrSize = 520
     const qrX = (cardWidth - qrSize) / 2
-    const qrY = 248
+    const qrY = 218
     context.fillStyle = '#ffffff'
     context.fillRect(qrX - 24, qrY - 24, qrSize + 48, qrSize + 48)
     context.drawImage(qrImage, qrX, qrY, qrSize, qrSize)
@@ -190,17 +190,17 @@ export function VisitQrCard({
     context.textAlign = 'center'
     context.font = '700 22px Arial'
     context.fillStyle = '#15936A'
-    context.fillText('VISITANTE', cardWidth / 2, 805)
+    context.fillText('VISITANTE', cardWidth / 2, 775)
 
     context.fillStyle = '#14231C'
     setResponsiveFont(context, displayVisitorName, 720, 700, 44, 31)
-    drawWrappedText(context, displayVisitorName, cardWidth / 2, 855, 720, 50, 2)
+    drawWrappedText(context, displayVisitorName, cardWidth / 2, 825, 720, 50, 2)
 
     const badgeText = accessModeLabels[accessMode]
     context.font = '700 26px Arial'
     const badgeWidth = Math.max(275, context.measureText(badgeText).width + 58)
     const badgeX = (cardWidth - badgeWidth) / 2
-    const badgeY = 895
+    const badgeY = 865
     context.fillStyle = '#15936A'
     context.beginPath()
     context.roundRect(badgeX, badgeY, badgeWidth, 50, 25)
@@ -219,8 +219,8 @@ export function VisitQrCard({
     )
     context.font = `700 ${invitationFontSize}px Arial`
     context.fillStyle = '#14231C'
-    context.fillText(invitationLines[0], cardWidth / 2, 970)
-    context.fillText(invitationLines[1], cardWidth / 2, 1000)
+    context.fillText(invitationLines[0], cardWidth / 2, 940)
+    context.fillText(invitationLines[1], cardWidth / 2, 970)
 
     const lines: CardLine[] = [
       { label: 'Anunciado por', value: displayAnnouncedBy || 'Residente' },
@@ -233,7 +233,7 @@ export function VisitQrCard({
     context.textAlign = 'left'
     const firstColumnX = 195
     const secondColumnX = 565
-    const firstRowY = 1048
+    const firstRowY = 1018
     const rowGap = 66
     const columnWidth = 330
 
