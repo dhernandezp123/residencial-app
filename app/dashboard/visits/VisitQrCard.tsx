@@ -48,6 +48,16 @@ function normalizeDisplayName(name: string) {
     .trim()
 }
 
+function getInvitationIntroLine(announcedBy: string) {
+  const displayName = normalizeDisplayName(announcedBy)
+
+  if (!displayName || displayName.toLowerCase() === 'residente') {
+    return 'Has sido invitado a esta residencia,'
+  }
+
+  return `${displayName} te ha invitado a su casa,`
+}
+
 function setResponsiveFont(
   context: CanvasRenderingContext2D,
   text: string,
@@ -148,7 +158,8 @@ export function VisitQrCard({
   houseLabel,
 }: VisitQrCardProps) {
   const [sharingImage, setSharingImage] = useState(false)
-  const invitationText = `${normalizeDisplayName(announcedBy)} te ha invitado a su casa, presenta este QR en la garita de Seguridad`
+  const invitationIntroLine = getInvitationIntroLine(announcedBy)
+  const invitationText = `${invitationIntroLine} presenta este QR en la garita de Seguridad`
 
   const generateVisitCardBlob = async () => {
     const [templateImage, qrImage] = await Promise.all([
@@ -174,6 +185,7 @@ export function VisitQrCard({
     context.drawImage(qrImage, qrX, qrY, qrSize, qrSize)
 
     const displayVisitorName = normalizeDisplayName(visitorName)
+    const displayAnnouncedBy = normalizeDisplayName(announcedBy)
 
     context.textAlign = 'center'
     context.font = '700 22px Arial'
@@ -197,7 +209,7 @@ export function VisitQrCard({
     context.fillText(badgeText, cardWidth / 2, badgeY + 34)
 
     const invitationLines = [
-      `${displayVisitorName} te ha invitado a su casa,`,
+      invitationIntroLine,
       'presenta este QR en la garita de Seguridad',
     ]
     const invitationFontSize = Math.min(
@@ -211,7 +223,7 @@ export function VisitQrCard({
     context.fillText(invitationLines[1], cardWidth / 2, 1000)
 
     const lines: CardLine[] = [
-      { label: 'Anunciado por', value: normalizeDisplayName(announcedBy) },
+      { label: 'Anunciado por', value: displayAnnouncedBy || 'Residente' },
       { label: 'Residencial', value: residentialName },
       { label: 'Válido hasta', value: formatCardDate(validUntil) },
       { label: 'Creado', value: formatCardDate(createdAt) },
